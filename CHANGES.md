@@ -3,6 +3,10 @@
 
 * Latest Hackage released version: 1.0, 2015-04-01
 
+### Version 1.1, 2015-04-02
+  
+  * Clean-up the API, examples etc.
+
 ### Version 1.0, 2015-04-01
 
   * First implementation. Supports HP/SP/DP

@@ -54,7 +54,7 @@ options = [
     , Option ""   ["uq"]      (NoArg (IType  W64)) "64 bit unsigned quad"
     , Option ""   ["toIEEE"]  (ReqArg ToIEEE "n")  "Convert from decimal to IEEE SP/DP formats."
     , Option "l"  ["lanes"]   (ReqArg Lanes  "n")  "number of lanes"
-    , Option ""   ["help"]    (NoArg Help)         "this help message"
+    , Option "h?" ["help"]    (NoArg Help)         "print help, with examples"
     , Option "v"  ["version"] (NoArg Version)      "print version info"
     ]
 
@@ -71,7 +71,7 @@ usage pn = do putStrLn $ helpStr pn
               putStrLn $ "   " ++ pn ++ " --sp 01111111110000000000000000000000"
               putStrLn $ "   " ++ pn ++ " -l2 --hp 01111111110000000000000000000000"
               putStrLn $ "   " ++ pn ++ " --sb 7f"
-              putStrLn $ "   " ++ pn ++ " --sp --toIEEE=2.3"
+              putStrLn $ "   " ++ pn ++ " --sp --toIEEE=-2.3e6"
               putStrLn $ "   " ++ pn ++ " --dp --toIEEE=max"
               putStrLn $ "   " ++ pn ++ " --dp --toIEEE=ulp"
               putStrLn ""
@@ -102,24 +102,20 @@ main = do argv <- getArgs
                               then putStrLn $ pn ++ " v" ++ showVersion version ++ ", " ++ copyRight
                               else process pn os rs
             (_,  _,  errs) -> do mapM_ putStrLn errs
-                                 usage pn
+                                 putStr $ helpStr pn
  where getChosenPrec os = case [p | p@FPType{} <- os] ++ [p | p@IType{} <- os] of
                             [p] -> Just p
                             _   -> Nothing
        process pn os rs
-        | Help `elem` os
-        = do putStrLn $ pn ++ " v" ++ showVersion version ++ ", " ++ copyRight
-             usage pn
-        | Just v <- listToMaybe [s | ToIEEE s <- os], null rs
-        = case mbPrec of
-            Just (FPType p) -> putStrLn $ displayFP $ convertToIEEE p v
-            _               -> usage pn
-        | all isDigit lcs && lc > 0
-        = case mbPrec of
-            Just p -> lane pn lc p rs
-            _      -> usage pn
-        | True
-        = usage pn
+          | Help `elem` os
+          = do putStrLn $ pn ++ " v" ++ showVersion version ++ ", " ++ copyRight
+               usage pn
+          | Just v <- listToMaybe [s | ToIEEE s <- os], null rs, Just (FPType p) <- mbPrec
+          = putStrLn $ displayFP $ convertToIEEE p v
+          | all isDigit lcs && lc > 0, Just p <- mbPrec
+          = lane pn lc p rs
+          | True
+          = putStr $ helpStr pn
          where mbPrec = getChosenPrec os
                lcs = fromMaybe (show (guessLaneCount mbPrec (cleanUp (concat rs)))) (listToMaybe (reverse [n | Lanes n <- os]))
                lc  = read lcs
@@ -200,12 +196,12 @@ dispatch pn _            _  = usage pn
 unpack :: String -> Flag -> String -> IO ()
 unpack pn prec orig =
      case (prec, length s, allHex, allBin) of
-        (FPType HP,       4, True, _   ) -> putStrLn $ displayFP $ crackHP hexVal
-        (FPType HP,      16, _   , True) -> putStrLn $ displayFP $ crackHP binVal
-        (FPType SP,       8, True, _   ) -> putStrLn $ displayFP $ crackSP hexVal
-        (FPType SP,      32, _   , True) -> putStrLn $ displayFP $ crackSP binVal
-        (FPType DP,      16, True, _   ) -> putStrLn $ displayFP $ crackDP hexVal
-        (FPType DP,      64, _   , True) -> putStrLn $ displayFP $ crackDP binVal
+        (FPType HP,       4, True, _   ) -> putStrLn $ displayFP $ crackFP HP hexVal
+        (FPType HP,      16, _   , True) -> putStrLn $ displayFP $ crackFP HP binVal
+        (FPType SP,       8, True, _   ) -> putStrLn $ displayFP $ crackFP SP hexVal
+        (FPType SP,      32, _   , True) -> putStrLn $ displayFP $ crackFP SP binVal
+        (FPType DP,      16, True, _   ) -> putStrLn $ displayFP $ crackFP DP hexVal
+        (FPType DP,      64, _   , True) -> putStrLn $ displayFP $ crackFP DP binVal
         (IType  I8,       2, True, _   ) -> putStrLn $ displayInt I8  hexVal
         (IType  I8,       8, _   , True) -> putStrLn $ displayInt I8  binVal
         (IType  W8,       2, True, _   ) -> putStrLn $ displayInt W8  hexVal

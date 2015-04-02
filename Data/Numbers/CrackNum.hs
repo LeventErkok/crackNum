@@ -15,7 +15,7 @@ module Data.Numbers.CrackNum
    (    -- * Internal representation of a Floating-point numbers
         FP(..), Precision(..), IPrecision(..), Kind(..)
         -- * Creating FP values
-      , crackHP, crackSP, crackDP, convertToIEEE
+      , crackFP, convertToIEEE
         -- * Displaying FP and Int/Word values
       , displayFP, displayInt
    )
@@ -34,21 +34,11 @@ import Data.Binary.IEEE754
 import Data.Numbers.CrackNum.Data
 import Data.Numbers.CrackNum.Utils
 
--- | Crack a Haskell Integer value as a Half-precision floating point number
-crackHP :: Integer -> FP
-crackHP = crack HP 15 15 [14, 13 .. 10] [9, 8 .. 0]
-
--- | Crack a Haskell Integer value as a Single-precision floating point number
-crackSP :: Integer -> FP
-crackSP = crack SP 127 31 [30, 29 .. 23] [22, 21 .. 0]
-
--- | Crack a Haskell Integer value as a Double-precision floating point number
-crackDP :: Integer -> FP
-crackDP = crack DP 1023 63 [62, 61 .. 52] [51, 50 .. 0]
-
--- | Use Haskell Float to represent HP
-hpVal :: Bool -> Int -> [Bool] -> Float
-hpVal = spVal
+-- | Crack a Haskell Integer value as the given precision floating value
+crackFP :: Precision -> Integer -> FP
+crackFP HP = crack HP   15 15 [14, 13 .. 10]   [9, 8 .. 0]
+crackFP SP = crack SP  127 31 [30, 29 .. 23] [22, 21 .. 0]
+crackFP DP = crack DP 1023 63 [62, 61 .. 52] [51, 50 .. 0]
 
 -- | Use Haskell Float to represent SP
 spVal :: Bool -> Int -> [Bool] -> Float
@@ -128,7 +118,7 @@ displayFP FP{intVal, prec, sign, stExpt, bias, expt, fracBits, bitLayOut, kind} 
                 Normal          -> nval False ++ " (NORMAL)"
         nval dn = (if sign then "-" else "+") ++ v
          where v = case prec of
-                     HP -> showGFloat Nothing (hpVal dn expt fracBits) ""
+                     HP -> showGFloat Nothing (spVal dn expt fracBits) ""
                      SP -> showGFloat Nothing (spVal dn expt fracBits) ""
                      DP -> showGFloat Nothing (dpVal dn expt fracBits) ""
 
@@ -173,23 +163,23 @@ convertToIEEE precision input
   where i = map toLower (dropWhile (== '+') input)
         specials :: [(String, (FP, FP))]
         specials = [ (s, (cvtF f, cvtD d))
-                   | (s, (f, d)) <- [ ("infinity",  ( infinity,           infinity))
-                                    , ("-infinity", (-infinity,          -infinity))
-                                    , ("0",         ( 0,                  0))
-                                    , ("-0",        (-0,                 -0))
-                                    , ("max",       ( maxFinite,          maxFinite))
-                                    , ("-max",      (-maxFinite,         -maxFinite))
-                                    , ("min",       ( minNormal,          minNormal))
-                                    , ("-min",      (-minNormal,         -minNormal))
-                                    , ("epsilon",   ( epsilon,            epsilon))]  ]
-                                 ++ [ ("ulp",       (crackSP 1,          crackDP 1))
-                                    , ("snan",      (crackSP 0x7f800001, crackDP 0x7ff0000000000001))
-                                    , ("qnan",      (crackSP 0x7f8c0001, crackDP 0x7ff8000000000001))
+                   | (s, (f, d)) <- [ ("infinity",  ( infinity,             infinity))
+                                    , ("-infinity", (-infinity,          -  infinity))
+                                    , ("0",         ( 0,                    0))
+                                    , ("-0",        (-0,                 -  0))
+                                    , ("max",       ( maxFinite,            maxFinite))
+                                    , ("-max",      (-maxFinite,         -  maxFinite))
+                                    , ("min",       ( minNormal,            minNormal))
+                                    , ("-min",      (-minNormal,         -  minNormal))
+                                    , ("epsilon",   ( epsilon,              epsilon))]  ]
+                                 ++ [ ("ulp",       (crackFP SP 1,          crackFP DP 1))
+                                    , ("snan",      (crackFP SP 0x7f800001, crackFP DP 0x7ff0000000000001))
+                                    , ("qnan",      (crackFP SP 0x7f8c0001, crackFP DP 0x7ff8000000000001))
                                     ]
         cvtF :: Float -> FP
-        cvtF = crackSP . fromIntegral . floatToWord
+        cvtF = crackFP SP . fromIntegral . floatToWord
         cvtD :: Double -> FP
-        cvtD = crackDP . fromIntegral . doubleToWord
+        cvtD = crackFP DP . fromIntegral . doubleToWord
         mbF, mbD :: Maybe FP
         (mbF, mbD) = case (i `lookup` specials, reads i, reads i) of
                        (Just (f, d), _        , _        ) -> (Just f,         Just d)

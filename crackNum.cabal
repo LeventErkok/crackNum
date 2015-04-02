@@ -1,8 +1,7 @@
 Name:                crackNum
-Version:             1.0
-Synopsis:            Crack various integer/floating-point data formats
-Description:         Crack various integer/floating-point data formats;
-                     HP/SP/DP floats and various sized words and integers.
+Version:             1.1
+Synopsis:            Crack various integer, floating-point data formats
+Description:         Crack HP, SP and DP floats and 8, 16, 32, 64 bit words and integers.
 License:             BSD3
 License-file:        LICENSE
 Author:              Levent Erkok
