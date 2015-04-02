@@ -1,7 +1,7 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://leventerkok.github.com/crackNum/>
 
-* Latest Hackage released version: 1.0, 2015-04-01
+* Latest Hackage released version: 1.1, 2015-04-02
 
 ### Version 1.1, 2015-04-02
   
