@@ -1,7 +1,13 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://leventerkok.github.com/crackNum/>
 
-* Latest Hackage released version: 1.1, 2015-04-02
+* Latest Hackage released version: 1.2, 2015-04-11
+
+### Version 1.2, 2015-04-11
+
+  * Fix the constant qnan values for SP/DP
+  * Add conversions from float/double. Much easier to use.
+  * Better handling of nan values.
 
 ### Version 1.1, 2015-04-02
   
