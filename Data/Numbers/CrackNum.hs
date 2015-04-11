@@ -9,15 +9,16 @@
 -- A library for formatting/analyzing FP and Integer values
 -----------------------------------------------------------------------------
 
-{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE    NamedFieldPuns    #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Data.Numbers.CrackNum
    (    -- * Internal representation of a Floating-point numbers
         FP(..), Precision(..), IPrecision(..), Kind(..)
         -- * Creating FP values
-      , crackFP, convertToIEEE
+      , floatToFP, doubleToFP, stringToFP, integerToFP
         -- * Displaying FP and Int/Word values
-      , displayFP, displayInt
+      , displayFP, displayWord
    )
    where
 
@@ -34,11 +35,13 @@ import Data.Binary.IEEE754
 import Data.Numbers.CrackNum.Data
 import Data.Numbers.CrackNum.Utils
 
--- | Crack a Haskell Integer value as the given precision floating value
-crackFP :: Precision -> Integer -> FP
-crackFP HP = crack HP   15 15 [14, 13 .. 10]   [9, 8 .. 0]
-crackFP SP = crack SP  127 31 [30, 29 .. 23] [22, 21 .. 0]
-crackFP DP = crack DP 1023 63 [62, 61 .. 52] [51, 50 .. 0]
+-- | Crack a Haskell Integer value as the given precision floating value. The Integer should
+-- be the value corresponding to the bit-pattern as the float is laid out in memory according
+-- to the IEEE rules.
+integerToFP :: Precision -> Integer -> FP
+integerToFP HP = crack HP   15 15 [14, 13 .. 10]   [9, 8 .. 0]
+integerToFP SP = crack SP  127 31 [30, 29 .. 23] [22, 21 .. 0]
+integerToFP DP = crack DP 1023 63 [62, 61 .. 52] [51, 50 .. 0]
 
 -- | Use Haskell Float to represent SP
 spVal :: Bool -> Int -> [Bool] -> Float
@@ -85,19 +88,21 @@ crack vPrec vBias signPos expPos fracPos val
                      Denormal -> vBias - 1
                      _        -> vBias
 
--- | Display a Floating-point number in a nicely formatted way
+-- | Display a Floating-point number in a nicely formatted way. (This function is also available
+-- through the 'Show' instance for 'FP', but is provided here for symmetry with 'displayWord'.)
 displayFP :: FP -> String
 displayFP FP{intVal, prec, sign, stExpt, bias, expt, fracBits, bitLayOut, kind} = intercalate "\n" ls
-  where ls = [ "                  " ++ inds1
-             , "                  " ++ inds2
-             , "                  " ++ inds3
-             , "          Binary: " ++ bitLayOut
-             , "             Hex: " ++ hexDisp allBits
-             , "       Precision: " ++ show prec
-             , "            Sign: " ++ if sign then "Negative" else "Positive"
-             , "        Exponent: " ++ show expt ++ " (Stored: " ++ show stExpt ++ ", Bias: " ++ show bias ++ ")"
-             , "           Value: " ++ val
-             ]
+  where ls =    [ "                  " ++ inds1
+                , "                  " ++ inds2
+                , "                  " ++ inds3
+                , "          Binary: " ++ bitLayOut
+                , "             Hex: " ++ hexDisp allBits
+                , "       Precision: " ++ show prec
+                , "            Sign: " ++ if sign then "Negative" else "Positive"
+                , "        Exponent: " ++ show expt ++ " (Stored: " ++ show stExpt ++ ", Bias: " ++ show bias ++ ")"
+                , "           Value: " ++ val
+                ]
+             ++ [ "            Note: Representation for NaN's are not unique." | isNaNKind kind]
         (inds1, inds2, inds3) = case prec of
                                   HP -> (hpInds1, hpInds2, hpInds3)
                                   SP -> (spInds1, spInds2, spInds3)
@@ -110,10 +115,10 @@ displayFP FP{intVal, prec, sign, stExpt, bias, expt, fracBits, bitLayOut, kind} 
         val = case kind of
                 Zero    False   -> "+0"
                 Zero    True    -> "-0"
-                Infty   False   -> "+Inf"
-                Infty   True    -> "-Inf"
-                SNaN            -> "sNaN"
-                QNaN            -> "qNaN"
+                Infty   False   -> "+Infinity"
+                Infty   True    -> "-Infinity"
+                SNaN            -> "NaN (Screaming)"
+                QNaN            -> "NaN (Quietized)"
                 Denormal        -> nval True  ++ " (DENORMAL)"
                 Normal          -> nval False ++ " (NORMAL)"
         nval dn = (if sign then "-" else "+") ++ v
@@ -122,9 +127,13 @@ displayFP FP{intVal, prec, sign, stExpt, bias, expt, fracBits, bitLayOut, kind} 
                      SP -> showGFloat Nothing (spVal dn expt fracBits) ""
                      DP -> showGFloat Nothing (dpVal dn expt fracBits) ""
 
+-- | Show instance for FP
+instance Show FP where
+   show = displayFP
+
 -- | Display a Integer (signed/unsigned) number in a nicely formatted way
-displayInt :: IPrecision -> Integer -> String
-displayInt iprec intVal = intercalate "\n" ls
+displayWord :: IPrecision -> Integer -> String
+displayWord iprec intVal = intercalate "\n" ls
   where (sg, sz) = sgSz iprec
         ls =   [ "                  " ++ fromJust inds1 | isJust inds1]
             ++ [ "                  " ++ inds2
@@ -140,7 +149,7 @@ displayInt iprec intVal = intercalate "\n" ls
                            16 -> (Just wInds1, wInds2)
                            32 -> (Just dInds1, dInds2)
                            64 -> (Just qInds1, qInds2)
-                           _  -> error $ "displayInt: Unexpected size: " ++ show sz
+                           _  -> error $ "displayWord: Unexpected size: " ++ show sz
         allBits = [intVal `testBit` i | i <- [sz-1, sz-2 .. 0]]
         signBit = head allBits
         val | not sg = show intVal
@@ -149,20 +158,20 @@ displayInt iprec intVal = intercalate "\n" ls
                          I16 -> show $ adjust (0::Int16)
                          I32 -> show $ adjust (0::Int32)
                          I64 -> show $ adjust (0::Int64)
-                         _   -> error $ "displayInt: Unexpected type: " ++ show iprec
+                         _   -> error $ "displayWord: Unexpected type: " ++ show iprec
         adjust :: Bits a => a -> a
         adjust v = foldr (flip setBit) v [i | (i, True) <- zip [0..] (reverse allBits)]
 
 -- | Convert the given string to a IEEE number with the required precision
-convertToIEEE :: Precision -> String -> FP
-convertToIEEE precision input
+stringToFP :: Precision -> String -> FP
+stringToFP precision input
    = case precision of
-        SP -> fromMaybe (error $ "*** convertToIEEE: Cannot read a valid SP number from: " ++ show input) mbF
-        DP -> fromMaybe (error $ "*** convertToIEEE: Cannot read a valid DP number from: " ++ show input) mbD
-        _  -> error $ "*** convertToIEEE: Unsupported precision: " ++ show precision
+        SP -> fromMaybe (error $ "*** stringToFP: Cannot read a valid SP number from: " ++ show input) mbF
+        DP -> fromMaybe (error $ "*** stringToFP: Cannot read a valid DP number from: " ++ show input) mbD
+        _  -> error $ "*** stringToFP: Unsupported precision: " ++ show precision
   where i = map toLower (dropWhile (== '+') input)
         specials :: [(String, (FP, FP))]
-        specials = [ (s, (cvtF f, cvtD d))
+        specials = [ (s, (floatToFP f, doubleToFP d))
                    | (s, (f, d)) <- [ ("infinity",  ( infinity,             infinity))
                                     , ("-infinity", (-infinity,          -  infinity))
                                     , ("0",         ( 0,                    0))
@@ -172,18 +181,23 @@ convertToIEEE precision input
                                     , ("min",       ( minNormal,            minNormal))
                                     , ("-min",      (-minNormal,         -  minNormal))
                                     , ("epsilon",   ( epsilon,              epsilon))]  ]
-                                 ++ [ ("ulp",       (crackFP SP 1,          crackFP DP 1))
-                                    , ("snan",      (crackFP SP 0x7f800001, crackFP DP 0x7ff0000000000001))
-                                    , ("qnan",      (crackFP SP 0x7f8c0001, crackFP DP 0x7ff8000000000001))
+                                 ++ [ ("ulp",       (integerToFP SP 1,          integerToFP DP 1))
+                                    , ("nan",       (integerToFP SP 0x7f800001, integerToFP DP 0x7ff0000000000001))
+                                    , ("snan",      (integerToFP SP 0x7f800001, integerToFP DP 0x7ff0000000000001))
+                                    , ("qnan",      (integerToFP SP 0x7fc00000, integerToFP DP 0x7ff8000000000000))
                                     ]
-        cvtF :: Float -> FP
-        cvtF = crackFP SP . fromIntegral . floatToWord
-        cvtD :: Double -> FP
-        cvtD = crackFP DP . fromIntegral . doubleToWord
         mbF, mbD :: Maybe FP
         (mbF, mbD) = case (i `lookup` specials, reads i, reads i) of
                        (Just (f, d), _        , _        ) -> (Just f,         Just d)
-                       (Nothing,     [(f, "")], [(d, "")]) -> (Just (cvtF f),  Just (cvtD d))
-                       (Nothing,     [(f, "")], _        ) -> (Just (cvtF f),  Nothing)
-                       (Nothing,     _,         [(d, "")]) -> (Nothing,        Just (cvtD d))
+                       (Nothing,     [(f, "")], [(d, "")]) -> (Just (floatToFP f),  Just (doubleToFP d))
+                       (Nothing,     [(f, "")], _        ) -> (Just (floatToFP f),  Nothing)
+                       (Nothing,     _,         [(d, "")]) -> (Nothing,        Just (doubleToFP d))
                        _                                   -> (Nothing,        Nothing)
+
+-- | Turn a Haskell float to the internal detailed FP representation
+floatToFP :: Float -> FP
+floatToFP = integerToFP SP . toInteger . floatToWord
+
+-- | Turn a Haskell double to the internal detailed FP representation
+doubleToFP :: Double -> FP
+doubleToFP = integerToFP DP . toInteger . doubleToWord

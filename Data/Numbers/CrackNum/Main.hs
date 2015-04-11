@@ -80,11 +80,11 @@ usage pn = do putStrLn $ helpStr pn
               putStrLn "  - You can use _,- or space as a digit to improve readability."
               putStrLn "  - You can give input for multiple lanes, we will guess the #of lanes for you."
               putStrLn "    Or, you can specify number of lanes with the -l option."
-              putStrLn "  - For \"toIEEE\" option:"
+              putStrLn "  - For \"toIEEE\" option (case doesn't matter):"
               putStrLn "        - You can enter a number in decimal notation (like 2.3)"
               putStrLn "        - OR, enter one of the following:"
               putStrLn "               * infinity, -infinity: Positive/Negative infinities"
-              putStrLn "               * snan, qnan: Not-A-Number; screaming/quiet"
+              putStrLn "               * nan, snan, qnan: Not-A-Number; screaming/quiet"
               putStrLn "               * 0, -0: Both kinds of zeros"
               putStrLn "               * max : The maximum finite positive value"
               putStrLn "               * -max: The minimum finite negative value"
@@ -111,7 +111,7 @@ main = do argv <- getArgs
           = do putStrLn $ pn ++ " v" ++ showVersion version ++ ", " ++ copyRight
                usage pn
           | Just v <- listToMaybe [s | ToIEEE s <- os], null rs, Just (FPType p) <- mbPrec
-          = putStrLn $ displayFP $ convertToIEEE p v
+          = putStrLn $ displayFP $ stringToFP p v
           | all isDigit lcs && lc > 0, Just p <- mbPrec
           = lane pn lc p rs
           | True
@@ -196,28 +196,28 @@ dispatch pn _            _  = usage pn
 unpack :: String -> Flag -> String -> IO ()
 unpack pn prec orig =
      case (prec, length s, allHex, allBin) of
-        (FPType HP,       4, True, _   ) -> putStrLn $ displayFP $ crackFP HP hexVal
-        (FPType HP,      16, _   , True) -> putStrLn $ displayFP $ crackFP HP binVal
-        (FPType SP,       8, True, _   ) -> putStrLn $ displayFP $ crackFP SP hexVal
-        (FPType SP,      32, _   , True) -> putStrLn $ displayFP $ crackFP SP binVal
-        (FPType DP,      16, True, _   ) -> putStrLn $ displayFP $ crackFP DP hexVal
-        (FPType DP,      64, _   , True) -> putStrLn $ displayFP $ crackFP DP binVal
-        (IType  I8,       2, True, _   ) -> putStrLn $ displayInt I8  hexVal
-        (IType  I8,       8, _   , True) -> putStrLn $ displayInt I8  binVal
-        (IType  W8,       2, True, _   ) -> putStrLn $ displayInt W8  hexVal
-        (IType  W8,       8, _   , True) -> putStrLn $ displayInt W8  binVal
-        (IType I16,       4, True, _   ) -> putStrLn $ displayInt I16 hexVal
-        (IType I16,      16, _   , True) -> putStrLn $ displayInt I16 binVal
-        (IType W16,       4, True, _   ) -> putStrLn $ displayInt W16 hexVal
-        (IType W16,      16, _   , True) -> putStrLn $ displayInt W16 binVal
-        (IType I32,       8, True, _   ) -> putStrLn $ displayInt I32 hexVal
-        (IType I32,      32, _   , True) -> putStrLn $ displayInt I32 binVal
-        (IType W32,       8, True, _   ) -> putStrLn $ displayInt W32 hexVal
-        (IType W32,      32, _   , True) -> putStrLn $ displayInt W32 binVal
-        (IType I64,      16, True, _   ) -> putStrLn $ displayInt I64 hexVal
-        (IType I64,      64, _   , True) -> putStrLn $ displayInt I64 binVal
-        (IType W64,      16, True, _   ) -> putStrLn $ displayInt W64 hexVal
-        (IType W64,      64, _   , True) -> putStrLn $ displayInt W64 binVal
+        (FPType HP,       4, True, _   ) -> putStrLn $ displayFP $ integerToFP HP hexVal
+        (FPType HP,      16, _   , True) -> putStrLn $ displayFP $ integerToFP HP binVal
+        (FPType SP,       8, True, _   ) -> putStrLn $ displayFP $ integerToFP SP hexVal
+        (FPType SP,      32, _   , True) -> putStrLn $ displayFP $ integerToFP SP binVal
+        (FPType DP,      16, True, _   ) -> putStrLn $ displayFP $ integerToFP DP hexVal
+        (FPType DP,      64, _   , True) -> putStrLn $ displayFP $ integerToFP DP binVal
+        (IType  I8,       2, True, _   ) -> putStrLn $ displayWord I8  hexVal
+        (IType  I8,       8, _   , True) -> putStrLn $ displayWord I8  binVal
+        (IType  W8,       2, True, _   ) -> putStrLn $ displayWord W8  hexVal
+        (IType  W8,       8, _   , True) -> putStrLn $ displayWord W8  binVal
+        (IType I16,       4, True, _   ) -> putStrLn $ displayWord I16 hexVal
+        (IType I16,      16, _   , True) -> putStrLn $ displayWord I16 binVal
+        (IType W16,       4, True, _   ) -> putStrLn $ displayWord W16 hexVal
+        (IType W16,      16, _   , True) -> putStrLn $ displayWord W16 binVal
+        (IType I32,       8, True, _   ) -> putStrLn $ displayWord I32 hexVal
+        (IType I32,      32, _   , True) -> putStrLn $ displayWord I32 binVal
+        (IType W32,       8, True, _   ) -> putStrLn $ displayWord W32 hexVal
+        (IType W32,      32, _   , True) -> putStrLn $ displayWord W32 binVal
+        (IType I64,      16, True, _   ) -> putStrLn $ displayWord I64 hexVal
+        (IType I64,      64, _   , True) -> putStrLn $ displayWord I64 binVal
+        (IType W64,      16, True, _   ) -> putStrLn $ displayWord W64 hexVal
+        (IType W64,      64, _   , True) -> putStrLn $ displayWord W64 binVal
         _ -> if not (null orig)
              then do case prec of
                        FPType HP     -> putStrLn $ "ERROR: HP format requires 4 hex or 16 bin digits, received: "              ++ what

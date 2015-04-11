@@ -36,6 +36,12 @@ data Kind = Zero    Bool   -- ^ Zero: 0. If Bool is true, then this is -0; other
           | Denormal       -- ^ Denormalized number, i.e., leading bit is not 1
           | Normal         -- ^ Normal value.
 
+-- | Determine if we have a NaN value
+isNaNKind :: Kind -> Bool
+isNaNKind SNaN = True
+isNaNKind QNaN = True
+isNaNKind _    = False
+
 -- | Show instance for integer-precisions
 instance Show IPrecision where
   show W8  = "Unsigned Byte"
