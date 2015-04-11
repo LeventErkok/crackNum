@@ -102,7 +102,7 @@ displayFP FP{intVal, prec, sign, stExpt, bias, expt, fracBits, bitLayOut, kind} 
                 , "        Exponent: " ++ show expt ++ " (Stored: " ++ show stExpt ++ ", Bias: " ++ show bias ++ ")"
                 , "           Value: " ++ val
                 ]
-             ++ [ "            Note: Representation for NaN's are not unique." | isNaNKind kind]
+             ++ [ "            Note: Representation for NaN's is not unique." | isNaNKind kind]
         (inds1, inds2, inds3) = case prec of
                                   HP -> (hpInds1, hpInds2, hpInds3)
                                   SP -> (spInds1, spInds2, spInds3)
