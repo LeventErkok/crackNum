@@ -21,8 +21,7 @@ crackNum
 Display/show/analyze IEEE754 Half-precision, Single-precision, and Double-precision values; along with various
 integer types: Signed/Unsigned, 8, 16, 32, 64 bits.
 
-    $ crackNum --help
-    crackNum v1.1, (c) Levent Erkok. Released with a BSD3 license.
+    crackNum v1.3, (c) Levent Erkok. Released with a BSD3 license.
     Usage: crackNum precision bit/hex-pattern
               --hp        16 bit half     precision
               --sp        32 bit single   precision
@@ -57,11 +56,11 @@ integer types: Signed/Unsigned, 8, 16, 32, 64 bits.
       - You can use _,- or space as a digit to improve readability.
       - You can give input for multiple lanes, we will guess the #of lanes for you.
         Or, you can specify number of lanes with the -l option.
-      - For "toIEEE" option:
+      - For "toIEEE" option (case doesn't matter):
             - You can enter a number in decimal notation (like 2.3)
             - OR, enter one of the following:
                    * infinity, -infinity: Positive/Negative infinities
-                   * snan, qnan: Not-A-Number; screaming/quiet
+                   * nan, snan, qnan: Not-A-Number; screaming/quiet
                    * 0, -0: Both kinds of zeros
                    * max : The maximum finite positive value
                    * -max: The minimum finite negative value
