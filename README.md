@@ -70,7 +70,7 @@ integer types: Signed/Unsigned, 8, 16, 32, 64 bits.
                    * ulp: The minimum subnormal value
 
 Example use:
-============
+
     $ crackNum --sp fc00 abc1 7F80 0001
     == Lane: 1 ==========================================
                       3  2          1         0
