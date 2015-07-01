@@ -69,3 +69,28 @@ integer types: Signed/Unsigned, 8, 16, 32, 64 bits.
                    * -min: The maximum normal negative value
                    * epsilon: The smallest possible value x s.t. 1+x /= 1.
                    * ulp: The minimum subnormal value
+
+Example use:
+============
+    $ crackNum --sp fc00 abc1 7F80 0001
+    == Lane: 1 ==========================================
+                      3  2          1         0
+                      1 09876543 21098765432109876543210
+                      S ---E8--- ----------F23----------
+              Binary: 1 11111000 00000001010101111000001
+                 Hex: FC00 ABC1
+           Precision: SP
+                Sign: Negative
+            Exponent: 121 (Stored: 248, Bias: 127)
+               Value: -2.6723903e36 (NORMAL)
+    == Lane: 0 ==========================================
+                      3  2          1         0
+                      1 09876543 21098765432109876543210
+                      S ---E8--- ----------F23----------
+              Binary: 0 11111111 00000000000000000000001
+                 Hex: 7F80 0001
+           Precision: SP
+                Sign: Positive
+            Exponent: 128 (Stored: 255, Bias: 127)
+               Value: NaN (Screaming)
+                Note: Representation for NaN's is not unique.
