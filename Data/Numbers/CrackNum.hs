@@ -117,7 +117,7 @@ displayFP FP{intVal, prec, sign, stExpt, bias, expt, fracBits, bitLayOut, kind} 
                 Zero    True    -> "-0"
                 Infty   False   -> "+Infinity"
                 Infty   True    -> "-Infinity"
-                SNaN            -> "NaN (Screaming)"
+                SNaN            -> "NaN (Signaling)"
                 QNaN            -> "NaN (Quietized)"
                 Denormal        -> nval True  ++ " (DENORMAL)"
                 Normal          -> nval False ++ " (NORMAL)"
