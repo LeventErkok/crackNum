@@ -189,9 +189,9 @@ mkHeader mbl f = take (fit len) divider
                         ]
 
 dispatch :: String -> Flag -> [String] -> IO ()
-dispatch pn p@(FPType{}) rs = unpack pn p (unwords rs)
-dispatch pn p@(IType{})  rs = unpack pn p (unwords rs)
-dispatch pn _            _  = usage pn
+dispatch pn p@FPType{} rs = unpack pn p (unwords rs)
+dispatch pn p@IType{}  rs = unpack pn p (unwords rs)
+dispatch pn _          _  = usage pn
 
 unpack :: String -> Flag -> String -> IO ()
 unpack pn prec orig =
