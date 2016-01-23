@@ -1,9 +1,14 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 1.4, 2016-01-17
+* Latest Hackage released version: 1.5, 2016-01-23
+
+### Version 1.5, 2016-01-23
+
+  * Typo fixes; no functionality changes
 
 ### Version 1.4, 2016-01-17
+
   * Fix NaN nomenclature: Screaming->Signaling
   * Add an example to README.md
 
