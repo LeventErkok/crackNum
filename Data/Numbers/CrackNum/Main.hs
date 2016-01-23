@@ -84,7 +84,7 @@ usage pn = do putStrLn $ helpStr pn
               putStrLn "        - You can enter a number in decimal notation (like 2.3)"
               putStrLn "        - OR, enter one of the following:"
               putStrLn "               * infinity, -infinity: Positive/Negative infinities"
-              putStrLn "               * nan, snan, qnan: Not-A-Number; screaming/quiet"
+              putStrLn "               * nan, snan, qnan: Not-A-Number; signaling/quiet"
               putStrLn "               * 0, -0: Both kinds of zeros"
               putStrLn "               * max : The maximum finite positive value"
               putStrLn "               * -max: The minimum finite negative value"

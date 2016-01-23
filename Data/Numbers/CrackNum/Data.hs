@@ -31,7 +31,7 @@ data IPrecision = W8   -- ^  8-bit unsigned (byte)
 -- | Kinds of floating point values
 data Kind = Zero    Bool   -- ^ Zero: 0. If Bool is true, then this is -0; otherwise +0.
           | Infty   Bool   -- ^ Infinity: oo. If Bool is true, then this is -oo, otherwie +oo.
-          | SNaN           -- ^ The screaming-NaN.
+          | SNaN           -- ^ The signaling-NaN.
           | QNaN           -- ^ The quiet-NaN.
           | Denormal       -- ^ Denormalized number, i.e., leading bit is not 1
           | Normal         -- ^ Normal value.

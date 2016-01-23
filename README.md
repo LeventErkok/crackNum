@@ -5,7 +5,7 @@
 
 ### Command line options:
 
-    crackNum v1.4, (c) Levent Erkok. Released with a BSD3 license.
+    crackNum v1.5, (c) Levent Erkok. Released with a BSD3 license.
     Usage: crackNum precision bit/hex-pattern
               --hp        16 bit half     precision
               --sp        32 bit single   precision
@@ -44,7 +44,7 @@
             - You can enter a number in decimal notation (like 2.3)
             - OR, enter one of the following:
                    * infinity, -infinity: Positive/Negative infinities
-                   * nan, snan, qnan: Not-A-Number; screaming/quiet
+                   * nan, snan, qnan: Not-A-Number; signaling/quiet
                    * 0, -0: Both kinds of zeros
                    * max : The maximum finite positive value
                    * -max: The minimum finite negative value
@@ -78,7 +78,7 @@
                Value: NaN (Signaling)
                 Note: Representation for NaN's is not unique.
 
-### Example: Encoding a float as a IEEE754 double-precision bit-pattern
+### Example: Encoding a float as a IEEE754 single-precision bit-pattern
 
     $ crackNum --sp --toIEEE=-2.3e6
                 3  2          1         0
