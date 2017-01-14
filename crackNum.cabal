@@ -11,7 +11,7 @@ Maintainer:          erkokl@gmail.com
 Copyright:           Levent Erkok
 Category:            Tools
 Build-type:          Simple
-Cabal-version:       >= 1.14
+Cabal-version:       >= 1.10
 Extra-Source-Files:  INSTALL, README.md, COPYRIGHT, CHANGES.md
 
 source-repository head
