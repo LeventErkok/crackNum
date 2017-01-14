@@ -82,6 +82,7 @@ usage pn = do putStrLn $ helpStr pn
               putStrLn "    Or, you can specify number of lanes with the -l option."
               putStrLn "  - For \"toIEEE\" option (case doesn't matter):"
               putStrLn "        - You can enter a number in decimal notation (like 2.3)"
+              putStrLn "        - You can enter a number in hexadecimal notation (like 0x1.abcp+3)"
               putStrLn "        - OR, enter one of the following:"
               putStrLn "               * infinity, -infinity: Positive/Negative infinities"
               putStrLn "               * nan, snan, qnan: Not-A-Number; signaling/quiet"

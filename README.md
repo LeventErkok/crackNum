@@ -42,6 +42,7 @@
         Or, you can specify number of lanes with the -l option.
       - For "toIEEE" option (case doesn't matter):
             - You can enter a number in decimal notation (like 2.3)
+            - You can enter a number in hexadecimal notation (like 0x1.abcp+3)
             - OR, enter one of the following:
                    * infinity, -infinity: Positive/Negative infinities
                    * nan, snan, qnan: Not-A-Number; signaling/quiet
@@ -65,6 +66,7 @@
            Precision: SP
                 Sign: Negative
             Exponent: 121 (Stored: 248, Bias: 127)
+           Hex-float: -0x1.015782p121
                Value: -2.6723903e36 (NORMAL)
     == Lane: 0 ==========================================
                       3  2          1         0
@@ -75,18 +77,20 @@
            Precision: SP
                 Sign: Positive
             Exponent: 128 (Stored: 255, Bias: 127)
+           Hex-float: NaN (Signaling)
                Value: NaN (Signaling)
                 Note: Representation for NaN's is not unique.
 
 ### Example: Encoding a float as a IEEE754 single-precision bit-pattern
 
     $ crackNum --sp --toIEEE=-2.3e6
-                3  2          1         0
-                1 09876543 21098765432109876543210
-                S ---E8--- ----------F23----------
-        Binary: 1 10010100 00011000110000110000000
-           Hex: CA0C 6180
-     Precision: SP
-          Sign: Negative
-      Exponent: 21 (Stored: 148, Bias: 127)
-         Value: -2300000.0 (NORMAL)
+                  3  2          1         0
+                  1 09876543 21098765432109876543210
+                  S ---E8--- ----------F23----------
+          Binary: 1 10010100 00011000110000110000000
+             Hex: CA0C 6180
+       Precision: SP
+            Sign: Negative
+        Exponent: 21 (Stored: 148, Bias: 127)
+       Hex-float: -0x1.18c3p21
+           Value: -2300000.0 (NORMAL)

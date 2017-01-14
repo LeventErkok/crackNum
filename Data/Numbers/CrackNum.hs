@@ -31,7 +31,7 @@ import Data.Maybe (isJust, fromJust, fromMaybe)
 import Numeric
 import Numeric.IEEE
 import Data.Binary.IEEE754
-
+import Data.Numbers.FloatingHex
 import Data.Numbers.CrackNum.Data
 import Data.Numbers.CrackNum.Utils
 
@@ -100,9 +100,11 @@ displayFP FP{intVal, prec, sign, stExpt, bias, expt, fracBits, bitLayOut, kind} 
                 , "       Precision: " ++ show prec
                 , "            Sign: " ++ if sign then "Negative" else "Positive"
                 , "        Exponent: " ++ show expt ++ " (Stored: " ++ show stExpt ++ ", Bias: " ++ show bias ++ ")"
+                , "       Hex-float: " ++ hexVal
                 , "           Value: " ++ val
                 ]
              ++ [ "            Note: Representation for NaN's is not unique." | isNaNKind kind]
+
         (inds1, inds2, inds3) = case prec of
                                   HP -> (hpInds1, hpInds2, hpInds3)
                                   SP -> (spInds1, spInds2, spInds3)
@@ -112,20 +114,29 @@ displayFP FP{intVal, prec, sign, stExpt, bias, expt, fracBits, bitLayOut, kind} 
                     SP -> [intVal `testBit` i | i <- startsAt 31]
                     DP -> [intVal `testBit` i | i <- startsAt 63]
             where startsAt n = [n, n-1 .. 0]
-        val = case kind of
-                Zero    False   -> "+0"
-                Zero    True    -> "-0"
-                Infty   False   -> "+Infinity"
-                Infty   True    -> "-Infinity"
-                SNaN            -> "NaN (Signaling)"
-                QNaN            -> "NaN (Quietized)"
-                Denormal        -> nval True  ++ " (DENORMAL)"
-                Normal          -> nval False ++ " (NORMAL)"
-        nval dn = (if sign then "-" else "+") ++ v
-         where v = case prec of
-                     HP -> showGFloat Nothing (spVal dn expt fracBits) ""
-                     SP -> showGFloat Nothing (spVal dn expt fracBits) ""
-                     DP -> showGFloat Nothing (dpVal dn expt fracBits) ""
+
+        dup x = (x, x)
+
+        (val, hexVal) = case kind of
+                          Zero    False   -> dup "+0"
+                          Zero    True    -> dup "-0"
+                          Infty   False   -> dup "+Infinity"
+                          Infty   True    -> dup "-Infinity"
+                          SNaN            -> dup "NaN (Signaling)"
+                          QNaN            -> dup "NaN (Quietized)"
+                          Denormal        -> nval True  " (DENORMAL)"
+                          Normal          -> nval False " (NORMAL)"
+
+        nval dn tag = (s ++ vd ++ tag, s ++ vh)
+         where s = if sign then "-" else "+"
+               vd = case prec of
+                      HP -> showGFloat Nothing (spVal dn expt fracBits) ""
+                      SP -> showGFloat Nothing (spVal dn expt fracBits) ""
+                      DP -> showGFloat Nothing (dpVal dn expt fracBits) ""
+               vh = case prec of
+                      HP -> showHFloat         (spVal dn expt fracBits) ""
+                      SP -> showHFloat         (spVal dn expt fracBits) ""
+                      DP -> showHFloat         (dpVal dn expt fracBits) ""
 
 -- | Show instance for FP
 instance Show FP where
@@ -187,12 +198,17 @@ stringToFP precision input
                                     , ("qnan",      (integerToFP SP 0x7fc00000, integerToFP DP 0x7ff8000000000000))
                                     ]
         mbF, mbD :: Maybe FP
-        (mbF, mbD) = case (i `lookup` specials, reads i, reads i) of
-                       (Just (f, d), _        , _        ) -> (Just f,         Just d)
-                       (Nothing,     [(f, "")], [(d, "")]) -> (Just (floatToFP f),  Just (doubleToFP d))
-                       (Nothing,     [(f, "")], _        ) -> (Just (floatToFP f),  Nothing)
-                       (Nothing,     _,         [(d, "")]) -> (Nothing,        Just (doubleToFP d))
-                       _                                   -> (Nothing,        Nothing)
+        (mbF, mbD) = case (i `lookup` specials, rd i, rd i) of
+                       (Just (f, d), _        , _  ) -> (Just f,         Just d)
+                       (Nothing,     Just f, Just d) -> (Just (floatToFP f),  Just (doubleToFP d))
+                       (Nothing,     Just f, _     ) -> (Just (floatToFP f),  Nothing)
+                       (Nothing,     _,      Just d) -> (Nothing,        Just (doubleToFP d))
+                       _                             -> (Nothing,        Nothing)
+
+        rd :: (Read a, RealFloat a) => String -> Maybe a
+        rd s = case reads s ++ [(v, "") | Just v <- [readHFloat s]] of
+                 [(v, "")] -> Just v
+                 _         -> Nothing
 
 -- | Turn a Haskell float to the internal detailed FP representation
 floatToFP :: Float -> FP
