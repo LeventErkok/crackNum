@@ -1,3 +1,3 @@
-The sbv library can be installed simply by issuing cabal install like this:
+The crackNum library can be installed simply by issuing cabal install like this:
 
-     cabal install IEEE754
+     cabal install crackNum
