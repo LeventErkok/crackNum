@@ -1,7 +1,14 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 1.5, 2016-01-23
+* Latest Hackage released version: 1.6, 2017-01-14
+
+### Version 1.6, 2017-01-14
+
+  * Add support for hexadecimal-floats. These now
+    work both in toIEEE option as input, and also
+    when printing the values out. (i.e., numbers
+    of the form 0x1.abp-3, etc.)
 
 ### Version 1.5, 2016-01-23
 
