@@ -1,7 +1,12 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 1.7, 2017-01-14
+* Latest Hackage released version: 1.8, 2017-01-15
+
+### Version 1.8, 2017-01-15
+
+  * Bump up FloatingHex dependency to >0.4, this enables
+    proper support for large doubles
 
 ### Version 1.7, 2017-01-14
 
