@@ -5,7 +5,7 @@
 
 ### Command line options:
 
-    crackNum v1.5, (c) Levent Erkok. Released with a BSD3 license.
+    crackNum v1.7, (c) Levent Erkok. Released with a BSD3 license.
     Usage: crackNum precision bit/hex-pattern
               --hp        16 bit half     precision
               --sp        32 bit single   precision
