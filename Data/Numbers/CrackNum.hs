@@ -198,14 +198,14 @@ stringToFP precision input
                                     , ("qnan",      (integerToFP SP 0x7fc00000, integerToFP DP 0x7ff8000000000000))
                                     ]
         mbF, mbD :: Maybe FP
-        (mbF, mbD) = case (i `lookup` specials, rd i, rd i) of
-                       (Just (f, d), _        , _  ) -> (Just f,         Just d)
-                       (Nothing,     Just f, Just d) -> (Just (floatToFP f),  Just (doubleToFP d))
-                       (Nothing,     Just f, _     ) -> (Just (floatToFP f),  Nothing)
-                       (Nothing,     _,      Just d) -> (Nothing,        Just (doubleToFP d))
-                       _                             -> (Nothing,        Nothing)
+        (mbF, mbD) = case (i `lookup` specials, rd i :: Maybe Float, rd i :: Maybe Double) of
+                       (Just (f, d), _     , _     ) -> (Just f,             Just d)
+                       (Nothing,     Just f, Just d) -> (Just (floatToFP f), Just (doubleToFP d))
+                       (Nothing,     Just f, _     ) -> (Just (floatToFP f), Nothing)
+                       (Nothing,     _,      Just d) -> (Nothing,            Just (doubleToFP d))
+                       _                             -> (Nothing,            Nothing)
 
-        rd :: (Read a, RealFloat a) => String -> Maybe a
+        rd :: (Read a, FloatingHexReader a, RealFloat a) => String -> Maybe a
         rd s = case [v | (v, "") <- reads s] ++ catMaybes [readHFloat s] of
                  [v] -> Just v
                  _   -> Nothing
