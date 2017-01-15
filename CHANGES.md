@@ -1,7 +1,11 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 1.6, 2017-01-14
+* Latest Hackage released version: 1.7, 2017-01-14
+
+### Version 1.7, 2017-01-14
+
+  * Fix a snafu in reading hexadecimal floats
 
 ### Version 1.6, 2017-01-14
 

@@ -26,7 +26,7 @@ import Data.Bits  (testBit, setBit, Bits)
 import Data.Char  (toLower)
 import Data.Int   (Int8, Int16, Int32, Int64)
 import Data.List  (intercalate)
-import Data.Maybe (isJust, fromJust, fromMaybe)
+import Data.Maybe (isJust, fromJust, fromMaybe, catMaybes)
 
 import Numeric
 import Numeric.IEEE
@@ -206,9 +206,9 @@ stringToFP precision input
                        _                             -> (Nothing,        Nothing)
 
         rd :: (Read a, RealFloat a) => String -> Maybe a
-        rd s = case reads s ++ [(v, "") | Just v <- [readHFloat s]] of
-                 [(v, "")] -> Just v
-                 _         -> Nothing
+        rd s = case [v | (v, "") <- reads s] ++ catMaybes [readHFloat s] of
+                 [v] -> Just v
+                 _   -> Nothing
 
 -- | Turn a Haskell float to the internal detailed FP representation
 floatToFP :: Float -> FP
