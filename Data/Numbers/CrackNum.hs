@@ -118,8 +118,8 @@ displayFP FP{intVal, prec, sign, stExpt, bias, expt, fracBits, bitLayOut, kind} 
         dup x = (x, x)
 
         (val, hexVal) = case kind of
-                          Zero    False   -> dup "+0"
-                          Zero    True    -> dup "-0"
+                          Zero    False   -> ("+0.0", "0x0p+0")
+                          Zero    True    -> ("-0.0", "-0x0p+0")
                           Infty   False   -> dup "+Infinity"
                           Infty   True    -> dup "-Infinity"
                           SNaN            -> dup "NaN (Signaling)"
@@ -205,7 +205,7 @@ stringToFP precision input
                        (Nothing,     _,      Just d) -> (Nothing,            Just (doubleToFP d))
                        _                             -> (Nothing,            Nothing)
 
-        rd :: (Read a, FloatingHexReader a, RealFloat a) => String -> Maybe a
+        rd :: (Read a, FloatingHexReader a) => String -> Maybe a
         rd s = case [v | (v, "") <- reads s] ++ catMaybes [readHFloat s] of
                  [v] -> Just v
                  _   -> Nothing
