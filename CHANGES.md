@@ -3,6 +3,10 @@
 
 * Latest Hackage released version: 1.8, 2017-01-15
 
+### Version 1.9, 2017-01-15
+
+  * Minor fix to printing of +/-0
+
 ### Version 1.8, 2017-01-15
 
   * Bump up FloatingHex dependency to >0.4, this enables
