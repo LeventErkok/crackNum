@@ -1,9 +1,9 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 1.8, 2017-01-15
+* Latest Hackage released version: 1.9, 2017-01-22
 
-### Version 1.9, 2017-01-15
+### Version 1.9, 2017-01-22
 
   * Minor fix to printing of +/-0
 
