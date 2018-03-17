@@ -1,7 +1,11 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 1.9, 2017-01-22
+* Latest Hackage released version: 2.0, 2018-03-17
+
+### Version 2.0, 2018-03-17
+
+  * Import FloatingHex qualified to avoid GHC 8.4.1 compilation issue
 
 ### Version 1.9, 2017-01-22
 
