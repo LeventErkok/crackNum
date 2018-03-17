@@ -31,9 +31,10 @@ import Data.Maybe (isJust, fromJust, fromMaybe, catMaybes)
 import Numeric
 import Numeric.IEEE
 import Data.Binary.IEEE754
-import Data.Numbers.FloatingHex
 import Data.Numbers.CrackNum.Data
 import Data.Numbers.CrackNum.Utils
+
+import qualified Data.Numbers.FloatingHex as FH
 
 -- | Crack a Haskell Integer value as the given precision floating value. The Integer should
 -- be the value corresponding to the bit-pattern as the float is laid out in memory according
@@ -134,9 +135,9 @@ displayFP FP{intVal, prec, sign, stExpt, bias, expt, fracBits, bitLayOut, kind} 
                       SP -> showGFloat Nothing (spVal dn expt fracBits) ""
                       DP -> showGFloat Nothing (dpVal dn expt fracBits) ""
                vh = case prec of
-                      HP -> showHFloat         (spVal dn expt fracBits) ""
-                      SP -> showHFloat         (spVal dn expt fracBits) ""
-                      DP -> showHFloat         (dpVal dn expt fracBits) ""
+                      HP -> FH.showHFloat      (spVal dn expt fracBits) ""
+                      SP -> FH.showHFloat      (spVal dn expt fracBits) ""
+                      DP -> FH.showHFloat      (dpVal dn expt fracBits) ""
 
 -- | Show instance for FP
 instance Show FP where
@@ -205,8 +206,8 @@ stringToFP precision input
                        (Nothing,     _,      Just d) -> (Nothing,            Just (doubleToFP d))
                        _                             -> (Nothing,            Nothing)
 
-        rd :: (Read a, FloatingHexReader a) => String -> Maybe a
-        rd s = case [v | (v, "") <- reads s] ++ catMaybes [readHFloat s] of
+        rd :: (Read a, FH.FloatingHexReader a) => String -> Maybe a
+        rd s = case [v | (v, "") <- reads s] ++ catMaybes [FH.readHFloat s] of
                  [v] -> Just v
                  _   -> Nothing
 
