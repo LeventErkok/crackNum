@@ -95,9 +95,42 @@ usage pn = do putStrLn $ helpStr pn
               putStrLn "               * ulp: The minimum subnormal value"
               exitFailure
 
+-- instead of dealing with vimscript, munge our args here.. heh
+vimpret :: [String] -> [String]
+vimpret args = case break (== "--bv") args of
+                 ([p], "--bv":rest) -> case mkArgs p of
+                                         Nothing -> ["--help"]
+                                         Just pr -> ("--" ++ pr) : rest
+                 _                  -> ["--help"]
+  where bad = (`elem` ["lanes", "vim", "help"])
+        validPrecs   = filter (not . bad) $ concat [xs | Option _ xs _ _ <- options]
+        dvalidPrecs  = map ('-':) validPrecs
+        ddvalidPrecs = map ('-':) dvalidPrecs
+        mkArgs p
+          | p `elem` validPrecs   = Just p
+          | p `elem` dvalidPrecs  = Just (drop 1 p)
+          | p `elem` ddvalidPrecs = Just (drop 2 p)
+          | True                  = Nothing
+
 main :: IO ()
-main = do argv <- getArgs
-          pn   <- getProgName
+main = do origArgs <- getArgs
+          origPN <- getProgName
+
+          let -- bugger.. make the args a bit more friendly
+              friendly :: String -> String
+              friendly ('-':ns)   -- -2/-3 etc become lane stuff
+                | all isDigit ns
+                = "-l" ++ ns
+              friendly ('-':c:cs)
+                | c `notElem` "-l" = "--" ++ (c:cs)
+              friendly s = s
+
+              cleanArgs =  map friendly origArgs
+
+
+              (argv, pn) | "--vim" `elem` argv = ("--vim" : vimpret (filter (/= "--vim") argv), "CrackNum")
+                         | True                = (cleanArgs, origPN)
+
           case getOpt Permute options argv of
             (os, rs, [])   -> if Version `elem` os
                               then putStrLn $ pn ++ " v" ++ showVersion version ++ ", " ++ copyRight
