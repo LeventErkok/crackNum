@@ -3,9 +3,11 @@
 [![Hackage version](http://img.shields.io/hackage/v/crackNum.svg?label=Hackage)](http://hackage.haskell.org/package/crackNum)
 [![Build Status](http://img.shields.io/travis/LeventErkok/crackNum.svg?label=Build)](http://travis-ci.org/LeventErkok/crackNum)
 
+CrackNum now comes with vim bindings, see http://github.com/LeventErkok/crackNum/blob/master/crackNum.vim
+
 ### Command line options:
 
-    crackNum v1.9, (c) Levent Erkok. Released with a BSD3 license.
+    crackNum v2.1, (c) Levent Erkok. Released with a BSD3 license.
     Usage: crackNum precision bit/hex-pattern
               --hp        16 bit half     precision
               --sp        32 bit single   precision
@@ -20,6 +22,7 @@
               --uq        64 bit unsigned quad
               --toIEEE=n  Convert from decimal to IEEE SP/DP formats.
       -l n    --lanes=n   number of lanes
+              --vim       output in vim friendly format
       -h, -?  --help      print help, with examples
       -v      --version   print version info
     
