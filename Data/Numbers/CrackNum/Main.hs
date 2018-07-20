@@ -36,6 +36,7 @@ data Flag = FPType Precision     -- ^ Crack as a Floating Point with given preci
           | ToIEEE String        -- ^ Convert to IEEE SP/DP value
           | Lanes  String        -- ^ Number of lanes present in the input, crackNum can guess but it can also be specified.
           | Help                 -- ^ Help
+          | VIM                  -- ^ Are we being called from VIM?
           | Version              -- ^ Version
           deriving Eq
 
@@ -54,6 +55,7 @@ options = [
     , Option ""   ["uq"]      (NoArg (IType  W64)) "64 bit unsigned quad"
     , Option ""   ["toIEEE"]  (ReqArg ToIEEE "n")  "Convert from decimal to IEEE SP/DP formats."
     , Option "l"  ["lanes"]   (ReqArg Lanes  "n")  "number of lanes"
+    , Option ""   ["vim"]     (NoArg VIM)          "output in vim friendly format"
     , Option "h?" ["help"]    (NoArg Help)         "print help, with examples"
     , Option "v"  ["version"] (NoArg Version)      "print version info"
     ]
@@ -125,11 +127,11 @@ main = do origArgs <- getArgs
                 | c `notElem` "-l" = "--" ++ (c:cs)
               friendly s = s
 
-              cleanArgs =  map friendly origArgs
+              cleanArgs = map friendly origArgs
 
 
-              (argv, pn) | "--vim" `elem` argv = ("--vim" : vimpret (filter (/= "--vim") argv), "CrackNum")
-                         | True                = (cleanArgs, origPN)
+              (argv, pn) | "--vim" `elem` cleanArgs = ("--vim" : vimpret (filter (/= "--vim") cleanArgs), "CrackNum")
+                         | True                     = (cleanArgs, origPN)
 
           case getOpt Permute options argv of
             (os, rs, [])   -> if Version `elem` os
@@ -147,7 +149,7 @@ main = do origArgs <- getArgs
           | Just v <- listToMaybe [s | ToIEEE s <- os], null rs, Just (FPType p) <- mbPrec
           = putStrLn $ displayFP $ stringToFP p v
           | all isDigit lcs && lc > 0, Just p <- mbPrec
-          = lane pn lc p rs
+          = lane pn (VIM `elem` os) lc p rs
           | True
           = putStr $ helpStr pn
          where mbPrec = getChosenPrec os
@@ -186,9 +188,9 @@ guessIP l p
         (q, r)  = l `quotRem` sz
 
 -- | Do the lane..
-lane :: String -> Int -> Flag -> [String] -> IO ()
-lane pn 1 f rs = dispatch pn f rs
-lane pn n f rs
+lane :: String -> Bool -> Int -> Flag -> [String] -> IO ()
+lane pn _   1 f rs = dispatch pn f rs
+lane pn vim n f rs
   | ls `mod` n /= 0
   = help $ "Input length " ++ show ls ++ " is not a multiple of lane count: " ++ show n
   | True
@@ -197,8 +199,12 @@ lane pn n f rs
         ls = length s
         help m = do putStrLn $ pn ++ ": " ++ m
                     usage pn
-        cvt i r = do putStrLn $ mkHeader (Just i) f
+        cvt i r = do putStrLn $ vimMarker vim ++ mkHeader (Just i) f
                      dispatch pn f [r]
+
+vimMarker :: Bool -> String
+vimMarker False = ""
+vimMarker True  = "VIM "
 
 -- | Display the ruler..
 mkHeader :: Maybe Int -> Flag -> String
