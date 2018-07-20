@@ -26,6 +26,7 @@ Executable crackNum
    other-modules: Data.Numbers.CrackNum
                 , Data.Numbers.CrackNum.Utils
                 , Data.Numbers.CrackNum.Data
+                , Paths_crackNum
 
 Library
   ghc-options     : -Wall
