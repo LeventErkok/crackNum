@@ -1,7 +1,15 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 2.0, 2018-03-17
+* Latest Hackage released version: 2.1, 2018-07-20
+
+### Version 2.1, 2018-07-20
+
+  * Support for vi-editor bindings. See the file "crackNum.vim" in the
+    distribution or in the github repo You can put "so ~/.vim/crackNum.vim"
+    (use the correct path!) and have vi crack numbers directly from inside
+    your editor. Simply locate your cursor on a binary/hex stream of digits
+    and type ":CrackNum".  See the "crackNum.vim" file for binding details.
 
 ### Version 2.0, 2018-03-17
 
