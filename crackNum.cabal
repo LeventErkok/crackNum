@@ -1,5 +1,5 @@
 Name:                crackNum
-Version:             2.1
+Version:             2.2
 Synopsis:            Crack various integer, floating-point data formats
 Description:         Crack HP, SP and DP floats and 8, 16, 32, 64 bit words and integers.
                      .
@@ -23,7 +23,7 @@ Executable crackNum
    main-is      : Data/Numbers/CrackNum/Main.hs
    ghc-options  : -Wall
    default-language: Haskell2010
-   build-depends: base >= 4 && < 5, ieee754, data-binary-ieee754, FloatingHex >= 0.4
+   build-depends: base >= 4 && < 5, ieee754, reinterpret-cast, FloatingHex >= 0.4
    other-modules: Data.Numbers.CrackNum
                 , Data.Numbers.CrackNum.Utils
                 , Data.Numbers.CrackNum.Data
@@ -32,7 +32,7 @@ Executable crackNum
 Library
   ghc-options     : -Wall
   default-language: Haskell2010
-  Build-Depends   : base >= 4 && < 5, ieee754, data-binary-ieee754, FloatingHex >= 0.4
+  Build-Depends   : base >= 4 && < 5, ieee754, reinterpret-cast, FloatingHex >= 0.4
   Exposed-modules : Data.Numbers.CrackNum
   other-modules   : Data.Numbers.CrackNum.Utils
                   , Data.Numbers.CrackNum.Data
