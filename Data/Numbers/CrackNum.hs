@@ -30,9 +30,9 @@ import Data.Maybe (isJust, fromJust, fromMaybe, catMaybes)
 
 import Numeric
 import Numeric.IEEE
-import Data.Binary.IEEE754
 import Data.Numbers.CrackNum.Data
 import Data.Numbers.CrackNum.Utils
+import Data.ReinterpretCast
 
 import qualified Data.Numbers.FloatingHex as FH
 
