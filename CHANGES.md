@@ -1,7 +1,12 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 2.1, 2018-07-20
+* Latest Hackage released version: 2.2, 2018-09-01
+
+### Version 2.2, 2018-09-01
+
+  * Instead of data-binary-ieee754, use reinterpret-cast package. According
+    to documents, the former is deprecated.
 
 ### Version 2.1, 2018-07-20
 
