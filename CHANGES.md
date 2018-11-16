@@ -3,6 +3,11 @@
 
 * Latest Hackage released version: 2.2, 2018-09-01
 
+### Version 2.3, Not yet released
+
+  * Remove dependency on the ieee754 package. The goal is to remove any
+    FFI dependencies.
+
 ### Version 2.2, 2018-09-01
 
   * Instead of data-binary-ieee754, use reinterpret-cast package. According
