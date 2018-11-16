@@ -29,7 +29,6 @@ import Data.List  (intercalate)
 import Data.Maybe (isJust, fromJust, fromMaybe, catMaybes)
 
 import Numeric
-import Numeric.IEEE
 import Data.Numbers.CrackNum.Data
 import Data.Numbers.CrackNum.Utils
 import Data.ReinterpretCast
@@ -184,20 +183,33 @@ stringToFP precision input
   where i = map toLower (dropWhile (== '+') input)
         specials :: [(String, (FP, FP))]
         specials = [ (s, (floatToFP f, doubleToFP d))
-                   | (s, (f, d)) <- [ ("infinity",  ( infinity,             infinity))
-                                    , ("-infinity", (-infinity,          -  infinity))
+                   | (s, (f, d)) <- [ ("infinity",  ( infinityF,            infinityD))
+                                    , ("-infinity", (-infinityF,         -  infinityD))
                                     , ("0",         ( 0,                    0))
                                     , ("-0",        (-0,                 -  0))
-                                    , ("max",       ( maxFinite,            maxFinite))
-                                    , ("-max",      (-maxFinite,         -  maxFinite))
-                                    , ("min",       ( minNormal,            minNormal))
-                                    , ("-min",      (-minNormal,         -  minNormal))
-                                    , ("epsilon",   ( epsilon,              epsilon))]  ]
+                                    , ("max",       ( maxFiniteF,           maxFiniteD))
+                                    , ("-max",      (-maxFiniteF,         - maxFiniteD))
+                                    , ("min",       ( minNormalF,           minNormalD))
+                                    , ("-min",      (-minNormalF,         - minNormalD))
+                                    , ("epsilon",   ( epsilonF,             epsilonD))]  ]
                                  ++ [ ("ulp",       (integerToFP SP 1,          integerToFP DP 1))
                                     , ("nan",       (integerToFP SP 0x7f800001, integerToFP DP 0x7ff0000000000001))
                                     , ("snan",      (integerToFP SP 0x7f800001, integerToFP DP 0x7ff0000000000001))
                                     , ("qnan",      (integerToFP SP 0x7fc00000, integerToFP DP 0x7ff8000000000000))
                                     ]
+
+        infinityF, maxFiniteF, minNormalF, epsilonF :: Float
+        infinityF  = 1/0
+        maxFiniteF = 3.40282347e+38
+        minNormalF = 1.17549435e-38
+        epsilonF   = 1.19209290e-07
+
+        infinityD, maxFiniteD, minNormalD, epsilonD :: Double
+        infinityD  = 1/0
+        maxFiniteD = 1.7976931348623157e+308
+        minNormalD = 2.2250738585072014e-308
+        epsilonD   = 2.2204460492503131e-16
+
         mbF, mbD :: Maybe FP
         (mbF, mbD) = case (i `lookup` specials, rd i :: Maybe Float, rd i :: Maybe Double) of
                        (Just (f, d), _     , _     ) -> (Just f,             Just d)
