@@ -1,12 +1,13 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 2.2, 2018-09-01
+* Latest Hackage released version: 2.3, 2018-11-17
 
-### Version 2.3, Not yet released
+### Version 2.3, 2018-11-17
 
-  * Remove dependency on the ieee754 package. The goal is to remove any
-    FFI dependencies.
+  * Remove dependency on the ieee754 and reinterpret-cast packages. The goal is
+    to remove any FFI dependencies. We now define and export the required
+    utilities directly in the CrackNum package.
 
 ### Version 2.2, 2018-09-01
 
