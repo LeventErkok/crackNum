@@ -9,7 +9,9 @@
 -- A library for formatting/analyzing FP and Integer values
 -----------------------------------------------------------------------------
 
+{-# LANGUAGE    FlexibleContexts #-}
 {-# LANGUAGE    NamedFieldPuns    #-}
+
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Data.Numbers.CrackNum
@@ -19,6 +21,8 @@ module Data.Numbers.CrackNum
       , floatToFP, doubleToFP, stringToFP, integerToFP
         -- * Displaying FP and Int/Word values
       , displayFP, displayWord
+        -- * Converting between floats and bit-representations
+      , floatToWord, wordToFloat, doubleToWord, wordToDouble
    )
    where
 
@@ -31,9 +35,13 @@ import Data.Maybe (isJust, fromJust, fromMaybe, catMaybes)
 import Numeric
 import Data.Numbers.CrackNum.Data
 import Data.Numbers.CrackNum.Utils
-import Data.ReinterpretCast
 
 import qualified Data.Numbers.FloatingHex as FH
+
+import Data.Word         (Word32, Word64)
+import Data.Array.ST     (newArray, readArray, MArray, STUArray)
+import Data.Array.Unsafe (castSTUArray)
+import GHC.ST            (runST, ST)
 
 -- | Crack a Haskell Integer value as the given precision floating value. The Integer should
 -- be the value corresponding to the bit-pattern as the float is laid out in memory according
@@ -230,3 +238,36 @@ floatToFP = integerToFP SP . toInteger . floatToWord
 -- | Turn a Haskell double to the internal detailed FP representation
 doubleToFP :: Double -> FP
 doubleToFP = integerToFP DP . toInteger . doubleToWord
+
+-------------------------------------------------------------------------
+-- Reinterpreting float/double as word32/64 and back. Here, we use the
+-- definitions from the reinterpret-cast package:
+--
+--     http://hackage.haskell.org/package/reinterpret-cast
+--
+-- The reason we steal these definitions is to make sure we keep minimal
+-- dependencies and no FFI requirements anywhere.
+-------------------------------------------------------------------------
+-- | Reinterpret-casts a `Float` to a `Word32`.
+floatToWord :: Float -> Word32
+floatToWord x = runST (cast x)
+{-# INLINEABLE floatToWord #-}
+
+-- | Reinterpret-casts a `Word32` to a `Float`.
+wordToFloat :: Word32 -> Float
+wordToFloat x = runST (cast x)
+{-# INLINEABLE wordToFloat #-}
+
+-- | Reinterpret-casts a `Double` to a `Word64`.
+doubleToWord :: Double -> Word64
+doubleToWord x = runST (cast x)
+{-# INLINEABLE doubleToWord #-}
+
+-- | Reinterpret-casts a `Word64` to a `Double`.
+wordToDouble :: Word64 -> Double
+wordToDouble x = runST (cast x)
+{-# INLINEABLE wordToDouble #-}
+
+{-# INLINE cast #-}
+cast :: (MArray (STUArray s) a (ST s), MArray (STUArray s) b (ST s)) => a -> ST s b
+cast x = newArray (0 :: Int, 0) x >>= castSTUArray >>= flip readArray 0
