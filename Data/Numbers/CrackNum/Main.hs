@@ -233,8 +233,8 @@ dispatch pn p@IType{}  rs = unpack pn p (unwords rs)
 dispatch pn _          _  = usage pn
 
 unpack :: String -> Flag -> String -> IO ()
-unpack pn prec orig =
-     case (prec, length s, allHex, allBin) of
+unpack pn precFlag orig =
+     case (precFlag, length s, allHex, allBin) of
         (FPType HP,       4, True, _   ) -> putStrLn $ displayFP $ integerToFP HP hexVal
         (FPType HP,      16, _   , True) -> putStrLn $ displayFP $ integerToFP HP binVal
         (FPType SP,       8, True, _   ) -> putStrLn $ displayFP $ integerToFP SP hexVal
@@ -258,7 +258,7 @@ unpack pn prec orig =
         (IType W64,      16, True, _   ) -> putStrLn $ displayWord W64 hexVal
         (IType W64,      64, _   , True) -> putStrLn $ displayWord W64 binVal
         _ -> if not (null orig)
-             then do case prec of
+             then do case precFlag of
                        FPType HP     -> putStrLn $ "ERROR: HP format requires 4 hex or 16 bin digits, received: "              ++ what
                        FPType SP     -> putStrLn $ "ERROR: SP format requires 8 hex or 32 bin digits, received: "              ++ what
                        FPType DP     -> putStrLn $ "ERROR: DP format requires 16 hex or 64 bin digits, received: "             ++ what
