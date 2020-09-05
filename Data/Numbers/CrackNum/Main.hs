@@ -9,7 +9,6 @@
 -- Main entry point for the crackNum executable
 -----------------------------------------------------------------------------
 
-{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE PatternGuards  #-}
 
 module Main(main) where

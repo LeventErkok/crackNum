@@ -1,7 +1,10 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 2.3, 2018-11-17
+* Latest Hackage released version: 2.3, 2020-09-05
+
+### Version 2.4, 2020-09-05
+  * Changes required to compile cleanly with GHC 8.10.2
 
 ### Version 2.3, 2018-11-17
 
