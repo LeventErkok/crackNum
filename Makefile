@@ -43,5 +43,8 @@ hlint: install
 	@echo "Running HLint.."
 	@hlint Data -i "Use otherwise" -i "Parse error"
 
+ci:
+	haskell-ci crackNum.cabal --no-tests --no-benchmarks --no-doctest --no-hlint --email-notifications
+
 tags:
 	$(call mkTags)
