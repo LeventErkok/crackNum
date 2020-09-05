@@ -17,19 +17,15 @@ endef
 all: install
 
 install: $(DEPSRCS) Makefile
-	@-ghc-pkg unregister crackNum
 	$(call mkTags)
-	@$(CABAL) configure --disable-library-profiling
-	@(set -o pipefail; $(CABAL) build --ghc-options=-Werror 2>&1)
-	@$(CABAL) copy
-	@$(CABAL) register
+	@$(CABAL) new-install --lib
 
 test: install
 	@echo "*** Starting inline tests.."
-	@(set -o pipefail; $(TIME) doctest ${TSTSRCS} 2>&1)
+	@$(TIME) doctest Data/Numbers/CrackNum.hs --fast --no-magic -package random -package FloatingHex
 
 sdist: install
-	@(set -o pipefail; $(CABAL) sdist)
+	$(CABAL) sdist
 
 veryclean: clean
 	@-ghc-pkg unregister crackNum
@@ -38,14 +34,14 @@ clean:
 	@rm -rf dist
 
 docs:
-	@(set -o pipefail; $(CABAL) haddock --haddock-option=--no-warnings --hyperlink-source 2>&1)
+	cabal new-haddock --haddock-option=--hyperlinked-source --haddock-option=--no-warnings
 
 release: clean install sdist hlint test docs
 	@echo "*** crackNum is ready for release!"
 
 hlint: install
 	@echo "Running HLint.."
-	@hlint Data -q -rhlintReport.html -i "Use otherwise" -i "Parse error"
+	@hlint Data -i "Use otherwise" -i "Parse error"
 
 tags:
 	$(call mkTags)
