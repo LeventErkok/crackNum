@@ -1,5 +1,5 @@
 Name:                crackNum
-Version:             2.3
+Version:             2.4
 Synopsis:            Crack various integer, floating-point data formats
 Description:         Crack HP, SP and DP floats and 8, 16, 32, 64 bit words and integers.
                      .
@@ -15,6 +15,8 @@ Build-type:          Simple
 Cabal-version:       1.14
 Extra-Source-Files:  INSTALL, README.md, COPYRIGHT, CHANGES.md, crackNum.vim
 
+Tested-With       : GHC==8.10.2
+
 source-repository head
     type:       git
     location:   git://github.com/LeventErkok/crackNum.git
@@ -23,7 +25,7 @@ Executable crackNum
    main-is      : Data/Numbers/CrackNum/Main.hs
    ghc-options  : -Wall
    default-language: Haskell2010
-   build-depends: base >= 4 && < 5, array >= 0.4.0.1, FloatingHex >= 0.4
+   build-depends: base >= 4.11 && < 5, array, FloatingHex
    other-modules: Data.Numbers.CrackNum
                 , Data.Numbers.CrackNum.Utils
                 , Data.Numbers.CrackNum.Data
