@@ -43,6 +43,12 @@ data FP = SP           -- Single precision
         | Arb Int Int  -- Arbitrary precision with given exponent and significand sizes
         deriving (Show, Eq)
 
+-- | How many bits does this float occupy
+fpSize :: FP -> Int
+fpSize SP        = 32
+fpSize DP        = 64
+fpSize (Arb i j) = i+j
+
 -- | Options accepted by the executable
 data Flag = Signed   Int      -- ^ Crack as a signed    word with the given number of bits
           | Unsigned Int      -- ^ Crack as an unsigned word with the given number of bits
@@ -173,21 +179,12 @@ process :: Flag -> String -> IO ()
 process f inp = case f of
                   Signed n   -> print =<< (if decode then di else ei) True  n
                   Unsigned n -> print =<< (if decode then di else ei) False n
-                  Floating _ -> tbd
+                  Floating s -> print =<< (if decode then df else ef) s
 
                   BadFlag{}  -> pure ()
                   Version    -> pure ()
                   Help       -> pure ()
   where decode = any (`isPrefixOf` inp) ["0x", "0b"]
-
-        ei sgn n = case reads inp of
-                     [(v, "")] -> satWith z3{crackNum=True} $ p v
-                     _         -> die ["Expected an integer value to decode, received: " ++ show inp]
-          where p :: Integer -> Predicate
-                p iv = do let k = KBounded sgn n
-                              v = SBV $ SVal k $ Left $ mkConstCV k iv
-                          x <- (if sgn then sIntN else sWordN) n "ENCODED"
-                          pure $ SBV x .== v
 
         bitString n = do let isSkippable c = c `elem` "_-" || isSpace c
 
@@ -223,11 +220,46 @@ process f inp = case f of
                            LT -> die ["Input needs to be " ++ show n ++ " bits wide, it's too short by " ++ bits (n - length encoded)]
                            GT -> die ["Input needs to be " ++ show n ++ " bits wide, it's too long by "  ++ bits (length encoded - n)]
 
+        di :: Bool -> Int -> IO SatResult
         di sgn n = do bs <- bitString n
                       satWith z3{crackNum=True} $ p bs
              where p :: [Bool] -> Goal
                    p bs = do x <- (if sgn then sIntN else sWordN) n "DECODED"
                              mapM_ constrain $ zipWith (.==) (map SBV (svBlastBE x)) (map literal bs)
+
+        ei :: Bool -> Int -> IO SatResult
+        ei sgn n = case reads inp of
+                     [(v, "")] -> satWith z3{crackNum=True} $ p v
+                     _         -> die ["Expected an integer value to decode, received: " ++ show inp]
+          where p :: Integer -> Predicate
+                p iv = do let k = KBounded sgn n
+                              v = SBV $ SVal k $ Left $ mkConstCV k iv
+                          x <- (if sgn then sIntN else sWordN) n "ENCODED"
+                          pure $ SBV x .== v
+
+        df :: FP -> IO SatResult
+        df fp = do bs <- bitString (fpSize fp)
+                   satWith z3{crackNum=True} $ p bs
+           where p :: [Bool] -> Goal
+                 p bs = do bits<- case fp of
+                                    SP      -> do sx <- sFloat  "DECODED"
+                                                  let (s, e, m) = blastSFloat sx
+                                                  pure $ s : e ++ m
+                                    DP      -> do sx <- sDouble "DECODED"
+                                                  let (s, e, m) = blastSDouble sx
+                                                  pure $ s : e ++ m
+                                    Arb{}   -> tbd
+                                    {-
+                                    Arb i j -> do sx <- sFloatingPoint i j "DECODED"
+                                                  let (s, e, m) = blastSFloatingPoint sx
+                                                  pure $ s : e ++ m
+                                                  -}
+                           mapM_ constrain $ zipWith (.==) bits (map literal bs)
+
+
+        ef :: FP -> IO SatResult
+        ef = tbd
+
 
 tbd :: a
 tbd = error "tbd"
