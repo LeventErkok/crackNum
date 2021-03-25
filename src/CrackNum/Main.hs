@@ -48,7 +48,7 @@ data Flag = Signed   Integer  -- ^ Crack as a signed    word with the given numb
 getSize :: String -> (Integer -> Flag) -> String -> Flag
 getSize flg f n = case readMaybe n of
                     Just i  -> f i
-                    Nothing -> BadFlag ["Option " ++ show flg ++ " requires an integer argument. Received: " ++ show flg]
+                    Nothing -> BadFlag ["Option " ++ show flg ++ " requires an integer argument. Received: " ++ show n]
 
 #include "MachDeps.h"
 
