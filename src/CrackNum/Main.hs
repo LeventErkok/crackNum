@@ -14,17 +14,21 @@
 
 module Main(main) where
 
-import Data.Char (isDigit, isSpace)
-import Data.List (intercalate, isPrefixOf)
-
-import Data.SBV
-import Data.SBV.Dynamic   hiding (satWith)
-import Data.SBV.Internals hiding (free)
+import Data.Char (isDigit, isSpace, toLower)
+import Data.List (isPrefixOf, unfoldr)
 
 import System.Console.GetOpt (ArgOrder(Permute), getOpt, ArgDescr(..), OptDescr(..), usageInfo)
 import System.Environment    (getArgs, getProgName)
 import System.Exit           (exitFailure)
 import Text.Read             (readMaybe)
+
+import System.IO (hPutStr, stderr)
+
+import Numeric
+
+import Data.SBV
+import Data.SBV.Dynamic   hiding (satWith)
+import Data.SBV.Internals hiding (free)
 
 import Data.Version    (showVersion)
 import Paths_crackNum  (version)
@@ -144,33 +148,33 @@ usage pn = putStr $ unlines [ helpStr pn
                             , "       - You can use _,- or space as a digit to improve readability for the pattern to be decoded"
                             ]
 
+-- | Terminate early
+die :: [String] -> IO a
+die xs = do hPutStr stderr $ unlines $ "ERROR:" : map ("  " ++) xs
+            exitFailure
+
 -- | main entry point to crackNum
 main :: IO ()
 main = do argv <- getArgs
           pn   <- getProgName
 
           case getOpt Permute pgmOptions argv of
-            (_,  _,  errs@(_:_)) -> do mapM_ putStrLn errs
-                                       putStr $ helpStr pn
-                                       exitFailure
+            (_,  _,  errs@(_:_)) -> die $ errs ++ [helpStr pn]
             (os, rs, [])
               | Version `elem` os -> putStrLn $ pn ++ " v" ++ showVersion version ++ ", " ++ copyRight
               | Help    `elem` os -> usage pn
               | True              -> case ([b | BadFlag b <- os], os) of
-                                      (e:_,  _) -> do putStrLn $ intercalate "\n" e
-                                                      exitFailure
+                                      (e:_,  _) -> die e
                                       (_,  [o]) -> process o (dropWhile isSpace $ unwords rs)
                                       _         -> usage pn
 
 -- | Perform the encoding/decoding
 process :: Flag -> String -> IO ()
 process f inp = case f of
-                  Signed   n | decode -> tbd
-                             | True   -> print =<< ei True  n
-                  Unsigned n | decode -> tbd
-                             | True   -> print =<< ei False n
-                  Floating _ | decode -> tbd
-                             | True   -> tbd
+                  Signed n   -> print =<< (if decode then di else ei) True  n
+                  Unsigned n -> print =<< (if decode then di else ei) False n
+                  Floating _ -> tbd
+
                   BadFlag{}  -> pure ()
                   Version    -> pure ()
                   Help       -> pure ()
@@ -178,51 +182,56 @@ process f inp = case f of
 
         ei sgn n = case reads inp of
                      [(v, "")] -> satWith z3{crackNum=True} $ p v
-                     _         -> do putStrLn $ "ERROR: Expected an integer value to decode, received: " ++ show inp
-                                     exitFailure
+                     _         -> die ["Expected an integer value to decode, received: " ++ show inp]
           where p :: Integer -> Predicate
                 p iv = do let k = KBounded sgn n
                               v = SBV $ SVal k $ Left $ mkConstCV k iv
-                          x <- if sgn then sIntN_ n else sWordN_ n
+                          x <- (if sgn then sIntN else sWordN) n "ENCODED"
                           pure $ SBV x .== v
 
+        bitString n = do let isSkippable c = c `elem` "_-" || isSpace c
+
+                         (isHex, stream) <- case map toLower (filter (not . isSkippable) inp) of
+                                              '0':'x':rest -> pure (True,  rest)
+                                              '0':'b':rest -> pure (False, rest)
+                                              _            -> die [ "Input string must start with 0b or 0x for decoding."
+                                                                  , "Received prefix: " ++ show (take 2 inp)
+                                                                  ]
+
+                         let cvtBin '1' = pure [True]
+                             cvtBin '0' = pure [False]
+                             cvtBin c   = die  ["Input has a non-binary digit: " ++ show c]
+
+                             cvtHex c = case readHex [c] of
+                                          [(v, "")] -> pure $ pad
+                                                            $ map (== (1::Int))
+                                                            $ reverse
+                                                            $ unfoldr (\x -> if x == 0 then Nothing else Just (x `rem` 2, x `div` 2)) v
+                                          _         -> die ["Input has a non-hexadecimal digit: " ++ show c]
+                                where pad p = replicate (4 - length p) False ++ p
+
+                             cvt i | isHex = concat <$> mapM cvtHex i
+                                   | True  = concat <$> mapM cvtBin i
+
+                         encoded <- cvt stream
+
+                         let bits 1 = "one bit"
+                             bits b = show b ++ " bits"
+
+                         case length encoded `compare` n of
+                           EQ -> pure encoded
+                           LT -> die ["Input needs to be " ++ show n ++ " bits wide, it's too short by " ++ bits (n - length encoded)]
+                           GT -> die ["Input needs to be " ++ show n ++ " bits wide, it's too long by "  ++ bits (length encoded - n)]
+
+        di sgn n = do bs <- bitString n
+                      satWith z3{crackNum=True} $ p bs
+             where p :: [Bool] -> Goal
+                   p bs = do x <- (if sgn then sIntN else sWordN) n "DECODED"
+                             mapM_ constrain $ zipWith (.==) (map SBV (svBlastBE x)) (map literal bs)
+
 tbd :: a
-tbd = error "TBD"
+tbd = error "tbd"
 
 {-
-#! /bin/zsh
-
-case $1 in
-    -e) cmd="encode ($2 :: ${@:4})"
-        ;;
-    -d) cmd="snd <$> (decode (\"$2\") :: IO (${@:4}, SatResult))"
-        ;;
-    *)  echo "Invalid option. Examples:"
-        echo
-        echo " Encoding:"
-        echo "   ./crack -e 2   :: IntN 4"
-        echo "   ./crack -e 2   :: WordN 4"
-        echo "   ./crack -e 2.5 :: FloatingPoint 3 4"
-        echo "   ./crack -e 2.5 :: FPBFloat"
-        echo "   ./crack -e 2.5 :: Double"
-        echo
-        echo " Decoding:"
-        echo "   ./crack -d 0b0111001 :: WordN 7"
-        echo "   ./crack -d 0b0111001 :: IntN  7"
-        echo "   ./crack -d 0b0111001 :: FloatingPoint 3 4"
-        echo "   ./crack -d      0x0F :: WordN 8"
-        echo "   ./crack -d      0x0F :: IntN  8"
-        echo "   ./crack -d      0x0F :: FloatingPoint 4 4"
-        exit
-        ;;
-esac
-
-ghci -v0 <<EOF
-:set -XDataKinds
-import Data.SBV
-import Data.SBV.Tools.CrackNum
-$cmd
-EOF
-
 # bfFromString 10 (allowSubnormal <> rnd NearEven <> expBits 10 <> precBits 20) "0"
 -}
