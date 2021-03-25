@@ -144,7 +144,7 @@ main = do argv <- getArgs
               | Version `elem` os -> putStrLn $ pn ++ " v" ++ showVersion version ++ ", " ++ copyRight
               | Help    `elem` os -> usage pn
               | True              -> case ([b | BadFlag b <- os], os) of
-                                      ([e],  _) -> do putStrLn $ intercalate "\n" e
+                                      (e:_,  _) -> do putStrLn $ intercalate "\n" e
                                                       exitFailure
                                       (_,  [o]) -> process o (unwords rs)
                                       _         -> usage pn
