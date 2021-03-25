@@ -14,8 +14,12 @@
 
 module Main(main) where
 
-import Data.Char (isDigit)
-import Data.List (intercalate)
+import Data.Char (isDigit, isSpace)
+import Data.List (intercalate, isPrefixOf)
+
+import Data.SBV
+import Data.SBV.Dynamic   hiding (satWith)
+import Data.SBV.Internals hiding (free)
 
 import System.Console.GetOpt (ArgOrder(Permute), getOpt, ArgDescr(..), OptDescr(..), usageInfo)
 import System.Environment    (getArgs, getProgName)
@@ -30,14 +34,14 @@ copyRight :: String
 copyRight = "(c) Levent Erkok. Released with a BSD3 license."
 
 -- | Various precisions we support
-data FP = SP                  -- Single precision
-        | DP                  -- Double precision
-        | Arb Integer Integer -- Arbitrary precision with given exponent and significand sizes
+data FP = SP           -- Single precision
+        | DP           -- Double precision
+        | Arb Int Int  -- Arbitrary precision with given exponent and significand sizes
         deriving (Show, Eq)
 
 -- | Options accepted by the executable
-data Flag = Signed   Integer  -- ^ Crack as a signed    word with the given number of bits
-          | Unsigned Integer  -- ^ Crack as an unsigned word with the given number of bits
+data Flag = Signed   Int      -- ^ Crack as a signed    word with the given number of bits
+          | Unsigned Int      -- ^ Crack as an unsigned word with the given number of bits
           | Floating FP       -- ^ Crack as the corresponding floating-point type
           | BadFlag  [String] -- ^ Bad input
           | Version           -- ^ Version
@@ -45,7 +49,7 @@ data Flag = Signed   Integer  -- ^ Crack as a signed    word with the given numb
           deriving (Show, Eq)
 
 -- | Given an integer flag value, turn it into a flag
-getSize :: String -> (Integer -> Flag) -> String -> Flag
+getSize :: String -> (Int -> Flag) -> String -> Flag
 getSize flg f n = case readMaybe n of
                     Just i  -> f i
                     Nothing -> BadFlag ["Option " ++ show flg ++ " requires an integer argument. Received: " ++ show n]
@@ -86,7 +90,7 @@ getFP ab   = case span isDigit ab of
                                   , "where first number is the number of bits in the exponent"
                                   , "and the second number is the number of bits in the significand, including the implicit bit."
                                   ]
-                    mkEBSB :: Integer -> Integer -> Flag
+                    mkEBSB :: Int -> Int -> Flag
                     mkEBSB eb sb
                      |    eb >= FP_MIN_EB && eb <= FP_MAX_EB
                        && sb >= FP_MIN_SB && sb <= FP_MAX_SB
@@ -94,15 +98,15 @@ getFP ab   = case span isDigit ab of
                      | True
                      = BadFlag [ "Invalid floating-point precision."
                                , ""
-                               , "  Exponent    size must be between " ++ show (FP_MIN_EB :: Integer) ++ " to "  ++ show (FP_MAX_EB :: Integer)
-                               , "  Significant size must be between " ++ show (FP_MIN_SB :: Integer) ++ " to "  ++ show (FP_MAX_SB :: Integer)
+                               , "  Exponent    size must be between " ++ show (FP_MIN_EB :: Int) ++ " to "  ++ show (FP_MAX_EB :: Int)
+                               , "  Significant size must be between " ++ show (FP_MIN_SB :: Int) ++ " to "  ++ show (FP_MAX_SB :: Int)
                                , ""
                                , "Received: " ++ show eb ++ " " ++ show sb
                                ]
 
 -- | Options we accept
-options :: [OptDescr Flag]
-options = [
+pgmOptions :: [OptDescr Flag]
+pgmOptions = [
       Option "i"  []          (ReqArg (getSize "-i" Signed)   "N" )  "Signed   integer of N-bits"
     , Option "w"  []          (ReqArg (getSize "-w" Unsigned) "N" )  "Unsigned integer of N-bits"
     , Option "f"  []          (ReqArg getFP                   "fp")  "Floating point format fp"
@@ -112,7 +116,7 @@ options = [
 
 -- | Help info
 helpStr :: String -> String
-helpStr pn = usageInfo ("Usage: " ++ pn ++ " value OR binary/hex-pattern") options
+helpStr pn = usageInfo ("Usage: " ++ pn ++ " value OR binary/hex-pattern") pgmOptions
 
 -- | Print usage info and examples.
 usage :: String -> IO ()
@@ -145,7 +149,7 @@ main :: IO ()
 main = do argv <- getArgs
           pn   <- getProgName
 
-          case getOpt Permute options argv of
+          case getOpt Permute pgmOptions argv of
             (_,  _,  errs@(_:_)) -> do mapM_ putStrLn errs
                                        putStr $ helpStr pn
                                        exitFailure
@@ -155,12 +159,31 @@ main = do argv <- getArgs
               | True              -> case ([b | BadFlag b <- os], os) of
                                       (e:_,  _) -> do putStrLn $ intercalate "\n" e
                                                       exitFailure
-                                      (_,  [o]) -> process o (unwords rs)
+                                      (_,  [o]) -> process o (dropWhile isSpace $ unwords rs)
                                       _         -> usage pn
 
 -- | Perform the encoding/decoding
 process :: Flag -> String -> IO ()
-process f s = putStrLn $ "Will do: " ++ show (f, s)
+process f inp = case f of
+                  Signed   n | decode -> tbd
+                             | True   -> print =<< ei True  n
+                  Unsigned n | decode -> tbd
+                             | True   -> print =<< ei False n
+                  Floating _ -> tbd
+                  BadFlag{}  -> pure ()
+                  Version    -> pure ()
+                  Help       -> pure ()
+  where decode = any (`isPrefixOf` inp) ["0x", "0b"]
+
+        ei s n = satWith z3{crackNum=True} p
+          where p :: Predicate
+                p = do let k = KBounded s n
+                           v = SBV $ SVal k $ Left $ mkConstCV k (read inp :: Integer)
+                       x <- if s then sIntN_ n else sWordN_ n
+                       pure $ SBV x .== v
+
+tbd :: a
+tbd = error "TBD"
 
 {-
 #! /bin/zsh
