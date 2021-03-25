@@ -27,5 +27,6 @@
        crackNum -fbp  0x000F       -- decode as a brain-precision float
 
     Notes:
-      - You can use hexadecimal or binary as input.
-      - You can use _,- or space as a digit to improve readability.
+      - For encoding, use -- to separate your argument if it's a negative number.
+      - For decoding, you can use hexadecimal (0x) or binary (0b) as input
+      - You can use _,- or space as a digit to improve readability for the pattern to be decoded
