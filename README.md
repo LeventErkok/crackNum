@@ -1,4 +1,4 @@
-## CrackNum: Decode/Encode IEE754 Numbers
+## CrackNum: Decode/Encode Signed/Unsigned integers and IEE754 Floating point numbers
 
 [![Hackage version](http://img.shields.io/hackage/v/crackNum.svg?label=Hackage)](http://hackage.haskell.org/package/crackNum)
 [![Build Status](http://img.shields.io/travis/LeventErkok/crackNum.svg?label=Build)](http://travis-ci.org/LeventErkok/crackNum)
