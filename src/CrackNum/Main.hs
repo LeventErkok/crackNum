@@ -116,20 +116,29 @@ helpStr pn = usageInfo ("Usage: " ++ pn ++ " value OR binary/hex-pattern") optio
 
 -- | Print usage info and examples.
 usage :: String -> IO ()
-usage pn = do putStrLn $ helpStr pn
-              putStrLn "Examples:"
-              putStrLn   " Encoding:"
-              putStrLn $ "   " ++ pn ++ " -i4   -- -2        -- encode as 4-bit signed integer"
-              putStrLn $ "   " ++ pn ++ " -w4   2            -- encode as 4-bit unsigned integer"
-              putStrLn $ "   " ++ pn ++ " -f3+4 2.5          -- encode as floating-point with 3 bits exponent, 4 bits significand."
-              putStrLn $ "   " ++ pn ++ " -fbp  2.5          -- encode as a brain-precision float"
-              putStrLn $ "   " ++ pn ++ " -fdp  2.5          -- encode as a double-precision float"
-              putStrLn ""
-              putStrLn   " Decoding:"
-              putStrLn $ "   " ++ pn ++ " -i4   0b0110       -- decode as 4-bit signed integer, from binary"
-              putStrLn $ "   " ++ pn ++ " -w4   0xE          -- decode as 4-bit unsigned integer, from hex"
-              putStrLn $ "   " ++ pn ++ " -f3+4 0b0111001    -- decode as floating-point with 3 bits exponent, 4 bits significand."
-              putStrLn $ "   " ++ pn ++ " -fbp  0x000F       -- decode as a brain-precision float"
+usage pn = putStr $ unlines [ helpStr pn
+                            , "Examples:"
+                            , " Encoding:"
+                            , "   " ++ pn ++ " -i4   -- -2        -- encode as 4-bit signed integer"
+                            , "   " ++ pn ++ " -w4   2            -- encode as 4-bit unsigned integer"
+                            , "   " ++ pn ++ " -f3+4 2.5          -- encode as floating-point with 3 bits exponent, 4 bits significand."
+                            , "   " ++ pn ++ " -fbp  2.5          -- encode as a brain-precision float"
+                            , "   " ++ pn ++ " -fdp  2.5          -- encode as a double-precision float"
+                            , ""
+                            , " Decoding:"
+                            , "   " ++ pn ++ " -i4   0b0110       -- decode as 4-bit signed integer, from binary"
+                            , "   " ++ pn ++ " -w4   0xE          -- decode as 4-bit unsigned integer, from hex"
+                            , "   " ++ pn ++ " -f3+4 0b0111001    -- decode as floating-point with 3 bits exponent, 4 bits significand."
+                            , "   " ++ pn ++ " -fbp  0x000F       -- decode as a brain-precision float"
+                            , ""
+                            , " Notes:"
+                            , "   - For encoding:"
+                            , "       - Use -- to separate your argument if it's a negative number."
+                            , "       - For floats: You can pass in NaN, Inf, -0, -Inf etc as the argument, along with a decimal float."
+                            , "   - For decoding:"
+                            , "       - Use hexadecimal (0x) or binary (0b) as input. Input must have one of these prefixes."
+                            , "       - You can use _,- or space as a digit to improve readability for the pattern to be decoded"
+                            ]
 
 -- | main entry point to crackNum
 main :: IO ()
