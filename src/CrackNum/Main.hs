@@ -30,9 +30,9 @@ copyRight :: String
 copyRight = "(c) Levent Erkok. Released with a BSD3 license."
 
 -- | Various precisions we support
-data FP = SP          -- Single precision
-        | DP          -- Double precision
-        | Arb Int Int -- Arbitrary precision with given exponent and significand sizes
+data FP = SP                  -- Single precision
+        | DP                  -- Double precision
+        | Arb Integer Integer -- Arbitrary precision with given exponent and significand sizes
         deriving (Show, Eq)
 
 -- | Options accepted by the executable
@@ -86,7 +86,7 @@ getFP ab   = case span isDigit ab of
                                   , "where first number is the number of bits in the exponent"
                                   , "and the second number is the number of bits in the significand, including the implicit bit."
                                   ]
-                    mkEBSB :: Int -> Int -> Flag
+                    mkEBSB :: Integer -> Integer -> Flag
                     mkEBSB eb sb
                      |    eb >= FP_MIN_EB && eb <= FP_MAX_EB
                        && sb >= FP_MIN_SB && sb <= FP_MAX_SB
