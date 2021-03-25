@@ -169,18 +169,22 @@ process f inp = case f of
                              | True   -> print =<< ei True  n
                   Unsigned n | decode -> tbd
                              | True   -> print =<< ei False n
-                  Floating _ -> tbd
+                  Floating _ | decode -> tbd
+                             | True   -> tbd
                   BadFlag{}  -> pure ()
                   Version    -> pure ()
                   Help       -> pure ()
   where decode = any (`isPrefixOf` inp) ["0x", "0b"]
 
-        ei s n = satWith z3{crackNum=True} p
-          where p :: Predicate
-                p = do let k = KBounded s n
-                           v = SBV $ SVal k $ Left $ mkConstCV k (read inp :: Integer)
-                       x <- if s then sIntN_ n else sWordN_ n
-                       pure $ SBV x .== v
+        ei sgn n = case reads inp of
+                     [(v, "")] -> satWith z3{crackNum=True} $ p v
+                     _         -> do putStrLn $ "ERROR: Expected an integer value to decode, received: " ++ show inp
+                                     exitFailure
+          where p :: Integer -> Predicate
+                p iv = do let k = KBounded sgn n
+                              v = SBV $ SVal k $ Left $ mkConstCV k iv
+                          x <- if sgn then sIntN_ n else sWordN_ n
+                          pure $ SBV x .== v
 
 tbd :: a
 tbd = error "TBD"
