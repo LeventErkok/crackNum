@@ -12,36 +12,33 @@ define mkTags
 	@find . -name \*.\*hs | xargs fast-tags
 endef
 
-.PHONY: all install sdist clean docs hlint tags
+.PHONY: all ghcid install sdist clean docs hlint tags
 
 all: install
 
-install: $(DEPSRCS) Makefile
-	$(call mkTags)
-	@$(CABAL) new-install --lib
+ghci:
+	cabal new-repl --repl-options=-Wno-unused-packages
 
-test: install
-	@echo "*** Starting inline tests.."
-	@$(TIME) doctest Data/Numbers/CrackNum.hs --fast --no-magic -package random -package FloatingHex
+ghcid:
+	ghcid --command="cabal new-repl --repl-options=-Wno-unused-packages"
+
+install:
+	cabal new-install --overwrite-policy=always
+
+release: clean
 
 sdist: install
-	$(CABAL) sdist
-
-veryclean: clean
-	@-ghc-pkg unregister crackNum
+	cabal new-sdist
 
 clean:
-	@rm -rf dist
+	@rm -rf dist-newstyle
 
-docs:
-	cabal new-haddock --haddock-option=--hyperlinked-source --haddock-option=--no-warnings
-
-release: clean install sdist hlint test docs
+release: clean install sdist hlint
 	@echo "*** crackNum is ready for release!"
 
 hlint: install
 	@echo "Running HLint.."
-	@hlint Data -i "Use otherwise" -i "Parse error"
+	@hlint src -i "Use otherwise" --cpp-simple
 
 ci:
 	haskell-ci crackNum.cabal --no-tests --no-benchmarks --no-doctest --no-hlint --email-notifications
