@@ -14,8 +14,6 @@
 
 module Main(main) where
 
-import Control.Monad.Trans (liftIO)
-
 import Data.Char (isDigit, isSpace, toLower)
 import Data.List (isPrefixOf, isSuffixOf, unfoldr)
 
@@ -59,7 +57,15 @@ data RM = RNE  -- ^ Round nearest ties to even
         | RTP  -- ^ Round towards positive infinity
         | RTN  -- ^ Round towards negative infinity
         | RTZ  -- ^ Round towards zero
-        deriving (Eq, Show)
+        deriving (Eq, Enum, Bounded)
+
+-- | Show instance for RM, for descriptive purposes
+instance Show RM where
+  show RNE = "RNE: Round nearest ties to even."
+  show RNA = "RNA: Round nearest ties to away."
+  show RTP = "RTP: Round towards positive infinity."
+  show RTN = "RTN: Round towards negative infinity."
+  show RTZ = "RTZ: Round towards zero."
 
 -- Covert to LibBF rounding mode
 toLibBFRM :: RM -> RoundMode
@@ -79,6 +85,10 @@ data Flag = Signed   Int       -- ^ Crack as a signed    word with the given num
           | Help               -- ^ Show help
           deriving (Show, Eq)
 
+-- | Is this a rounding flag?
+isRMode :: Flag -> Bool
+isRMode RMode{} = True
+isRMode _       = False
 
 -- | Given an integer flag value, turn it into a flag
 getSize :: String -> (Int -> Flag) -> String -> Flag
@@ -142,17 +152,14 @@ getRM "rna" = RMode RNA
 getRM "rtp" = RMode RTP
 getRM "rtn" = RMode RTN
 getRM "rtz" = RMode RTZ
-getRM m     = BadFlag [ "Invalid rounding mode."
-                      , ""
-                      , "  Must be one of:"
-                      , "     rne: Round nearest ties to even. (If in the middle, pick the value with least signifand bit of 0.)"
-                      , "     rna: Round nearest ties to away. (If in the middle, pick the number furthest away from 0.)"
-                      , "     rtp: Round towards positive infinity."
-                      , "     rtn: Round towards negative infinity."
-                      , "     rtz: Round towards zero."
-                      , ""
-                      , "Received: " ++ m
-                      ]
+getRM m     = BadFlag $  [ "Invalid rounding mode."
+                         , ""
+                         , "  Must be one of:"
+                         ]
+                      ++ [ "     " ++ show r | r <- [minBound .. maxBound::RM]]
+                      ++ [ ""
+                         , "Received: " ++ m
+                         ]
 
 -- | Options we accept
 pgmOptions :: [OptDescr Flag]
@@ -160,7 +167,7 @@ pgmOptions = [
       Option "i"  []          (ReqArg (getSize "-i" Signed)   "N" )  "Signed   integer of N-bits"
     , Option "w"  []          (ReqArg (getSize "-w" Unsigned) "N" )  "Unsigned integer of N-bits"
     , Option "f"  []          (ReqArg getFP                   "fp")  "Floating point format fp"
-    , Option "r"  []          (ReqArg getRM                   "rm")  "Rounding mode to use, if not given Nearest-ties-to-Even is used"
+    , Option "r"  []          (ReqArg (getRM . map toLower)   "rm")  "Rounding mode to use. If not given, Nearest-ties-to-Even."
     , Option "h?" ["help"]    (NoArg Help)                           "print help, with examples"
     , Option "v"  ["version"] (NoArg Version)                        "print version info"
     ]
@@ -177,6 +184,7 @@ usage pn = putStr $ unlines [ helpStr pn
                             , "   " ++ pn ++ " -i4   -- -2              -- encode as 4-bit signed integer"
                             , "   " ++ pn ++ " -w4   2                  -- encode as 4-bit unsigned integer"
                             , "   " ++ pn ++ " -f3+4 2.5                -- encode as floating-point with 3 bits exponent, 4 bits significand."
+                            , "   " ++ pn ++ " -f3+4 2.5 -rRTZ          -- encode as above, but use RTZ rounding mode."
                             , "   " ++ pn ++ " -fbp  2.5                -- encode as a brain-precision float"
                             , "   " ++ pn ++ " -fdp  2.5                -- encode as a double-precision float"
                             , ""
@@ -212,12 +220,12 @@ main = do argv <- getArgs
               | Version `elem` os -> putStrLn $ pn ++ " v" ++ showVersion version ++ ", " ++ copyRight
               | Help    `elem` os -> usage pn
               | True              -> do let rm = case reverse [r | RMode r <- os] of
-                                                   (r:_) -> toLibBFRM r
-                                                   _     -> toLibBFRM RNE
+                                                   (r:_) -> r
+                                                   _     -> RNE
 
                                             arg = dropWhile isSpace $ unwords rs
 
-                                        case ([b | BadFlag b <- os], os) of
+                                        case ([b | BadFlag b <- os], filter (not . isRMode) os) of
                                           (e:_,  _) -> die e
                                           (_,  [Signed   n]) -> process (SInt   n) rm arg
                                           (_,  [Unsigned n]) -> process (SWord  n) rm arg
@@ -230,7 +238,7 @@ data NKind = SInt   Int -- ^ Signed   integer of n bits
            | SFloat FP  -- ^ Floating point with precision
 
 -- | Perform the encoding/decoding
-process :: NKind -> RoundMode -> String -> IO ()
+process :: NKind -> RM -> String -> IO ()
 process num rm inp = case num of
                        SInt   n -> print =<< (if decode then di else ei) True  n
                        SWord  n -> print =<< (if decode then di else ei) False n
@@ -306,9 +314,7 @@ process num rm inp = case num of
                         mapM_ constrain $ zipWith (.==) (s : e ++ m) bs
 
         dFP :: Int -> Int -> [SBool] -> Goal
-        dFP i j bs = do let k = KFP i j
-                        sx <- do st <- symbolicEnv
-                                 liftIO $ svMkSymVar (NonQueryVar (Just EX)) k (Just "DECODED") st
+        dFP i j bs = do sx <- svNewVar (KFP i j) "DECODED"
                         let bits = svBlastBE sx
                         mapM_ constrain $ zipWith (.==) (map SBV bits) bs
 
@@ -316,14 +322,15 @@ process num rm inp = case num of
         convert i j = case s of
                         Ok -> (v, Nothing)
                         _  -> (v, Just (trim (show s)))
-          where bfOpts = allowSubnormal <> rnd rm <> expBits (fromIntegral i) <> precBits (fromIntegral j)
+          where bfOpts = allowSubnormal <> rnd (toLibBFRM rm) <> expBits (fromIntegral i) <> precBits (fromIntegral j)
                 (v, s) = bfFromString 10 bfOpts inp
                 trim xs | "[" `isPrefixOf` xs && "]" `isSuffixOf` xs = init (tail xs)
                         | True                                       = xs
 
         note :: Maybe String -> IO ()
         note Nothing  = pure ()
-        note (Just s) = putStrLn $ "            Note: Conversion from " ++ show inp ++ " was not faithful. Status: " ++ s ++ "."
+        note (Just s) = do putStrLn $ "   Rounding mode: " ++ show rm
+                           putStrLn $ "            Note: Conversion from " ++ show inp ++ " was not faithful. Status: " ++ s ++ "."
 
         ef :: FP -> IO ()
         ef SP = case reads inp of
@@ -347,6 +354,5 @@ process num rm inp = case num of
                          note mbS
           where p :: BigFloat -> Predicate
                 p bf = do let k = KFP i j
-                          sx <- do st <- symbolicEnv
-                                   liftIO $ svMkSymVar (NonQueryVar (Just EX)) k (Just "ENCODED") st
+                          sx <- svNewVar k "ENCODED"
                           pure $ SBV $ sx `svStrongEqual` SVal k (Left (CV k (CFP (fpFromBigFloat i j bf))))

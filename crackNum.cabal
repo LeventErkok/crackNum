@@ -25,5 +25,5 @@ Executable crackNum
    main-is       : CrackNum/Main.hs
    hs-source-dirs: src
    ghc-options   : -Wall -Wunused-packages
-   build-depends : base >= 4.11 && < 5, libBF, mtl, sbv
+   build-depends : base >= 4.11 && < 5, libBF, sbv
    other-modules : Paths_crackNum
