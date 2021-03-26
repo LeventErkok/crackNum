@@ -14,6 +14,8 @@
 
 module Main(main) where
 
+import Control.Monad.Trans (liftIO)
+
 import Data.Char (isDigit, isSpace, toLower)
 import Data.List (isPrefixOf, unfoldr)
 
@@ -38,16 +40,16 @@ copyRight :: String
 copyRight = "(c) Levent Erkok. Released with a BSD3 license."
 
 -- | Various precisions we support
-data FP = SP           -- Single precision
-        | DP           -- Double precision
-        | Arb Int Int  -- Arbitrary precision with given exponent and significand sizes
+data FP = SP          -- Single precision
+        | DP          -- Double precision
+        | FP Int Int  -- Arbitrary precision with given exponent and significand sizes
         deriving (Show, Eq)
 
 -- | How many bits does this float occupy
 fpSize :: FP -> Int
-fpSize SP        = 32
-fpSize DP        = 64
-fpSize (Arb i j) = i+j
+fpSize SP       = 32
+fpSize DP       = 64
+fpSize (FP i j) = i+j
 
 -- | Options accepted by the executable
 data Flag = Signed   Int      -- ^ Crack as a signed    word with the given number of bits
@@ -78,11 +80,11 @@ getSize flg f n = case readMaybe n of
 
 -- | Given a float flag value, turn it into a flag
 getFP :: String -> Flag
-getFP "hp" = Floating $ Arb 5 11
-getFP "bp" = Floating $ Arb 8  8
+getFP "hp" = Floating $ FP 5 11
+getFP "bp" = Floating $ FP 8  8
 getFP "sp" = Floating SP
 getFP "dp" = Floating DP
-getFP "qp" = Floating $ Arb 15 113
+getFP "qp" = Floating $ FP 15 113
 getFP ab   = case span isDigit ab of
                 (eb@(_:_), '+':r) -> case span isDigit r of
                                       (sp@(_:_), "") -> mkEBSB (read eb) (read sp)
@@ -104,7 +106,7 @@ getFP ab   = case span isDigit ab of
                     mkEBSB eb sb
                      |    eb >= FP_MIN_EB && eb <= FP_MAX_EB
                        && sb >= FP_MIN_SB && sb <= FP_MAX_SB
-                     = Floating $ Arb eb sb
+                     = Floating $ FP eb sb
                      | True
                      = BadFlag [ "Invalid floating-point precision."
                                , ""
@@ -133,17 +135,18 @@ usage :: String -> IO ()
 usage pn = putStr $ unlines [ helpStr pn
                             , "Examples:"
                             , " Encoding:"
-                            , "   " ++ pn ++ " -i4   -- -2        -- encode as 4-bit signed integer"
-                            , "   " ++ pn ++ " -w4   2            -- encode as 4-bit unsigned integer"
-                            , "   " ++ pn ++ " -f3+4 2.5          -- encode as floating-point with 3 bits exponent, 4 bits significand."
-                            , "   " ++ pn ++ " -fbp  2.5          -- encode as a brain-precision float"
-                            , "   " ++ pn ++ " -fdp  2.5          -- encode as a double-precision float"
+                            , "   " ++ pn ++ " -i4   -- -2              -- encode as 4-bit signed integer"
+                            , "   " ++ pn ++ " -w4   2                  -- encode as 4-bit unsigned integer"
+                            , "   " ++ pn ++ " -f3+4 2.5                -- encode as floating-point with 3 bits exponent, 4 bits significand."
+                            , "   " ++ pn ++ " -fbp  2.5                -- encode as a brain-precision float"
+                            , "   " ++ pn ++ " -fdp  2.5                -- encode as a double-precision float"
                             , ""
                             , " Decoding:"
-                            , "   " ++ pn ++ " -i4   0b0110       -- decode as 4-bit signed integer, from binary"
-                            , "   " ++ pn ++ " -w4   0xE          -- decode as 4-bit unsigned integer, from hex"
-                            , "   " ++ pn ++ " -f3+4 0b0111001    -- decode as floating-point with 3 bits exponent, 4 bits significand."
-                            , "   " ++ pn ++ " -fbp  0x000F       -- decode as a brain-precision float"
+                            , "   " ++ pn ++ " -i4   0b0110             -- decode as 4-bit signed integer, from binary"
+                            , "   " ++ pn ++ " -w4   0xE                -- decode as 4-bit unsigned integer, from hex"
+                            , "   " ++ pn ++ " -f3+4 0b0111001          -- decode as floating-point with 3 bits exponent, 4 bits significand."
+                            , "   " ++ pn ++ " -fbp  0x000F             -- decode as a brain-precision float"
+                            , "   " ++ pn ++ " -fdp  0x8000000000000000 -- decode as a double-precision float"
                             , ""
                             , " Notes:"
                             , "   - For encoding:"
@@ -238,28 +241,31 @@ process f inp = case f of
                           pure $ SBV x .== v
 
         df :: FP -> IO SatResult
-        df fp = do bs <- bitString (fpSize fp)
-                   satWith z3{crackNum=True} $ p bs
-           where p :: [Bool] -> Goal
-                 p bs = do bits<- case fp of
-                                    SP      -> do sx <- sFloat  "DECODED"
-                                                  let (s, e, m) = blastSFloat sx
-                                                  pure $ s : e ++ m
-                                    DP      -> do sx <- sDouble "DECODED"
-                                                  let (s, e, m) = blastSDouble sx
-                                                  pure $ s : e ++ m
-                                    Arb{}   -> tbd
-                                    {-
-                                    Arb i j -> do sx <- sFloatingPoint i j "DECODED"
-                                                  let (s, e, m) = blastSFloatingPoint sx
-                                                  pure $ s : e ++ m
-                                                  -}
-                           mapM_ constrain $ zipWith (.==) bits (map literal bs)
+        df fp = do bs <- map literal <$> bitString (fpSize fp)
+                   case fp of
+                     SP     -> satWith z3{crackNum=True} $ dFloat  bs
+                     DP     -> satWith z3{crackNum=True} $ dDouble bs
+                     FP i j -> satWith z3{crackNum=True} $ dFP i j bs
 
+        dFloat :: [SBool] -> Goal
+        dFloat  bs = do x <- sFloat "DECODED"
+                        let (s, e, m) = blastSFloat x
+                        mapM_ constrain $ zipWith (.==) (s : e ++ m) bs
+
+        dDouble :: [SBool] -> Goal
+        dDouble bs = do x <- sDouble "DECODED"
+                        let (s, e, m) = blastSDouble x
+                        mapM_ constrain $ zipWith (.==) (s : e ++ m) bs
+
+        dFP :: Int -> Int -> [SBool] -> Goal
+        dFP i j bs = do let k = KFP i j
+                        sx <- do st <- symbolicEnv
+                                 liftIO $ svMkSymVar (NonQueryVar (Just EX)) k (Just "DECODED") st
+                        let bits = svBlastBE sx
+                        mapM_ constrain $ zipWith (.==) (map SBV bits) bs
 
         ef :: FP -> IO SatResult
         ef = tbd
-
 
 tbd :: a
 tbd = error "tbd"
