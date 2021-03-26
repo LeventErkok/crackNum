@@ -179,14 +179,14 @@ main = do argv <- getArgs
 
 -- | Perform the encoding/decoding
 process :: Flag -> String -> IO ()
-process f inp = case f of
-                  Signed n   -> print =<< (if decode then di else ei) True  n
-                  Unsigned n -> print =<< (if decode then di else ei) False n
-                  Floating s -> print =<< (if decode then df else ef) s
+process flg inp = case flg of
+                    Signed n   -> print =<< (if decode then di else ei) True  n
+                    Unsigned n -> print =<< (if decode then di else ei) False n
+                    Floating s -> print =<< (if decode then df else ef) s
 
-                  BadFlag{}  -> pure ()
-                  Version    -> pure ()
-                  Help       -> pure ()
+                    BadFlag{}  -> pure ()
+                    Version    -> pure ()
+                    Help       -> pure ()
   where decode = any (`isPrefixOf` inp) ["0x", "0b"]
 
         bitString n = do let isSkippable c = c `elem` "_-" || isSpace c
@@ -232,8 +232,8 @@ process f inp = case f of
 
         ei :: Bool -> Int -> IO SatResult
         ei sgn n = case reads inp of
-                     [(v, "")] -> satWith z3{crackNum=True} $ p v
-                     _         -> die ["Expected an integer value to decode, received: " ++ show inp]
+                     [(v :: Integer, "")] -> satWith z3{crackNum=True} $ p v
+                     _                    -> die ["Expected an integer value to decode, received: " ++ show inp]
           where p :: Integer -> Predicate
                 p iv = do let k = KBounded sgn n
                               v = SBV $ SVal k $ Left $ mkConstCV k iv
@@ -265,7 +265,21 @@ process f inp = case f of
                         mapM_ constrain $ zipWith (.==) (map SBV bits) bs
 
         ef :: FP -> IO SatResult
-        ef = tbd
+        ef SP = case reads inp of
+                  [(v :: Float, "")] -> satWith z3{crackNum=True} $ p v
+                  _                  -> die ["Expected a floating point value to decode, received: " ++ show inp]
+         where p :: Float -> Predicate
+               p f = do x <- sFloat "ENCODED"
+                        pure $ x .== literal f
+
+        ef DP = case reads inp of
+                  [(v :: Double, "")] -> satWith z3{crackNum=True} $ p v
+                  _                   -> die ["Expected a floating point value to decode, received: " ++ show inp]
+         where p :: Double -> Predicate
+               p d = do x <- sDouble"ENCODED"
+                        pure $ x .== literal d
+
+        ef FP{} = tbd
 
 tbd :: a
 tbd = error "tbd"
