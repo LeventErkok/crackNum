@@ -17,7 +17,7 @@ module Main(main) where
 import Control.Monad.Trans (liftIO)
 
 import Data.Char (isDigit, isSpace, toLower)
-import Data.List (isPrefixOf, unfoldr)
+import Data.List (isPrefixOf, isSuffixOf, unfoldr)
 
 import System.Console.GetOpt (ArgOrder(Permute), getOpt, ArgDescr(..), OptDescr(..), usageInfo)
 import System.Environment    (getArgs, getProgName)
@@ -26,9 +26,11 @@ import Text.Read             (readMaybe)
 
 import System.IO (hPutStr, stderr)
 
+import LibBF
 import Numeric
 
 import Data.SBV
+import Data.SBV.Float     hiding (FP)
 import Data.SBV.Dynamic   hiding (satWith)
 import Data.SBV.Internals hiding (free)
 
@@ -51,14 +53,32 @@ fpSize SP       = 32
 fpSize DP       = 64
 fpSize (FP i j) = i+j
 
+-- | Rounding modes we support
+data RM = RNE  -- ^ Round nearest ties to even
+        | RNA  -- ^ Round nearest ties to away
+        | RTP  -- ^ Round towards positive infinity
+        | RTN  -- ^ Round towards negative infinity
+        | RTZ  -- ^ Round towards zero
+        deriving (Eq, Show)
+
+-- Covert to LibBF rounding mode
+toLibBFRM :: RM -> RoundMode
+toLibBFRM RNE = NearEven
+toLibBFRM RNA = NearAway
+toLibBFRM RTP = ToPosInf
+toLibBFRM RTN = ToNegInf
+toLibBFRM RTZ = ToZero
+
 -- | Options accepted by the executable
-data Flag = Signed   Int      -- ^ Crack as a signed    word with the given number of bits
-          | Unsigned Int      -- ^ Crack as an unsigned word with the given number of bits
-          | Floating FP       -- ^ Crack as the corresponding floating-point type
-          | BadFlag  [String] -- ^ Bad input
-          | Version           -- ^ Version
-          | Help              -- ^ Show help
+data Flag = Signed   Int       -- ^ Crack as a signed    word with the given number of bits
+          | Unsigned Int       -- ^ Crack as an unsigned word with the given number of bits
+          | Floating FP        -- ^ Crack as the corresponding floating-point type
+          | RMode    RM        -- ^ Rounding mode to use
+          | BadFlag  [String]  -- ^ Bad input
+          | Version            -- ^ Version
+          | Help               -- ^ Show help
           deriving (Show, Eq)
+
 
 -- | Given an integer flag value, turn it into a flag
 getSize :: String -> (Int -> Flag) -> String -> Flag
@@ -116,12 +136,31 @@ getFP ab   = case span isDigit ab of
                                , "Received: " ++ show eb ++ " " ++ show sb
                                ]
 
+getRM :: String -> Flag
+getRM "rne" = RMode RNE
+getRM "rna" = RMode RNA
+getRM "rtp" = RMode RTP
+getRM "rtn" = RMode RTN
+getRM "rtz" = RMode RTZ
+getRM m     = BadFlag [ "Invalid rounding mode."
+                      , ""
+                      , "  Must be one of:"
+                      , "     rne: Round nearest ties to even. (If in the middle, pick the value with least signifand bit of 0.)"
+                      , "     rna: Round nearest ties to away. (If in the middle, pick the number furthest away from 0.)"
+                      , "     rtp: Round towards positive infinity."
+                      , "     rtn: Round towards negative infinity."
+                      , "     rtz: Round towards zero."
+                      , ""
+                      , "Received: " ++ m
+                      ]
+
 -- | Options we accept
 pgmOptions :: [OptDescr Flag]
 pgmOptions = [
       Option "i"  []          (ReqArg (getSize "-i" Signed)   "N" )  "Signed   integer of N-bits"
     , Option "w"  []          (ReqArg (getSize "-w" Unsigned) "N" )  "Unsigned integer of N-bits"
     , Option "f"  []          (ReqArg getFP                   "fp")  "Floating point format fp"
+    , Option "r"  []          (ReqArg getRM                   "rm")  "Rounding mode to use, if not given Nearest-ties-to-Even is used"
     , Option "h?" ["help"]    (NoArg Help)                           "print help, with examples"
     , Option "v"  ["version"] (NoArg Version)                        "print version info"
     ]
@@ -172,21 +211,30 @@ main = do argv <- getArgs
             (os, rs, [])
               | Version `elem` os -> putStrLn $ pn ++ " v" ++ showVersion version ++ ", " ++ copyRight
               | Help    `elem` os -> usage pn
-              | True              -> case ([b | BadFlag b <- os], os) of
-                                      (e:_,  _) -> die e
-                                      (_,  [o]) -> process o (dropWhile isSpace $ unwords rs)
-                                      _         -> usage pn
+              | True              -> do let rm = case reverse [r | RMode r <- os] of
+                                                   (r:_) -> toLibBFRM r
+                                                   _     -> toLibBFRM RNE
+
+                                            arg = dropWhile isSpace $ unwords rs
+
+                                        case ([b | BadFlag b <- os], os) of
+                                          (e:_,  _) -> die e
+                                          (_,  [Signed   n]) -> process (SInt   n) rm arg
+                                          (_,  [Unsigned n]) -> process (SWord  n) rm arg
+                                          (_,  [Floating s]) -> process (SFloat s) rm arg
+                                          _                  -> usage pn
+
+-- | Kinds of numbers we understand
+data NKind = SInt   Int -- ^ Signed   integer of n bits
+           | SWord  Int -- ^ Unsigned integer of n bits
+           | SFloat FP  -- ^ Floating point with precision
 
 -- | Perform the encoding/decoding
-process :: Flag -> String -> IO ()
-process flg inp = case flg of
-                    Signed n   -> print =<< (if decode then di else ei) True  n
-                    Unsigned n -> print =<< (if decode then di else ei) False n
-                    Floating s -> print =<< (if decode then df else ef) s
-
-                    BadFlag{}  -> pure ()
-                    Version    -> pure ()
-                    Help       -> pure ()
+process :: NKind -> RoundMode -> String -> IO ()
+process num rm inp = case num of
+                       SInt   n -> print =<< (if decode then di else ei) True  n
+                       SWord  n -> print =<< (if decode then di else ei) False n
+                       SFloat s -> (if decode then df else ef) s
   where decode = any (`isPrefixOf` inp) ["0x", "0b"]
 
         bitString n = do let isSkippable c = c `elem` "_-" || isSpace c
@@ -240,12 +288,12 @@ process flg inp = case flg of
                           x <- (if sgn then sIntN else sWordN) n "ENCODED"
                           pure $ SBV x .== v
 
-        df :: FP -> IO SatResult
+        df :: FP -> IO ()
         df fp = do bs <- map literal <$> bitString (fpSize fp)
                    case fp of
-                     SP     -> satWith z3{crackNum=True} $ dFloat  bs
-                     DP     -> satWith z3{crackNum=True} $ dDouble bs
-                     FP i j -> satWith z3{crackNum=True} $ dFP i j bs
+                     SP     -> print =<< satWith z3{crackNum=True} (dFloat  bs)
+                     DP     -> print =<< satWith z3{crackNum=True} (dDouble bs)
+                     FP i j -> print =<< satWith z3{crackNum=True} (dFP i j bs)
 
         dFloat :: [SBool] -> Goal
         dFloat  bs = do x <- sFloat "DECODED"
@@ -264,26 +312,41 @@ process flg inp = case flg of
                         let bits = svBlastBE sx
                         mapM_ constrain $ zipWith (.==) (map SBV bits) bs
 
-        ef :: FP -> IO SatResult
+        convert :: Int -> Int -> (BigFloat, Maybe String)
+        convert i j = case s of
+                        Ok -> (v, Nothing)
+                        _  -> (v, Just (trim (show s)))
+          where bfOpts = allowSubnormal <> rnd rm <> expBits (fromIntegral i) <> precBits (fromIntegral j)
+                (v, s) = bfFromString 10 bfOpts inp
+                trim xs | "[" `isPrefixOf` xs && "]" `isSuffixOf` xs = init (tail xs)
+                        | True                                       = xs
+
+        note :: Maybe String -> IO ()
+        note Nothing  = pure ()
+        note (Just s) = putStrLn $ "            Note: Conversion from " ++ show inp ++ " was not faithful. Status: " ++ s ++ "."
+
+        ef :: FP -> IO ()
         ef SP = case reads inp of
-                  [(v :: Float, "")] -> satWith z3{crackNum=True} $ p v
-                  _                  -> die ["Expected a floating point value to decode, received: " ++ show inp]
+                  [(v :: Float, "")] -> do print =<< satWith z3{crackNum=True} (p v)
+                                           note $ snd $ convert 8 24
+                  _                  -> ef (FP 8 24)
          where p :: Float -> Predicate
                p f = do x <- sFloat "ENCODED"
-                        pure $ x .== literal f
+                        pure $ x .=== literal f
 
         ef DP = case reads inp of
-                  [(v :: Double, "")] -> satWith z3{crackNum=True} $ p v
-                  _                   -> die ["Expected a floating point value to decode, received: " ++ show inp]
+                  [(v :: Double, "")] -> do print =<< satWith z3{crackNum=True} (p v)
+                                            note $ snd $ convert 11 53
+                  _                   -> ef (FP 11 53)
          where p :: Double -> Predicate
                p d = do x <- sDouble"ENCODED"
-                        pure $ x .== literal d
+                        pure $ x .=== literal d
 
-        ef FP{} = tbd
-
-tbd :: a
-tbd = error "tbd"
-
-{-
-# bfFromString 10 (allowSubnormal <> rnd NearEven <> expBits 10 <> precBits 20) "0"
--}
+        ef (FP i j) = do let (v, mbS) = convert i j
+                         print =<< satWith z3{crackNum=True} (p v)
+                         note mbS
+          where p :: BigFloat -> Predicate
+                p bf = do let k = KFP i j
+                          sx <- do st <- symbolicEnv
+                                   liftIO $ svMkSymVar (NonQueryVar (Just EX)) k (Just "ENCODED") st
+                          pure $ SBV $ sx `svStrongEqual` SVal k (Left (CV k (CFP (fpFromBigFloat i j bf))))
