@@ -1,4 +1,4 @@
-## Decode/Encode Signed/Unsigned integers and IEE754 Floating point numbers
+## Decode/Encode Integers, Words, and IEE754 Floats
 
 [![Hackage version](http://img.shields.io/hackage/v/crackNum.svg?label=Hackage)](http://hackage.haskell.org/package/crackNum)
 [![Build Status](http://img.shields.io/travis/LeventErkok/crackNum.svg?label=Build)](http://travis-ci.org/LeventErkok/crackNum)
