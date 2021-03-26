@@ -215,7 +215,7 @@ main = do argv <- getArgs
           pn   <- getProgName
 
           case getOpt Permute pgmOptions argv of
-            (_,  _,  errs@(_:_)) -> die $ errs ++ [helpStr pn]
+            (_,  _,  errs@(_:_)) -> die $ errs ++ lines (helpStr pn)
             (os, rs, [])
               | Version `elem` os -> putStrLn $ pn ++ " v" ++ showVersion version ++ ", " ++ copyRight
               | Help    `elem` os -> usage pn
@@ -328,9 +328,10 @@ process num rm inp = case num of
                         | True                                       = xs
 
         note :: Maybe String -> IO ()
-        note Nothing  = pure ()
-        note (Just s) = do putStrLn $ "   Rounding mode: " ++ show rm
-                           putStrLn $ "            Note: Conversion from " ++ show inp ++ " was not faithful. Status: " ++ s ++ "."
+        note mbs = do putStrLn $ "   Rounding mode: " ++ show rm
+                      case mbs of
+                        Nothing -> pure ()
+                        Just s  -> putStrLn $ "            Note: Conversion from " ++ show inp ++ " was not faithful. Status: " ++ s ++ "."
 
         ef :: FP -> IO ()
         ef SP = case reads inp of
