@@ -93,8 +93,9 @@ isRMode _       = False
 -- | Given an integer flag value, turn it into a flag
 getSize :: String -> (Int -> Flag) -> String -> Flag
 getSize flg f n = case readMaybe n of
-                    Just i  -> f i
-                    Nothing -> BadFlag ["Option " ++ show flg ++ " requires an integer argument. Received: " ++ show n]
+                    Just i | i > 0 -> f i
+                           | True  -> BadFlag ["Option " ++ show flg ++ " requires an integer >= 1. Received: " ++ show n]
+                    Nothing        -> BadFlag ["Option " ++ show flg ++ " requires an integer argument. Received: " ++ show n]
 
 #include "MachDeps.h"
 
