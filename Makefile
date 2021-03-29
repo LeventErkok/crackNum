@@ -66,7 +66,7 @@ hlint: install
 	@hlint src -i "Use otherwise" --cpp-simple
 
 test:
-	@crackNum --runTests -- -j $(NO_OF_CORES) ${TESTACCEPT} ${TESTHIDE}
+	@crackNum --runTests -- -j $(NO_OF_CORES) ${TESTTARGET} ${TESTACCEPT} ${TESTHIDE}
 
 ci:
 	haskell-ci crackNum.cabal --no-tests --no-benchmarks --no-doctest --no-hlint --email-notifications
