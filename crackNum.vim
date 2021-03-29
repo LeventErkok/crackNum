@@ -13,7 +13,7 @@
 "
 " See https://github.com/LeventErkok/CrackNum for details.
 
-let g:crackNumPrecisions = ["hp","sp","dp","sb","sw","sd","sq","ub","uw","ud","uq"]
+let g:crackNumPrecisions = ["i", "w", "f"]
 function! CrackNumComplete(A, L, P)
     if empty(a:A)
 	return g:crackNumPrecisions
@@ -44,12 +44,7 @@ function! CrackNum(...)
 	let args = copy(a:000)
     endif
 
-    if index(g:crackNumPrecisions, prec) < 0
-	echoerr "Unknown precision: \"" . prec . "\"" . ". Must be one of: " . join(g:crackNumPrecisions, ' ')
-	return
-    endif
-
-    let l:grepargs = join(['--vim'] + copy(args) + ['--bv', curWord], ' ')
+    let l:grepargs = join(copy(args) + [curWord], ' ')
     let grepprg_bak=&grepprg
     let grepformat_bak=&grepformat
     try
@@ -66,15 +61,4 @@ function! CrackNum(...)
     redraw!
 endfunction
 command! -nargs=* -complete=customlist,CrackNumComplete CrackNum call CrackNum(<f-args>)
-map @nhp   :silent call CrackNum('hp')<CR>
-map @nsp   :silent call CrackNum('sp')<CR>
-map @ndp   :silent call CrackNum('dp')<CR>
-map @nsb   :silent call CrackNum('sb')<CR>
-map @nsw   :silent call CrackNum('sw')<CR>
-map @nsd   :silent call CrackNum('sd')<CR>
-map @nsq   :silent call CrackNum('sq')<CR>
-map @nub   :silent call CrackNum('ub')<CR>
-map @nuw   :silent call CrackNum('uw')<CR>
-map @nud   :silent call CrackNum('ud')<CR>
-map @nuq   :silent call CrackNum('uq')<CR>
 " end crackNum interface
