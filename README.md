@@ -62,7 +62,7 @@ Satisfiable. Model:
    Rounding mode: RNE: Round nearest ties to even.
 ```
 
-# Example: Decode a double-precision IEEE-754 number from memory-layout.
+# Example: Decode a double-precision IEEE-754 number from memory-layout
 ```
 $ crackNum -fdp 0xfc00 abc1 7F80 0001
 Satisfiable. Model:
