@@ -335,7 +335,7 @@ process num rm inp = case num of
                         Just s  -> putStrLn $ "            Note: Conversion from " ++ show inp ++ " was not faithful. Status: " ++ s ++ "."
 
         ef :: FP -> IO ()
-        ef SP = case reads inp of
+        ef SP = case reads (fixup inp) of
                   [(v :: Float, "")] -> do print =<< satWith z3{crackNum=True} (p v)
                                            note $ snd $ convert 8 24
                   _                  -> ef (FP 8 24)
@@ -343,7 +343,7 @@ process num rm inp = case num of
                p f = do x <- sFloat "ENCODED"
                         pure $ x .=== literal f
 
-        ef DP = case reads inp of
+        ef DP = case reads (fixup inp) of
                   [(v :: Double, "")] -> do print =<< satWith z3{crackNum=True} (p v)
                                             note $ snd $ convert 11 53
                   _                   -> ef (FP 11 53)
@@ -358,3 +358,13 @@ process num rm inp = case num of
                 p bf = do let k = KFP i j
                           sx <- svNewVar k "ENCODED"
                           pure $ SBV $ sx `svStrongEqual` SVal k (Left (CV k (CFP (fpFromBigFloat i j bf))))
+
+-- | Convert certain strings to more understandable format by read
+fixup :: String -> String
+fixup inp
+ | linp `elem` ["inf",  "infinity"]  = "Infinity"
+ | linp `elem` ["-inf", "-infinity"] = "-Infinity"
+ | linp `elem` ["nan"]               = "NaN"
+ | linp `elem` ["-nan"]              = "-NaN"
+ | True                              = inp
+ where linp = map toLower inp
