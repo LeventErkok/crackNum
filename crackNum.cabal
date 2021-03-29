@@ -26,4 +26,5 @@ Executable crackNum
    hs-source-dirs: src
    ghc-options   : -Wall -Wunused-packages
    build-depends : base >= 4.11 && < 5, libBF, sbv
-   other-modules : Paths_crackNum
+                 , tasty, tasty-golden, filepath, directory, process
+   other-modules : Paths_crackNum, CrackNum.TestSuite

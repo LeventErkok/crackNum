@@ -5,3 +5,4 @@ TAGS
 dist-newstyle
 cabal.project.local
 .*.swp
+Golds/*.*_temp

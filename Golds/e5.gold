@@ -1,0 +1,18 @@
+Arguments: -fdp 2.5
+Exit code: ExitSuccess
+Satisfiable. Model:
+  ENCODED = 2.5 :: Double
+                  6    5          4         3         2         1         0
+                  3 21098765432 1098765432109876543210987654321098765432109876543210
+                  S ----E11---- ------------------------S52-------------------------
+   Binary layout: 0 10000000000 0100000000000000000000000000000000000000000000000000
+      Hex layout: 4004 0000 0000 0000
+       Precision: Double
+            Sign: Positive
+        Exponent: 1 (Stored: 1024, Bias: 1023)
+  Classification: FP_NORMAL
+          Binary: 0b1.01p+1
+           Octal: 0o2.4
+         Decimal: 2.5
+             Hex: 0x2.8
+   Rounding mode: RNE: Round nearest ties to even.

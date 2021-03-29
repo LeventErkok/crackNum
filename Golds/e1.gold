@@ -1,0 +1,12 @@
+Arguments: -w4 2
+Exit code: ExitSuccess
+Satisfiable. Model:
+  ENCODED = 2 :: WordN 4
+                  3210
+   Binary layout: 0010
+      Hex layout: 2
+            Type: Unsigned 4-bit word
+          Binary: 0b10
+           Octal: 0o2
+         Decimal: 2
+             Hex: 0x2

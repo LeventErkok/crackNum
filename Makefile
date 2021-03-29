@@ -8,6 +8,31 @@ DEPSRCS   = $(shell find . -name '*.hs' -or -name '*.lhs' -or -name '*.cabal' | 
 CABAL     = cabal
 TIME      = /usr/bin/time
 
+OS := $(shell uname)
+
+ifeq ($(OS), Darwin)
+# OSX tends to sleep for long jobs; so run through caffeinate
+NO_OF_CORES = `sysctl hw.ncpu | awk '{print $$2}'`
+else
+NO_OF_CORES = `grep -c "^processor" /proc/cpuinfo`
+endif
+
+ifdef TGT
+    TESTTARGET =-p ${TGT}
+    TESTHIDE   =
+else
+    TESTTARGET =
+    TESTHIDE   = --hide-successes
+endif
+
+ifdef ACCEPT
+    TESTACCEPT=--accept
+    TESTHIDE  =
+else
+    TESTACCEPT=--no-create
+endif
+
+
 define mkTags
 	@find . -name \*.\*hs | xargs fast-tags
 endef
@@ -39,6 +64,9 @@ release: clean install sdist hlint
 hlint: install
 	@echo "Running HLint.."
 	@hlint src -i "Use otherwise" --cpp-simple
+
+test:
+	@crackNum --runTests -- -j $(NO_OF_CORES) ${TESTACCEPT} ${TESTHIDE}
 
 ci:
 	haskell-ci crackNum.cabal --no-tests --no-benchmarks --no-doctest --no-hlint --email-notifications

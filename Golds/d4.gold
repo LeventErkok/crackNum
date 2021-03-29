@@ -1,0 +1,17 @@
+Arguments: -fdp 0x8000000000000000
+Exit code: ExitSuccess
+Satisfiable. Model:
+  DECODED = -0.0 :: Double
+                  6    5          4         3         2         1         0
+                  3 21098765432 1098765432109876543210987654321098765432109876543210
+                  S ----E11---- ------------------------S52-------------------------
+   Binary layout: 1 00000000000 0000000000000000000000000000000000000000000000000000
+      Hex layout: 8000 0000 0000 0000
+       Precision: Double
+            Sign: Negative
+        Exponent: -1023 (Stored: 0, Bias: 1023)
+  Classification: FP_ZERO
+          Binary: -0b0.0
+           Octal: -0o0.0
+         Decimal: -0.0
+             Hex: -0o0

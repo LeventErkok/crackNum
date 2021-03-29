@@ -1,0 +1,12 @@
+Arguments: -w4 0xE
+Exit code: ExitSuccess
+Satisfiable. Model:
+  DECODED = 14 :: WordN 4
+                  3210
+   Binary layout: 1110
+      Hex layout: E
+            Type: Unsigned 4-bit word
+          Binary: 0b1110
+           Octal: 0o16
+         Decimal: 14
+             Hex: 0xe
