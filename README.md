@@ -36,3 +36,7 @@ Examples:
        - Use hexadecimal (0x) or binary (0b) as input. Input must have one of these prefixes.
        - You can use _,- or space as a digit to improve readability for the pattern to be decoded
 ```
+
+VIM users: You can use the https://github.com/LeventErkok/crackNum/blob/master/crackNum.vim file to
+use CrackNum directly from VIM. Simply locate your cursor on the text to crack, and use the
+command `:CrackNum options`.
