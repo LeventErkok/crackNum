@@ -41,7 +41,7 @@ VIM users: You can use the https://github.com/LeventErkok/crackNum/blob/master/c
 use CrackNum directly from VIM. Simply locate your cursor on the text to crack, and use the
 command `:CrackNum options`.
 
-# Example: Encode a decimal numer as a single-precision IEEE-754 number
+## Example: Encode a decimal numer as a single-precision IEEE-754 number
 ```
 $ crackNum -fsp -- -2.3e6
 Satisfiable. Model:
@@ -62,7 +62,7 @@ Satisfiable. Model:
    Rounding mode: RNE: Round nearest ties to even.
 ```
 
-# Example: Decode a double-precision IEEE-754 number from memory-layout
+## Example: Decode a double-precision IEEE-754 number from memory-layout
 ```
 $ crackNum -fdp 0xfc00 abc1 7F80 0001
 Satisfiable. Model:
