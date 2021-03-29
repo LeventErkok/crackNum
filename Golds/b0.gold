@@ -1,0 +1,6 @@
+Arguments: -f3+4 0b01
+Exit code: ExitFailure 1
+
+STDERR:
+ERROR:
+  Input needs to be 7 bits wide, it's too short by 5 bits

@@ -12,13 +12,15 @@
 {-# LANGUAGE CPP                 #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
+{-# OPTIONS_GHC -Wall -Werror #-}
+
 module Main(main) where
 
+import System.Environment (getArgs, getProgName, withArgs)
 import Data.Char (isDigit, isSpace, toLower)
 import Data.List (isPrefixOf, isSuffixOf, unfoldr)
 
 import System.Console.GetOpt (ArgOrder(Permute), getOpt, ArgDescr(..), OptDescr(..), usageInfo)
-import System.Environment    (getArgs, getProgName)
 import System.Exit           (exitFailure)
 import Text.Read             (readMaybe)
 
@@ -27,13 +29,15 @@ import System.IO (hPutStr, stderr)
 import LibBF
 import Numeric
 
-import Data.SBV
+import Data.SBV           hiding (crack)
 import Data.SBV.Float     hiding (FP)
 import Data.SBV.Dynamic   hiding (satWith)
 import Data.SBV.Internals hiding (free)
 
 import Data.Version    (showVersion)
 import Paths_crackNum  (version)
+
+import CrackNum.TestSuite
 
 -- | Copyright info
 copyRight :: String
@@ -211,32 +215,40 @@ die xs = do hPutStr stderr $ unlines $ "ERROR:" : map ("  " ++) xs
             exitFailure
 
 -- | main entry point to crackNum
-main :: IO ()
-main = do argv <- getArgs
-          pn   <- getProgName
+crack :: String -> [String] -> IO ()
+crack pn argv = case getOpt Permute pgmOptions argv of
+                  (_,  _,  errs@(_:_)) -> die $ errs ++ lines (helpStr pn)
+                  (os, rs, [])
+                    | Version `elem` os -> putStrLn $ pn ++ " v" ++ showVersion version ++ ", " ++ copyRight
+                    | Help    `elem` os -> usage pn
+                    | True              -> do let rm = case reverse [r | RMode r <- os] of
+                                                         (r:_) -> r
+                                                         _     -> RNE
 
-          case getOpt Permute pgmOptions argv of
-            (_,  _,  errs@(_:_)) -> die $ errs ++ lines (helpStr pn)
-            (os, rs, [])
-              | Version `elem` os -> putStrLn $ pn ++ " v" ++ showVersion version ++ ", " ++ copyRight
-              | Help    `elem` os -> usage pn
-              | True              -> do let rm = case reverse [r | RMode r <- os] of
-                                                   (r:_) -> r
-                                                   _     -> RNE
+                                                  arg = dropWhile isSpace $ unwords rs
 
-                                            arg = dropWhile isSpace $ unwords rs
-
-                                        case ([b | BadFlag b <- os], filter (not . isRMode) os) of
-                                          (e:_,  _) -> die e
-                                          (_,  [Signed   n]) -> process (SInt   n) rm arg
-                                          (_,  [Unsigned n]) -> process (SWord  n) rm arg
-                                          (_,  [Floating s]) -> process (SFloat s) rm arg
-                                          _                  -> usage pn
+                                              case ([b | BadFlag b <- os], filter (not . isRMode) os) of
+                                                (e:_,  _) -> die e
+                                                (_,  [Signed   n]) -> process (SInt   n) rm arg
+                                                (_,  [Unsigned n]) -> process (SWord  n) rm arg
+                                                (_,  [Floating s]) -> process (SFloat s) rm arg
+                                                _                  -> usage pn
 
 -- | Kinds of numbers we understand
 data NKind = SInt   Int -- ^ Signed   integer of n bits
            | SWord  Int -- ^ Unsigned integer of n bits
            | SFloat FP  -- ^ Floating point with precision
+
+-- | main entry point to crackNum
+main :: IO ()
+main = do argv <- getArgs
+          pn   <- getProgName
+
+          let rt = "--runTests"
+
+          if rt `elem` argv
+             then withArgs (filter (`notElem` [rt, "--"]) argv) runTests
+             else crack pn argv
 
 -- | Perform the encoding/decoding
 process :: NKind -> RM -> String -> IO ()

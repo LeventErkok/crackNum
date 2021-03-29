@@ -1,0 +1,17 @@
+Arguments: -f3+4 2.5
+Exit code: ExitSuccess
+Satisfiable. Model:
+  ENCODED = 2.5 :: FloatingPoint 3 4
+                  6 543 210
+                  S E3- S3-
+   Binary layout: 0 100 010
+      Hex layout: 22
+       Precision: 3 exponent bits, 3 significand bits
+            Sign: Positive
+        Exponent: 1 (Stored: 4, Bias: 3)
+  Classification: FP_NORMAL
+          Binary: 0b1.01p1
+           Octal: 0o2.4
+         Decimal: 2.5
+             Hex: 0x2.8
+   Rounding mode: RNE: Round nearest ties to even.
