@@ -58,7 +58,7 @@ sdist: install
 clean:
 	@rm -rf dist-newstyle
 
-release: clean install sdist hlint
+release: clean install sdist hlint test checkLinks
 	@echo "*** crackNum is ready for release!"
 
 hlint: install
@@ -67,6 +67,9 @@ hlint: install
 
 test:
 	@crackNum --runTests -- -j $(NO_OF_CORES) ${TESTTARGET} ${TESTACCEPT} ${TESTHIDE}
+
+checkLinks:
+	@brok --no-cache --only-failures $(DOCTESTSOURCES) COPYRIGHT LICENSE $(wildcard *.md)
 
 ci:
 	haskell-ci crackNum.cabal --no-tests --no-benchmarks --no-doctest --no-hlint --email-notifications
