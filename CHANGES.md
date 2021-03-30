@@ -1,9 +1,10 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 2.3, 2020-09-05
+* Latest Hackage released version: 3.0, 2021-03-29
 
-### Version 3.0, Not yet released
+### Version 3.0, 2021-03-29
+
   * A complete rewrite, much simplified, and supporting
     arbitrary precision floats. Some of the old features
     and the library are dropped; so if you rely on the library
@@ -12,6 +13,7 @@
     strongly recommended.
 
 ### Version 2.4, 2020-09-05
+
   * Changes required to compile cleanly with GHC 8.10.2
 
 ### Version 2.3, 2018-11-17

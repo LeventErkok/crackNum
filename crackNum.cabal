@@ -1,10 +1,11 @@
+Cabal-version      : 2.2
 Name               : crackNum
 Version            : 3.0
 Synopsis           : Crack various integer and floating-point data formats
 Description        : Crack IEEE-754 float formats and arbitrary sized words and integers, showing the layout.
                      .
                      For details, please see: <http://github.com/LeventErkok/crackNum/>
-License            : BSD3
+License            : BSD-3-Clause
 License-file       : LICENSE
 Author             : Levent Erkok
 Homepage           : http://github.com/LeventErkok/CrackNum
@@ -12,10 +13,9 @@ Maintainer         : erkokl@gmail.com
 Copyright          : Levent Erkok
 Category           : Tools
 Build-type         : Simple
-Cabal-version      : >= 1.8
 Extra-Source-Files : README.md, COPYRIGHT, CHANGES.md
 
-Tested-With       : GHC==8.10.2
+Tested-With       : GHC==9.0.1
 
 source-repository head
     type:       git
