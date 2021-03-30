@@ -376,7 +376,7 @@ fixup :: String -> String
 fixup inp
  | linp `elem` ["inf",  "infinity"]  = "Infinity"
  | linp `elem` ["-inf", "-infinity"] = "-Infinity"
- | linp `elem` ["nan"]               = "NaN"
- | linp `elem` ["-nan"]              = "-NaN"
+ | linp == "nan"                     = "NaN"
+ | linp == "-nan"                    = "-NaN"
  | True                              = inp
  where linp = map toLower inp
