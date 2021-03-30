@@ -1,7 +1,11 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 3.0, 2021-03-29
+* Latest Hackage released version: 3.1, 2021-03-29
+
+### Version 3.1, 2021-03-29
+  
+  * Fix readme
 
 ### Version 3.0, 2021-03-29
 
