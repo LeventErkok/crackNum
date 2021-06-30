@@ -343,7 +343,7 @@ process num rm inp = case num of
         note :: Maybe String -> IO ()
         note mbs = do putStrLn $ "   Rounding mode: " ++ show rm
                       case mbs of
-                        Nothing -> pure ()
+                        Nothing -> putStrLn $ "            Note: Conversion from " ++ show inp ++ " was exact. No rounding happened."
                         Just s  -> putStrLn $ "            Note: Conversion from " ++ show inp ++ " was not faithful. Status: " ++ s ++ "."
 
         ef :: FP -> IO ()
