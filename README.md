@@ -23,6 +23,7 @@ Satisfiable. Model:
          Decimal: -2300000.0
              Hex: -0x2.3186p+20
    Rounding mode: RNE: Round nearest ties to even.
+            Note: Conversion from "-2.3e6" was exact. No rounding happened.
 ```
 
 ### Example: Decode a single-precision IEEE754 number float from memory-layout
@@ -116,6 +117,6 @@ Examples:
        - You can use _,- or space as a digit to improve readability for the pattern to be decoded
 ```
 
-VIM users: You can use the https://github.com/LeventErkok/crackNum/blob/master/crackNum.vim file to
+VIM users: You can use the http://github.com/LeventErkok/crackNum/blob/master/crackNum.vim file to
 use CrackNum directly from VIM. Simply locate your cursor on the text to crack, and use the
 command `:CrackNum options`.
