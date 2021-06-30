@@ -1,7 +1,11 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 3.1, 2021-03-29
+* Latest Hackage released version: 3.2, 2021-06-30
+
+### Version 3.2, 2021-06-30
+
+  * Add an explicit note when conversion is exact.
 
 ### Version 3.1, 2021-03-29
   
