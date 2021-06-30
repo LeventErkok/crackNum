@@ -16,3 +16,4 @@ Satisfiable. Model:
          Decimal: 2.5
              Hex: 0x2.8
    Rounding mode: RNE: Round nearest ties to even.
+            Note: Conversion from "2.5" was exact. No rounding happened.
