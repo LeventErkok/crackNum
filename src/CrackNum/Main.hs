@@ -295,7 +295,7 @@ process num rm inp = case num of
         di :: Bool -> Int -> IO SatResult
         di sgn n = do bs <- bitString n
                       satWith z3{crackNum=True} $ p bs
-             where p :: [Bool] -> Goal
+             where p :: [Bool] -> ConstraintSet
                    p bs = do x <- (if sgn then sIntN else sWordN) n "DECODED"
                              mapM_ constrain $ zipWith (.==) (map SBV (svBlastBE x)) (map literal bs)
 
@@ -316,17 +316,17 @@ process num rm inp = case num of
                      DP     -> print =<< satWith z3{crackNum=True} (dDouble bs)
                      FP i j -> print =<< satWith z3{crackNum=True} (dFP i j bs)
 
-        dFloat :: [SBool] -> Goal
+        dFloat :: [SBool] -> ConstraintSet
         dFloat  bs = do x <- sFloat "DECODED"
                         let (s, e, m) = blastSFloat x
                         mapM_ constrain $ zipWith (.==) (s : e ++ m) bs
 
-        dDouble :: [SBool] -> Goal
+        dDouble :: [SBool] -> ConstraintSet
         dDouble bs = do x <- sDouble "DECODED"
                         let (s, e, m) = blastSDouble x
                         mapM_ constrain $ zipWith (.==) (s : e ++ m) bs
 
-        dFP :: Int -> Int -> [SBool] -> Goal
+        dFP :: Int -> Int -> [SBool] -> ConstraintSet
         dFP i j bs = do sx <- svNewVar (KFP i j) "DECODED"
                         let bits = svBlastBE sx
                         mapM_ constrain $ zipWith (.==) (map SBV bits) bs
