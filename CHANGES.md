@@ -1,7 +1,10 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 3.3, 2023-04-14
+* Latest Hackage released version: 3.4, 2023-04-14
+
+### Version 3.4, 2023-04-14
+  * Fix compilation in previous build
 
 ### Version 3.3, 2023-04-14
   * Allow compilation with newer versions of SBV
