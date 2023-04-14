@@ -2,8 +2,6 @@
 
 On Hackage: http://hackage.haskell.org/package/crackNum
 
-[![Build Status](http://img.shields.io/travis/LeventErkok/crackNum.svg?label=Build)](http://travis-ci.org/LeventErkok/crackNum)
-
 ### Example: Encode a decimal number as a single-precision IEEE754 number
 ```
 $ crackNum -fsp -- -2.3e6
