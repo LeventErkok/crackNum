@@ -337,7 +337,7 @@ process num rm inp = case num of
                         _  -> (v, Just (trim (show s)))
           where bfOpts = allowSubnormal <> rnd (toLibBFRM rm) <> expBits (fromIntegral i) <> precBits (fromIntegral j)
                 (v, s) = bfFromString 10 bfOpts inp
-                trim xs | "[" `isPrefixOf` xs && "]" `isSuffixOf` xs = init (tail xs)
+                trim xs | "[" `isPrefixOf` xs && "]" `isSuffixOf` xs = init (drop 1 xs)
                         | True                                       = xs
 
         note :: Maybe String -> IO ()
