@@ -1,7 +1,10 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 3.4, 2023-04-14
+* Latest Hackage released version: 3.5, 2023-04-11
+
+### Version 3.5, 2024-01-11
+  * Resolve compilation issues with GHC 9.8 series
 
 ### Version 3.4, 2023-04-14
   * Fix compilation in previous build
