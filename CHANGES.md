@@ -1,7 +1,12 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 3.5, 2023-04-11
+* Latest Hackage released version: 3.6, 2024-01-24
+
+### Version 3.6, 2024-01-24
+  * Be more clear when the provided input isn't a recognizable float,
+    instead of treating it as NaN implicitly. Thanks to Dmitry Blotsky for
+    pointing out the confusion.
 
 ### Version 3.5, 2024-01-11
   * Resolve compilation issues with GHC 9.8 series
