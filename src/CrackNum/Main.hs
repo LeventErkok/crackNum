@@ -360,12 +360,19 @@ process num rm inp = case num of
                                             note $ snd $ convert 11 53
                   _                   -> ef (FP 11 53)
          where p :: Double -> Predicate
-               p d = do x <- sDouble"ENCODED"
+               p d = do x <- sDouble "ENCODED"
                         pure $ x .=== literal d
 
         ef (FP i j) = do let (v, mbS) = convert i j
-                         print =<< satWith z3{crackNum=True} (p v)
-                         note mbS
+                         if bfIsNaN v
+                            then die [ "Input does not represent floating point number we recognize."
+                                     , "Saw: " ++ inp
+                                     , ""
+                                     , "For decoding bit-strings, prefix them with 0x or 0b, and"
+                                     , "provide a hexadecimal or binary representation of the input."
+                                     ]
+                            else do print =<< satWith z3{crackNum=True} (p v)
+                                    note mbS
           where p :: BigFloat -> Predicate
                 p bf = do let k = KFP i j
                           sx <- svNewVar k "ENCODED"
