@@ -310,11 +310,20 @@ process num rm inp = case num of
                           pure $ SBV x .== v
 
         df :: FP -> IO ()
-        df fp = do bs <- map literal <$> bitString (fpSize fp)
+        df fp = do allBits <- bitString (fpSize fp)
+
+                   let bs  = map literal allBits
+                       config = z3{ crackNum            = True
+                                  , crackNumSurfaceVals = [("DECODED", foldr (\(idx, b) sofar -> if b then setBit sofar idx
+                                                                                                      else        sofar)
+                                                                             (0 :: Integer)
+                                                                             (zip [0..] (reverse allBits)))]
+                                  }
+
                    case fp of
-                     SP     -> print =<< satWith z3{crackNum=True} (dFloat  bs)
-                     DP     -> print =<< satWith z3{crackNum=True} (dDouble bs)
-                     FP i j -> print =<< satWith z3{crackNum=True} (dFP i j bs)
+                     SP     -> print =<< satWith config (dFloat  bs)
+                     DP     -> print =<< satWith config (dDouble bs)
+                     FP i j -> print =<< satWith config (dFP i j bs)
 
         dFloat :: [SBool] -> ConstraintSet
         dFloat  bs = do x <- sFloat "DECODED"
