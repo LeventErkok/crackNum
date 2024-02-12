@@ -84,6 +84,7 @@ data Flag = Signed   Int       -- ^ Crack as a signed    word with the given num
           | Unsigned Int       -- ^ Crack as an unsigned word with the given number of bits
           | Floating FP        -- ^ Crack as the corresponding floating-point type
           | RMode    RM        -- ^ Rounding mode to use
+          | Lanes    Int       -- ^ How many lanes to decode?
           | BadFlag  [String]  -- ^ Bad input
           | Version            -- ^ Version
           | Help               -- ^ Show help
@@ -93,6 +94,11 @@ data Flag = Signed   Int       -- ^ Crack as a signed    word with the given num
 isRMode :: Flag -> Bool
 isRMode RMode{} = True
 isRMode _       = False
+
+-- | Is this lanes flag
+isLanes :: Flag -> Bool
+isLanes Lanes{} = True
+isLanes _       = False
 
 -- | Given an integer flag value, turn it into a flag
 getSize :: String -> (Int -> Flag) -> String -> Flag
@@ -169,12 +175,13 @@ getRM m     = BadFlag $  [ "Invalid rounding mode."
 -- | Options we accept
 pgmOptions :: [OptDescr Flag]
 pgmOptions = [
-      Option "i"  []          (ReqArg (getSize "-i" Signed)   "N" )  "Signed   integer of N-bits"
-    , Option "w"  []          (ReqArg (getSize "-w" Unsigned) "N" )  "Unsigned integer of N-bits"
-    , Option "f"  []          (ReqArg getFP                   "fp")  "Floating point format fp"
-    , Option "r"  []          (ReqArg (getRM . map toLower)   "rm")  "Rounding mode to use. If not given, Nearest-ties-to-Even."
-    , Option "h?" ["help"]    (NoArg Help)                           "print help, with examples"
-    , Option "v"  ["version"] (NoArg Version)                        "print version info"
+      Option "i"  []          (ReqArg (getSize "-i" Signed)   "N" )    "Signed   integer of N-bits"
+    , Option "w"  []          (ReqArg (getSize "-w" Unsigned) "N" )    "Unsigned integer of N-bits"
+    , Option "f"  []          (ReqArg getFP                   "fp")    "Floating point format fp"
+    , Option "r"  []          (ReqArg (getRM . map toLower)   "rm")    "Rounding mode to use. If not given, Nearest-ties-to-Even."
+    , Option "l"  []          (ReqArg (getSize "-l" Lanes)    "lanes") "Number of lanes to decode"
+    , Option "h?" ["help"]    (NoArg Help)                             "print help, with examples"
+    , Option "v"  ["version"] (NoArg Version)                          "print version info"
     ]
 
 -- | Help info
@@ -225,13 +232,17 @@ crack pn argv = case getOpt Permute pgmOptions argv of
                                                          (r:_) -> r
                                                          _     -> RNE
 
+                                                  ls = case reverse [l | Lanes l <- os] of
+                                                         (l:_) -> l
+                                                         _     -> 1
+
                                                   arg = dropWhile isSpace $ unwords rs
 
-                                              case ([b | BadFlag b <- os], filter (not . isRMode) os) of
+                                              case ([b | BadFlag b <- os], filter (\o -> not (isRMode o || isLanes o)) os) of
                                                 (e:_,  _) -> die e
-                                                (_,  [Signed   n]) -> process (SInt   n) rm arg
-                                                (_,  [Unsigned n]) -> process (SWord  n) rm arg
-                                                (_,  [Floating s]) -> process (SFloat s) rm arg
+                                                (_,  [Signed   n]) -> process ls (SInt   n) rm arg
+                                                (_,  [Unsigned n]) -> process ls (SWord  n) rm arg
+                                                (_,  [Floating s]) -> process ls (SFloat s) rm arg
                                                 _                  -> usage pn
 
 -- | Kinds of numbers we understand
@@ -251,11 +262,17 @@ main = do argv <- getArgs
              else crack pn argv
 
 -- | Perform the encoding/decoding
-process :: NKind -> RM -> String -> IO ()
-process num rm inp = case num of
-                       SInt   n -> print =<< (if decode then di else ei) True  n
-                       SWord  n -> print =<< (if decode then di else ei) False n
-                       SFloat s -> (if decode then df else ef) s
+process :: Int -> NKind -> RM -> String -> IO ()
+process lanes num rm inp
+   | not decode && lanes > 1
+   = die [ "Encoding requested with number of lanes = " ++ show lanes
+         , "Lanes are only supported for decoding values."
+         ]
+   | True
+   = case num of
+       SInt   n -> print =<< (if decode then di else ei) True  n
+       SWord  n -> print =<< (if decode then di else ei) False n
+       SFloat s -> (if decode then df else ef) s
   where decode = any (`isPrefixOf` inp) ["0x", "0b"]
 
         bitString n = do let isSkippable c = c `elem` "_-" || isSpace c
