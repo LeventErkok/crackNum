@@ -3,6 +3,9 @@
 
 * Latest Hackage released version: 3.6, 2024-01-24
 
+### Version 3.7, Not yet released
+  * Support signaling/quiet indication for decoded NaN values.
+
 ### Version 3.6, 2024-01-24
   * Be more clear when the provided input isn't a recognizable float,
     instead of treating it as NaN implicitly. Thanks to Dmitry Blotsky for
