@@ -11,6 +11,7 @@
 
 {-# LANGUAGE CPP                 #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections       #-}
 
 {-# OPTIONS_GHC -Wall -Werror #-}
 
@@ -217,6 +218,7 @@ usage pn = putStr $ unlines [ helpStr pn
                             , "         Input must have one of these prefixes."
                             , "       - You can use _,- or space as a digit to improve readability for the pattern to be decoded"
                             , "       - With -lN parameter, you can decode multiple lanes of data."
+                            , "       - If you use verilog input format, then we will infer the number of lanes unless you provide it."
                             ]
 
 -- | Terminate early
@@ -235,26 +237,43 @@ crack pn argv = case getOpt Permute pgmOptions argv of
                                                          (r:_) -> r
                                                          _     -> RNE
 
-                                                  lanes = case reverse [l | Lanes l <- os] of
-                                                            (l:_) -> l
-                                                            _     -> 1
+                                                  (tryInfer, lanesGiven) = case reverse [l | Lanes l <- os] of
+                                                                             (l:_) -> (False, l)
+                                                                             _     -> (True,  1)
 
                                                   arg = dropWhile isSpace $ unwords rs
 
-                                              kind <- case ([b | BadFlag b <- os], filter (\o -> not (isRMode o || isLanes o)) os) of
-                                                        (e:_, _)            -> die e
-                                                        (_,   [Signed   n]) -> pure $ SInt   n
-                                                        (_,   [Unsigned n]) -> pure $ SWord  n
-                                                        (_,   [Floating s]) -> pure $ SFloat s
-                                                        _                   -> do usage pn
-                                                                                  exitFailure
+                                              (kind, eSize) <- case ([b | BadFlag b <- os], filter (\o -> not (isRMode o || isLanes o)) os) of
+                                                                 (e:_, _)            -> die e
+                                                                 (_,   [Signed   n]) -> pure (SInt   n, n)
+                                                                 (_,   [Unsigned n]) -> pure (SWord  n, n)
+                                                                 (_,   [Floating s]) -> pure (SFloat s, fpSize s)
+                                                                 _                   -> do usage pn
+                                                                                           exitFailure
 
-                                              let decode = case arg of
-                                                             '0':'x':_ -> True
-                                                             '0':'b':_ -> True
-                                                             _         -> case break (`elem` "'h") arg of
-                                                                           (pre@(_:_), '\'':'h':_) -> all isDigit pre
-                                                                           _                       -> False
+                                              let inferLanes :: Int -> IO (Maybe Int)
+                                                  inferLanes prefix
+                                                    | prefix `rem` eSize == 0 = pure $ Just (prefix `div` eSize)
+                                                    | True                    = die [ "Verilog notation size mismatch:"
+                                                                                    , "  Input length: " ++ show prefix
+                                                                                    , "  Element size: " ++ show eSize
+                                                                                    , "Length must be an exact multiple of the element size."
+                                                                                    ]
+
+                                              (decode, lanesInferred) <- case arg of
+                                                                           '0':'x':_ -> pure (True, Nothing)
+                                                                           '0':'b':_ -> pure (True, Nothing)
+                                                                           _         -> case break (`elem` "'h") arg of
+                                                                                          (pre@(_:_), '\'':'h':_)
+                                                                                            | all isDigit pre -> (True,) <$> inferLanes (read pre)
+                                                                                          _                   -> pure (False, Nothing)
+
+                                              let lanes = case tryInfer of
+                                                            False -> lanesGiven
+                                                            True  -> case lanesInferred of
+                                                                       Nothing -> lanesGiven
+                                                                       Just i  -> i
+
                                               if decode
                                                  then decodeAllLanes lanes kind    arg
                                                  else encodeLane     lanes kind rm arg
@@ -285,7 +304,7 @@ decodeAllLanes lanes kind arg = do
                                      , ""
                                      , "Please report this as a bug!"
                                      ]
-                                  decodeLane curLaneBits kind
+                                  decodeLane (if lanes == 1 then Nothing else Just i) curLaneBits kind
                                   laneLoop (i-1) remBits
    laneLoop (lanes - 1) bits
 -- | Kinds of numbers we understand
@@ -342,18 +361,22 @@ parseToBits inp = do
      pure $ pad ++ res
 
 -- | Decoding
-decodeLane :: [Bool] -> NKind -> IO ()
-decodeLane inputBits kind = case kind of
-                              SInt   n -> print =<< di True  n
-                              SWord  n -> print =<< di False n
-                              SFloat s -> df s
+decodeLane :: Maybe Int -> [Bool] -> NKind -> IO ()
+decodeLane mbLane inputBits kind = case kind of
+                                    SInt   n -> print =<< di True  n
+                                    SWord  n -> print =<< di False n
+                                    SFloat s -> df s
   where bitString n = do let bits 1 = "one bit"
                              bits b = show b ++ " bits"
 
+                             extra  = case mbLane of
+                                        Nothing -> ""
+                                        Just i  -> "Lane " ++ show i ++ " "
+
                          case length inputBits `compare` n of
                            EQ -> pure inputBits
-                           LT -> die ["Input needs to be " ++ show n ++ " bits wide, it's too short by " ++ bits (n - length inputBits)]
-                           GT -> die ["Input needs to be " ++ show n ++ " bits wide, it's too long by "  ++ bits (length inputBits - n)]
+                           LT -> die [extra ++ "Input needs to be " ++ show n ++ " bits wide, it's too short by " ++ bits (n - length inputBits)]
+                           GT -> die [extra ++ "Input needs to be " ++ show n ++ " bits wide, it's too long by "  ++ bits (length inputBits - n)]
 
         di :: Bool -> Int -> IO SatResult
         di sgn n = do bs <- bitString n
