@@ -128,21 +128,21 @@ Usage: crackNum value OR binary/hex-pattern
 
 Examples:
  Encoding:
-   crackNum -i4   -- -2                   -- encode as 4-bit signed integer
-   crackNum -w4   2                       -- encode as 4-bit unsigned integer
-   crackNum -f3+4 2.5                     -- encode as float with 3 bits exponent, 4 bits significand
-   crackNum -f3+4 2.5 -rRTZ               -- encode as above, but use RTZ rounding mode.
-   crackNum -fbp  2.5                     -- encode as a brain-precision float
-   crackNum -fdp  2.5                     -- encode as a double-precision float
+   crackNum -i4   -- -2                    -- encode as 4-bit signed integer
+   crackNum -w4   2                        -- encode as 4-bit unsigned integer
+   crackNum -f3+4 2.5                      -- encode as float with 3 bits exponent, 4 bits significand
+   crackNum -f3+4 2.5 -rRTZ                -- encode as above, but use RTZ rounding mode.
+   crackNum -fbp  2.5                      -- encode as a brain-precision float
+   crackNum -fdp  2.5                      -- encode as a double-precision float
 
  Decoding:
-   crackNum -i4      0b0110               -- decode as 4-bit signed integer, from binary
-   crackNum -w4      0xE                  -- decode as 4-bit unsigned integer, from hex
-   crackNum -f3+4    0b0111001            -- decode as float with 3 bits exponent, 4 bits significand
-   crackNum -fbp     0x000F               -- decode as a brain-precision float
-   crackNum -fdp     0x8000000000000000   -- decode as a double-precision float
-   crackNum -l4 -fhp 0x8000000000000000   -- decode as a double-precision float
-   crackNum -l4 -fhp 64'hbdffaaffdc71fc60 -- decode as half-precision floatm over 4 lanes
+   crackNum -i4      0b0110                -- decode as 4-bit signed integer, from binary
+   crackNum -w4      0xE                   -- decode as 4-bit unsigned integer, from hex
+   crackNum -f3+4    0b0111001             -- decode as float with 3 bits exponent, 4 bits significand
+   crackNum -fbp     0x000F                -- decode as a brain-precision float
+   crackNum -fdp     0x8000000000000000    -- decode as a double-precision float
+   crackNum -fhp     0x8000000000000000    -- decode as a double-precision float
+   crackNum -l4 -fhp 64\'hbdffaaffdc71fc60 -- decode as half-precision float over 4 lanes using verilog notation
 
  Notes:
    - For encoding:
