@@ -63,7 +63,8 @@ tests = testGroup "CrackNum" [
             ,  gold "decode2" ["-f3+4", "0b0111001"]
             ,  gold "decode3" ["-fbp",  "0x000F"]
             ,  gold "decode4" ["-fdp",  "0x8000000000000000"]
-             , gold "decode5" ["-fhp",  "0x7c01"]
+            ,  gold "decode5" ["-fhp",  "0x7c01"]
+            ,  gold "decode6" ["-fhp",  "-l8", "128'hffffffffffffffffbdffaaffdc71fc60"]
             ]
           , testGroup "Bad" [
                gold "badInvocation0" ["-f3+4", "0b01"]

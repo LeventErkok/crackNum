@@ -245,7 +245,12 @@ crack pn argv = case getOpt Permute pgmOptions argv of
                                                         _                   -> do usage pn
                                                                                   exitFailure
 
-                                              let decode = any (`isPrefixOf` arg) ["0x", "0b"]
+                                              let decode = case arg of
+                                                             '0':'x':_ -> True
+                                                             '0':'b':_ -> True
+                                                             _         -> case break (`elem` "'h") arg of
+                                                                           (pre@(_:_), '\'':'h':_) -> all isDigit pre
+                                                                           _                       -> False
                                               if decode
                                                  then decodeAllLanes lanes kind    arg
                                                  else encodeLane     lanes kind rm arg
@@ -299,12 +304,15 @@ parseToBits :: String -> IO [Bool]
 parseToBits inp = do
      let isSkippable c = c `elem` "_-" || isSpace c
 
-     (isHex, stream) <- case map toLower (filter (not . isSkippable) inp) of
-                          '0':'x':rest -> pure (True,  rest)
-                          '0':'b':rest -> pure (False, rest)
-                          _            -> die [ "Input string must start with 0b or 0x for decoding."
-                                              , "Received prefix: " ++ show (take 2 inp)
-                                              ]
+     (mbPadTo, isHex, stream) <- case map toLower (filter (not . isSkippable) inp) of
+                                   '0':'x':rest -> pure (Nothing, True,  rest)
+                                   '0':'b':rest -> pure (Nothing, False, rest)
+                                   _            ->
+                                     case break (`elem` "'h") inp of
+                                       (pre@(_:_), '\'' : 'h' : rest) | all isDigit pre -> pure (Just (read pre), True, rest)
+                                       _  -> die [ "Input string must start with 0b, 0x, or N'h for decoding."
+                                                 , "Received prefix: " ++ show (take 2 inp)
+                                                 ]
 
      let cvtBin '1' = pure [True]
          cvtBin '0' = pure [False]
@@ -321,7 +329,13 @@ parseToBits inp = do
          cvt i | isHex = concat <$> mapM cvtHex i
                | True  = concat <$> mapM cvtBin i
 
-     cvt stream
+     res <- cvt stream
+
+     let pad = case mbPadTo of
+                 Nothing -> []
+                 Just n  -> replicate (n - length res) False
+
+     pure $ pad ++ res
 
 -- | Decoding
 decodeLane :: [Bool] -> NKind -> IO ()
@@ -434,7 +448,7 @@ encodeLane lanes num rm inp
                             then die [ "Input does not represent floating point number we recognize."
                                      , "Saw: " ++ inp
                                      , ""
-                                     , "For decoding bit-strings, prefix them with 0x or 0b, and"
+                                     , "For decoding bit-strings, prefix them with 0x, N'h, 0b and"
                                      , "provide a hexadecimal or binary representation of the input."
                                      ]
                             else do print =<< satWith z3{crackNum=True} (p v)
