@@ -153,6 +153,7 @@ Examples:
          Input must have one of these prefixes.
        - You can use _,- or space as a digit to improve readability for the pattern to be decoded
        - With -lN parameter, you can decode multiple lanes of data.
+       - If you use verilog input format, then we will infer the number of lanes unless you provide it.
 ```
 
 VIM users: You can use the http://github.com/LeventErkok/crackNum/blob/master/crackNum.vim file to
