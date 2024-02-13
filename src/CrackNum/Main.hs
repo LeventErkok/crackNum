@@ -16,15 +16,14 @@
 
 module Main(main) where
 
-import System.Environment (getArgs, getProgName, withArgs)
-import Data.Char (isDigit, isSpace, toLower)
-import Data.List (isPrefixOf, isSuffixOf, unfoldr)
-
+import Control.Monad         (when)
+import Data.Char             (isDigit, isSpace, toLower)
+import Data.List             (isPrefixOf, isSuffixOf, unfoldr)
+import Text.Read             (readMaybe)
+import System.Environment    (getArgs, getProgName, withArgs)
 import System.Console.GetOpt (ArgOrder(Permute), getOpt, ArgDescr(..), OptDescr(..), usageInfo)
 import System.Exit           (exitFailure)
-import Text.Read             (readMaybe)
-
-import System.IO (hPutStr, stderr)
+import System.IO             (hPutStr, stderr)
 
 import LibBF
 import Numeric
@@ -232,19 +231,54 @@ crack pn argv = case getOpt Permute pgmOptions argv of
                                                          (r:_) -> r
                                                          _     -> RNE
 
-                                                  ls = case reverse [l | Lanes l <- os] of
-                                                         (l:_) -> l
-                                                         _     -> 1
+                                                  lanes = case reverse [l | Lanes l <- os] of
+                                                            (l:_) -> l
+                                                            _     -> 1
 
                                                   arg = dropWhile isSpace $ unwords rs
 
-                                              case ([b | BadFlag b <- os], filter (\o -> not (isRMode o || isLanes o)) os) of
-                                                (e:_,  _) -> die e
-                                                (_,  [Signed   n]) -> process ls (SInt   n) rm arg
-                                                (_,  [Unsigned n]) -> process ls (SWord  n) rm arg
-                                                (_,  [Floating s]) -> process ls (SFloat s) rm arg
-                                                _                  -> usage pn
+                                              kind <- case ([b | BadFlag b <- os], filter (\o -> not (isRMode o || isLanes o)) os) of
+                                                        (e:_, _)            -> die e
+                                                        (_,   [Signed   n]) -> pure $ SInt   n
+                                                        (_,   [Unsigned n]) -> pure $ SWord  n
+                                                        (_,   [Floating s]) -> pure $ SFloat s
+                                                        _                   -> do usage pn
+                                                                                  exitFailure
 
+                                              let decode = any (`isPrefixOf` arg) ["0x", "0b"]
+                                              if decode
+                                                 then decodeAllLanes lanes kind    arg
+                                                 else encodeLane     lanes kind rm arg
+
+decodeAllLanes :: Int -> NKind -> String -> IO ()
+decodeAllLanes lanes kind arg = do
+   when (lanes < 0) $ die
+      ["Number of lanes must be non-negative. Got: " ++ show lanes]
+
+   bits <- parseToBits arg
+
+   let l           = length bits
+       bitsPerLane = l `div` lanes
+
+       header i | lanes == 1 = pure ()
+                | True       = putStrLn $ "== Lane " ++ show i ++ " " ++ replicate 60 '='
+
+   when (l `rem` lanes /= 0) $ die
+      ["Number of lanes is not a divisor of the bit-length: " ++ show (l, lanes)]
+
+   let laneLoop (-1) []      = pure ()
+       laneLoop i    curBits = do header i
+                                  let (curLaneBits, remBits) = splitAt bitsPerLane curBits
+                                  when (length curLaneBits /= bitsPerLane) $ die
+                                     [ "INTERNAL ERROR: Missing lane bits: "
+                                     , "   Current lane bits: " ++ show curLaneBits
+                                     , "   Needed           : " ++ show bitsPerLane
+                                     , ""
+                                     , "Please report this as a bug!"
+                                     ]
+                                  decodeLane curLaneBits kind
+                                  laneLoop (i-1) remBits
+   laneLoop (lanes - 1) bits
 -- | Kinds of numbers we understand
 data NKind = SInt   Int -- ^ Signed   integer of n bits
            | SWord  Int -- ^ Unsigned integer of n bits
@@ -261,53 +295,47 @@ main = do argv <- getArgs
              then withArgs (filter (`notElem` [rt, "--"]) argv) runTests
              else crack pn argv
 
--- | Perform the encoding/decoding
-process :: Int -> NKind -> RM -> String -> IO ()
-process lanes num rm inp
-   | not decode && lanes > 1
-   = die [ "Encoding requested with number of lanes = " ++ show lanes
-         , "Lanes are only supported for decoding values."
-         ]
-   | True
-   = case num of
-       SInt   n -> print =<< (if decode then di else ei) True  n
-       SWord  n -> print =<< (if decode then di else ei) False n
-       SFloat s -> (if decode then df else ef) s
-  where decode = any (`isPrefixOf` inp) ["0x", "0b"]
+parseToBits :: String -> IO [Bool]
+parseToBits inp = do
+     let isSkippable c = c `elem` "_-" || isSpace c
 
-        bitString n = do let isSkippable c = c `elem` "_-" || isSpace c
+     (isHex, stream) <- case map toLower (filter (not . isSkippable) inp) of
+                          '0':'x':rest -> pure (True,  rest)
+                          '0':'b':rest -> pure (False, rest)
+                          _            -> die [ "Input string must start with 0b or 0x for decoding."
+                                              , "Received prefix: " ++ show (take 2 inp)
+                                              ]
 
-                         (isHex, stream) <- case map toLower (filter (not . isSkippable) inp) of
-                                              '0':'x':rest -> pure (True,  rest)
-                                              '0':'b':rest -> pure (False, rest)
-                                              _            -> die [ "Input string must start with 0b or 0x for decoding."
-                                                                  , "Received prefix: " ++ show (take 2 inp)
-                                                                  ]
+     let cvtBin '1' = pure [True]
+         cvtBin '0' = pure [False]
+         cvtBin c   = die  ["Input has a non-binary digit: " ++ show c]
 
-                         let cvtBin '1' = pure [True]
-                             cvtBin '0' = pure [False]
-                             cvtBin c   = die  ["Input has a non-binary digit: " ++ show c]
+         cvtHex c = case readHex [c] of
+                      [(v, "")] -> pure $ pad
+                                        $ map (== (1::Int))
+                                        $ reverse
+                                        $ unfoldr (\x -> if x == 0 then Nothing else Just (x `rem` 2, x `div` 2)) v
+                      _         -> die ["Input has a non-hexadecimal digit: " ++ show c]
+            where pad p = replicate (4 - length p) False ++ p
 
-                             cvtHex c = case readHex [c] of
-                                          [(v, "")] -> pure $ pad
-                                                            $ map (== (1::Int))
-                                                            $ reverse
-                                                            $ unfoldr (\x -> if x == 0 then Nothing else Just (x `rem` 2, x `div` 2)) v
-                                          _         -> die ["Input has a non-hexadecimal digit: " ++ show c]
-                                where pad p = replicate (4 - length p) False ++ p
+         cvt i | isHex = concat <$> mapM cvtHex i
+               | True  = concat <$> mapM cvtBin i
 
-                             cvt i | isHex = concat <$> mapM cvtHex i
-                                   | True  = concat <$> mapM cvtBin i
+     cvt stream
 
-                         encoded <- cvt stream
-
-                         let bits 1 = "one bit"
+-- | Decoding
+decodeLane :: [Bool] -> NKind -> IO ()
+decodeLane inputBits kind = case kind of
+                              SInt   n -> print =<< di True  n
+                              SWord  n -> print =<< di False n
+                              SFloat s -> df s
+  where bitString n = do let bits 1 = "one bit"
                              bits b = show b ++ " bits"
 
-                         case length encoded `compare` n of
-                           EQ -> pure encoded
-                           LT -> die ["Input needs to be " ++ show n ++ " bits wide, it's too short by " ++ bits (n - length encoded)]
-                           GT -> die ["Input needs to be " ++ show n ++ " bits wide, it's too long by "  ++ bits (length encoded - n)]
+                         case length inputBits `compare` n of
+                           EQ -> pure inputBits
+                           LT -> die ["Input needs to be " ++ show n ++ " bits wide, it's too short by " ++ bits (n - length inputBits)]
+                           GT -> die ["Input needs to be " ++ show n ++ " bits wide, it's too long by "  ++ bits (length inputBits - n)]
 
         di :: Bool -> Int -> IO SatResult
         di sgn n = do bs <- bitString n
@@ -315,16 +343,6 @@ process lanes num rm inp
              where p :: [Bool] -> ConstraintSet
                    p bs = do x <- (if sgn then sIntN else sWordN) n "DECODED"
                              mapM_ constrain $ zipWith (.==) (map SBV (svBlastBE x)) (map literal bs)
-
-        ei :: Bool -> Int -> IO SatResult
-        ei sgn n = case reads inp of
-                     [(v :: Integer, "")] -> satWith z3{crackNum=True} $ p v
-                     _                    -> die ["Expected an integer value to decode, received: " ++ show inp]
-          where p :: Integer -> Predicate
-                p iv = do let k = KBounded sgn n
-                              v = SBV $ SVal k $ Left $ mkConstCV k iv
-                          x <- (if sgn then sIntN else sWordN) n "ENCODED"
-                          pure $ SBV x .== v
 
         df :: FP -> IO ()
         df fp = do allBits <- bitString (fpSize fp)
@@ -356,6 +374,28 @@ process lanes num rm inp
         dFP i j bs = do sx <- svNewVar (KFP i j) "DECODED"
                         let bits = svBlastBE sx
                         mapM_ constrain $ zipWith (.==) (map SBV bits) bs
+
+-- | Encoding
+encodeLane :: Int -> NKind -> RM -> String -> IO ()
+encodeLane lanes num rm inp
+  | lanes /= 1
+  = die [ "Lanes argument is only valid with decoding values."
+        , "Received: " ++ show lanes
+        ]
+  | True
+  = case num of
+      SInt   n -> print =<< ei True  n
+      SWord  n -> print =<< ei False n
+      SFloat s -> ef s
+  where ei :: Bool -> Int -> IO SatResult
+        ei sgn n = case reads inp of
+                     [(v :: Integer, "")] -> satWith z3{crackNum=True} $ p v
+                     _                    -> die ["Expected an integer value to decode, received: " ++ show inp]
+          where p :: Integer -> Predicate
+                p iv = do let k = KBounded sgn n
+                              v = SBV $ SVal k $ Left $ mkConstCV k iv
+                          x <- (if sgn then sIntN else sWordN) n "ENCODED"
+                          pure $ SBV x .== v
 
         convert :: Int -> Int -> (BigFloat, Maybe String)
         convert i j = case s of
