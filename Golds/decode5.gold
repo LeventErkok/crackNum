@@ -1,0 +1,15 @@
+Arguments: -fhp 0x7c01
+Exit code: ExitSuccess
+Satisfiable. Model:
+  DECODED = NaN :: FloatingPoint 5 11
+                  1       0
+                  5 43210 9876543210
+                  S -E5-- ---S10----
+   Binary layout: 0 11111 0000000001
+      Hex layout: 7C01
+       Precision: Half (5 exponent bits, 10 significand bits.)
+            Sign: Positive
+        Exponent: 16 (Stored: 31, Bias: 15)
+  Classification: FP_NAN (Signaling)
+           Value: NaN
+            Note: Representation for NaN's is not unique
