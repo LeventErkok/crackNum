@@ -1,0 +1,120 @@
+Arguments: -fhp -l8 128'hffffffffffffffffbdffaaffdc71fc60
+Exit code: ExitSuccess
+== Lane 7 ============================================================
+Satisfiable. Model:
+  DECODED = NaN :: FloatingPoint 5 11
+                  1       0
+                  5 43210 9876543210
+                  S -E5-- ---S10----
+   Binary layout: 1 11111 1111111111
+      Hex layout: FFFF
+       Precision: Half (5 exponent bits, 10 significand bits.)
+            Sign: Negative
+        Exponent: 16 (Stored: 31, Bias: 15)
+  Classification: FP_NAN (Quiet)
+           Value: NaN
+            Note: Representation for NaN's is not unique
+== Lane 6 ============================================================
+Satisfiable. Model:
+  DECODED = NaN :: FloatingPoint 5 11
+                  1       0
+                  5 43210 9876543210
+                  S -E5-- ---S10----
+   Binary layout: 1 11111 1111111111
+      Hex layout: FFFF
+       Precision: Half (5 exponent bits, 10 significand bits.)
+            Sign: Negative
+        Exponent: 16 (Stored: 31, Bias: 15)
+  Classification: FP_NAN (Quiet)
+           Value: NaN
+            Note: Representation for NaN's is not unique
+== Lane 5 ============================================================
+Satisfiable. Model:
+  DECODED = NaN :: FloatingPoint 5 11
+                  1       0
+                  5 43210 9876543210
+                  S -E5-- ---S10----
+   Binary layout: 1 11111 1111111111
+      Hex layout: FFFF
+       Precision: Half (5 exponent bits, 10 significand bits.)
+            Sign: Negative
+        Exponent: 16 (Stored: 31, Bias: 15)
+  Classification: FP_NAN (Quiet)
+           Value: NaN
+            Note: Representation for NaN's is not unique
+== Lane 4 ============================================================
+Satisfiable. Model:
+  DECODED = NaN :: FloatingPoint 5 11
+                  1       0
+                  5 43210 9876543210
+                  S -E5-- ---S10----
+   Binary layout: 1 11111 1111111111
+      Hex layout: FFFF
+       Precision: Half (5 exponent bits, 10 significand bits.)
+            Sign: Negative
+        Exponent: 16 (Stored: 31, Bias: 15)
+  Classification: FP_NAN (Quiet)
+           Value: NaN
+            Note: Representation for NaN's is not unique
+== Lane 3 ============================================================
+Satisfiable. Model:
+  DECODED = -1.499 :: FloatingPoint 5 11
+                  1       0
+                  5 43210 9876543210
+                  S -E5-- ---S10----
+   Binary layout: 1 01111 0111111111
+      Hex layout: BDFF
+       Precision: Half (5 exponent bits, 10 significand bits.)
+            Sign: Negative
+        Exponent: 0 (Stored: 15, Bias: 15)
+  Classification: FP_NORMAL
+          Binary: -0b1.0111111111
+           Octal: -0o1.3774
+         Decimal: -1.499
+             Hex: -0x1.7fc
+== Lane 2 ============================================================
+Satisfiable. Model:
+  DECODED = -0.054657 :: FloatingPoint 5 11
+                  1       0
+                  5 43210 9876543210
+                  S -E5-- ---S10----
+   Binary layout: 1 01010 1011111111
+      Hex layout: AAFF
+       Precision: Half (5 exponent bits, 10 significand bits.)
+            Sign: Negative
+        Exponent: -5 (Stored: 10, Bias: 15)
+  Classification: FP_NORMAL
+          Binary: -0b1.1011111111p-5
+           Octal: -0o3.377p-6
+         Decimal: -0.054657
+             Hex: -0xd.fep-8
+== Lane 1 ============================================================
+Satisfiable. Model:
+  DECODED = -284.25 :: FloatingPoint 5 11
+                  1       0
+                  5 43210 9876543210
+                  S -E5-- ---S10----
+   Binary layout: 1 10111 0001110001
+      Hex layout: DC71
+       Precision: Half (5 exponent bits, 10 significand bits.)
+            Sign: Negative
+        Exponent: 8 (Stored: 23, Bias: 15)
+  Classification: FP_NORMAL
+          Binary: -0b1.0001110001p8
+           Octal: -0o4.342p6
+         Decimal: -284.25
+             Hex: -0x1.1c4p8
+== Lane 0 ============================================================
+Satisfiable. Model:
+  DECODED = NaN :: FloatingPoint 5 11
+                  1       0
+                  5 43210 9876543210
+                  S -E5-- ---S10----
+   Binary layout: 1 11111 0001100000
+      Hex layout: FC60
+       Precision: Half (5 exponent bits, 10 significand bits.)
+            Sign: Negative
+        Exponent: 16 (Stored: 31, Bias: 15)
+  Classification: FP_NAN (Signaling)
+           Value: NaN
+            Note: Representation for NaN's is not unique
