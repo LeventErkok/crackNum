@@ -20,6 +20,7 @@ module Main(main) where
 import Control.Monad         (when)
 import Data.Char             (isDigit, isSpace, toLower)
 import Data.List             (isPrefixOf, isSuffixOf, unfoldr)
+import Data.Maybe            (fromMaybe)
 import Text.Read             (readMaybe)
 import System.Environment    (getArgs, getProgName, withArgs)
 import System.Console.GetOpt (ArgOrder(Permute), getOpt, ArgDescr(..), OptDescr(..), usageInfo)
@@ -268,11 +269,9 @@ crack pn argv = case getOpt Permute pgmOptions argv of
                                                                                             | all isDigit pre -> (True,) <$> inferLanes (read pre)
                                                                                           _                   -> pure (False, Nothing)
 
-                                              let lanes = case tryInfer of
-                                                            False -> lanesGiven
-                                                            True  -> case lanesInferred of
-                                                                       Nothing -> lanesGiven
-                                                                       Just i  -> i
+                                              let lanes
+                                                    | tryInfer = fromMaybe lanesGiven lanesInferred
+                                                    | True     = lanesGiven
 
                                               if decode
                                                  then decodeAllLanes lanes kind    arg
