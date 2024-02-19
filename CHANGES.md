@@ -3,6 +3,13 @@
 
 * Latest Hackage released version: 3.7, 2024-02-15
 
+### Version 3.8, Not yet released
+
+  * Add support for E5M2, which is a synonym for fp5+3
+
+  * Add support for E4M3, which is similar to fp4+4, except it interprets infinity and NaN
+    values differently. We only support decoding for this format, not encoding.
+
 ### Version 3.7, 2024-02-15
 
   * Support signaling/quiet indication for decoded NaN values.
