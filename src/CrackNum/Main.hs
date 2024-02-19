@@ -48,6 +48,8 @@ copyRight = "(c) Levent Erkok. Released with a BSD3 license."
 data FP = SP          -- Single precision
         | DP          -- Double precision
         | FP Int Int  -- Arbitrary precision with given exponent and significand sizes
+        | E5M2        -- Synonym for FP 5 3 (yes, confusing M2->3, but that's the naming)
+        | E4M3        -- Custom FP8 format with no infinities and limited NaNs
         deriving (Show, Eq)
 
 -- | How many bits does this float occupy
@@ -55,6 +57,8 @@ fpSize :: FP -> Int
 fpSize SP       = 32
 fpSize DP       = 64
 fpSize (FP i j) = i+j
+fpSize E5M2     = 8
+fpSize E4M3     = 8
 
 -- | Rounding modes we support
 data RM = RNE  -- ^ Round nearest ties to even
@@ -399,6 +403,8 @@ decodeLane mbLane inputBits kind = case kind of
                      SP     -> print =<< satWith config (dFloat  bs)
                      DP     -> print =<< satWith config (dDouble bs)
                      FP i j -> print =<< satWith config (dFP i j bs)
+                     E5M2   -> print =<< satWith config (dFP 5 3 bs)
+                     E4M3   -> print =<< satWith config (dE4M3 allBits)
 
         dFloat :: [SBool] -> ConstraintSet
         dFloat  bs = do x <- sFloat "DECODED"
@@ -414,6 +420,12 @@ decodeLane mbLane inputBits kind = case kind of
         dFP i j bs = do sx <- svNewVar (KFP i j) "DECODED"
                         let bits = svBlastBE sx
                         mapM_ constrain $ zipWith (.==) (map SBV bits) bs
+
+        dE4M3 [_, True, True, True, True, s1, s2, s3]
+          | [s1, s2, s3] /= [True, True, True]
+          = -- Exceptions in the E4M3 format: Exponent is all 1s but significant isn't all ones
+            error "TBD"
+        dE4M3 allBits = dFP 4 4 (map literal allBits)
 
 -- | Encoding
 encodeLane :: Int -> NKind -> RM -> String -> IO ()
@@ -483,6 +495,15 @@ encodeLane lanes num rm inp
                 p bf = do let k = KFP i j
                           sx <- svNewVar k "ENCODED"
                           pure $ SBV $ sx `svStrongEqual` SVal k (Left (CV k (CFP (fpFromBigFloat i j bf))))
+
+        ef E5M2 = ef (FP 5 3)  -- 3 is intentional; the format ignores the sign storage, but SBV doesn't, following SMTLib
+
+        -- Not yet supported
+        ef E4M3 = die [ "Encoding of E4M3 floating point format is not supported yet."
+                      , ""
+                      , "Only decoding of E4M3 is implemented."
+                      , "Please request this as a feature!"
+                      ]
 
 -- | Convert certain strings to more understandable format by read
 fixup :: String -> String
