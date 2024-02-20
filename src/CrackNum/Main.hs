@@ -435,7 +435,7 @@ decodeLane debug mbLane inputBits kind = case kind of
 
         dFP :: Int -> Int -> [SBool] -> ConstraintSet
         dFP i j bs = do sx <- svNewVar (KFP i j) "DECODED"
-                        let bits = svBlastBE sx
+                        let bits = svBlastBE $ svFloatingPointAsSWord sx
                         mapM_ constrain $ zipWith (.==) (map SBV bits) bs
 
         dE4M3 [_, True, True, True, True, s1, s2, s3]
