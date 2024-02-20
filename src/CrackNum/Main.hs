@@ -21,6 +21,7 @@ import Control.Monad         (when)
 import Data.Char             (isDigit, isSpace, toLower)
 import Data.List             (isPrefixOf, isSuffixOf, unfoldr)
 import Data.Maybe            (fromMaybe)
+
 import Text.Read             (readMaybe)
 import System.Environment    (getArgs, getProgName, withArgs)
 import System.Console.GetOpt (ArgOrder(Permute), getOpt, ArgDescr(..), OptDescr(..), usageInfo)
@@ -412,6 +413,7 @@ decodeLane debug mbLane inputBits kind = case kind of
                                                                                                       else        sofar)
                                                                              (0 :: Integer)
                                                                              (zip [0..] (reverse allBits)))]
+                                  , verbose             = debug
                                   }
 
                    case fp of
