@@ -30,10 +30,10 @@ import System.IO             (hPutStr, stderr)
 import LibBF
 import Numeric
 
-import Data.SBV           hiding (crack)
+import Data.SBV           hiding (crack, satCmd)
 import Data.SBV.Float     hiding (FP)
-import Data.SBV.Dynamic   hiding (satWith)
-import Data.SBV.Internals hiding (free)
+import Data.SBV.Dynamic   hiding (satWith, satCmd)
+import Data.SBV.Internals hiding (free, satCmd)
 
 import Data.Version    (showVersion)
 import Paths_crackNum  (version)
@@ -92,6 +92,7 @@ data Flag = Signed   Int       -- ^ Crack as a signed    word with the given num
           | Lanes    Int       -- ^ How many lanes to decode?
           | BadFlag  [String]  -- ^ Bad input
           | Version            -- ^ Version
+          | Debug              -- ^ Run in debug mode. Debugging only.
           | Help               -- ^ Show help
           deriving (Show, Eq)
 
@@ -104,6 +105,11 @@ isRMode _       = False
 isLanes :: Flag -> Bool
 isLanes Lanes{} = True
 isLanes _       = False
+
+-- | Is this the debug flag?
+isDebug :: Flag -> Bool
+isDebug Debug{} = True
+isDebug _       = False
 
 -- | Given an integer flag value, turn it into a flag
 getSize :: String -> (Int -> Flag) -> String -> Flag
@@ -126,11 +132,13 @@ getSize flg f n = case readMaybe n of
 
 -- | Given a float flag value, turn it into a flag
 getFP :: String -> Flag
-getFP "hp" = Floating $ FP 5 11
-getFP "bp" = Floating $ FP 8  8
-getFP "sp" = Floating SP
-getFP "dp" = Floating DP
-getFP "qp" = Floating $ FP 15 113
+getFP "hp"   = Floating $ FP 5 11
+getFP "bp"   = Floating $ FP 8  8
+getFP "sp"   = Floating SP
+getFP "dp"   = Floating DP
+getFP "qp"   = Floating $ FP 15 113
+getFP "e5m2" = Floating E5M2
+getFP "e4m3" = Floating E4M3
 getFP ab   = case span isDigit ab of
                 (eb@(_:_), '+':r) -> case span isDigit r of
                                       (sp@(_:_), "") -> mkEBSB (read eb) (read sp)
@@ -138,14 +146,16 @@ getFP ab   = case span isDigit ab of
                 _                 -> bad
               where bad = BadFlag [ "Option " ++ show "-f" ++ " requires one of:"
                                   , ""
-                                  , "    hp: Half float          ( 5 +  11)"
-                                  , "    bp: Brain float         ( 8 +   8)"
-                                  , "    sp: Single precision    ( 8 +  24)"
-                                  , "    dp: Single precision    (11 +  53)"
-                                  , "    qp: Quad   precision    (15 + 113)"
-                                  , "   a+b: Arbitrary precision ( a +   b)"
+                                  , "    hp: Half float             ( 5 +  11)"
+                                  , "    bp: Brain float            ( 8 +   8)"
+                                  , "    sp: Single precision       ( 8 +  24)"
+                                  , "    dp: Single precision       (11 +  53)"
+                                  , "    qp: Quad   precision       (15 + 113)"
+                                  , "   a+b: Arbitrary IEEE-754     ( a +   b)"
+                                  , "  e5m2: FP8 format (IEEE-754)  ( 5 +   3)"
+                                  , "  e4m3: FP8 format (Alternate) ( 4 +   4)"
                                   , ""
-                                  , "where first number is the number of bits in the exponent"
+                                  , "In the arbitrary format, the first number is the number of bits in the exponent"
                                   , "and the second number is the number of bits in the significand, including the implicit bit."
                                   ]
                     mkEBSB :: Int -> Int -> Flag
@@ -187,6 +197,7 @@ pgmOptions = [
     , Option "l"  []          (ReqArg (getSize "-l" Lanes)    "lanes") "Number of lanes to decode"
     , Option "h?" ["help"]    (NoArg Help)                             "print help, with examples"
     , Option "v"  ["version"] (NoArg Version)                          "print version info"
+    , Option "d"  ["debug"]   (NoArg Debug)                            "debug mode, developers only"
     ]
 
 -- | Help info
@@ -248,7 +259,9 @@ crack pn argv = case getOpt Permute pgmOptions argv of
 
                                                   arg = dropWhile isSpace $ unwords rs
 
-                                              (kind, eSize) <- case ([b | BadFlag b <- os], filter (\o -> not (isRMode o || isLanes o)) os) of
+                                                  debug = Debug `elem` os
+
+                                              (kind, eSize) <- case ([b | BadFlag b <- os], filter (\o -> not (isRMode o || isLanes o || isDebug o)) os) of
                                                                  (e:_, _)            -> die e
                                                                  (_,   [Signed   n]) -> pure (SInt   n, n)
                                                                  (_,   [Unsigned n]) -> pure (SWord  n, n)
@@ -278,11 +291,11 @@ crack pn argv = case getOpt Permute pgmOptions argv of
                                                     | True     = lanesGiven
 
                                               if decode
-                                                 then decodeAllLanes lanes kind    arg
-                                                 else encodeLane     lanes kind rm arg
+                                                 then decodeAllLanes debug lanes kind    arg
+                                                 else encodeLane     debug lanes kind rm arg
 
-decodeAllLanes :: Int -> NKind -> String -> IO ()
-decodeAllLanes lanes kind arg = do
+decodeAllLanes :: Bool -> Int -> NKind -> String -> IO ()
+decodeAllLanes debug lanes kind arg = do
    when (lanes < 0) $ die
       ["Number of lanes must be non-negative. Got: " ++ show lanes]
 
@@ -307,7 +320,7 @@ decodeAllLanes lanes kind arg = do
                                      , ""
                                      , "Please report this as a bug!"
                                      ]
-                                  decodeLane (if lanes == 1 then Nothing else Just i) curLaneBits kind
+                                  decodeLane debug (if lanes == 1 then Nothing else Just i) curLaneBits kind
                                   laneLoop (i-1) remBits
    laneLoop (lanes - 1) bits
 -- | Kinds of numbers we understand
@@ -364,12 +377,14 @@ parseToBits inp = do
      pure $ pad ++ res
 
 -- | Decoding
-decodeLane :: Maybe Int -> [Bool] -> NKind -> IO ()
-decodeLane mbLane inputBits kind = case kind of
-                                    SInt   n -> print =<< di True  n
-                                    SWord  n -> print =<< di False n
-                                    SFloat s -> df s
-  where bitString n = do let bits 1 = "one bit"
+decodeLane :: Bool -> Maybe Int -> [Bool] -> NKind -> IO ()
+decodeLane debug mbLane inputBits kind = case kind of
+                                           SInt   n -> print =<< di True  n
+                                           SWord  n -> print =<< di False n
+                                           SFloat s -> df s
+  where satCmd = satWith z3{crackNum=True, verbose=debug}
+
+        bitString n = do let bits 1 = "one bit"
                              bits b = show b ++ " bits"
 
                              extra  = case mbLane of
@@ -383,7 +398,7 @@ decodeLane mbLane inputBits kind = case kind of
 
         di :: Bool -> Int -> IO SatResult
         di sgn n = do bs <- bitString n
-                      satWith z3{crackNum=True} $ p bs
+                      satCmd $ p bs
              where p :: [Bool] -> ConstraintSet
                    p bs = do x <- (if sgn then sIntN else sWordN) n "DECODED"
                              mapM_ constrain $ zipWith (.==) (map SBV (svBlastBE x)) (map literal bs)
@@ -428,8 +443,8 @@ decodeLane mbLane inputBits kind = case kind of
         dE4M3 allBits = dFP 4 4 (map literal allBits)
 
 -- | Encoding
-encodeLane :: Int -> NKind -> RM -> String -> IO ()
-encodeLane lanes num rm inp
+encodeLane :: Bool -> Int -> NKind -> RM -> String -> IO ()
+encodeLane debug lanes num rm inp
   | lanes /= 1
   = die [ "Lanes argument is only valid with decoding values."
         , "Received: " ++ show lanes
@@ -439,9 +454,11 @@ encodeLane lanes num rm inp
       SInt   n -> print =<< ei True  n
       SWord  n -> print =<< ei False n
       SFloat s -> ef s
-  where ei :: Bool -> Int -> IO SatResult
+  where satCmd = satWith z3{crackNum=True, verbose=debug}
+
+        ei :: Bool -> Int -> IO SatResult
         ei sgn n = case reads inp of
-                     [(v :: Integer, "")] -> satWith z3{crackNum=True} $ p v
+                     [(v :: Integer, "")] -> satCmd $ p v
                      _                    -> die ["Expected an integer value to decode, received: " ++ show inp]
           where p :: Integer -> Predicate
                 p iv = do let k = KBounded sgn n
@@ -466,7 +483,7 @@ encodeLane lanes num rm inp
 
         ef :: FP -> IO ()
         ef SP = case reads (fixup inp) of
-                  [(v :: Float, "")] -> do print =<< satWith z3{crackNum=True} (p v)
+                  [(v :: Float, "")] -> do print =<< satCmd (p v)
                                            note $ snd $ convert 8 24
                   _                  -> ef (FP 8 24)
          where p :: Float -> Predicate
@@ -474,7 +491,7 @@ encodeLane lanes num rm inp
                         pure $ x .=== literal f
 
         ef DP = case reads (fixup inp) of
-                  [(v :: Double, "")] -> do print =<< satWith z3{crackNum=True} (p v)
+                  [(v :: Double, "")] -> do print =<< satCmd (p v)
                                             note $ snd $ convert 11 53
                   _                   -> ef (FP 11 53)
          where p :: Double -> Predicate
@@ -489,7 +506,7 @@ encodeLane lanes num rm inp
                                      , "For decoding bit-strings, prefix them with 0x, N'h, 0b and"
                                      , "provide a hexadecimal or binary representation of the input."
                                      ]
-                            else do print =<< satWith z3{crackNum=True} (p v)
+                            else do print =<< satCmd (p v)
                                     note mbS
           where p :: BigFloat -> Predicate
                 p bf = do let k = KFP i j
