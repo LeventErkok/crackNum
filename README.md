@@ -125,15 +125,18 @@ Usage: crackNum value OR binary/hex-pattern
   -l lanes             Number of lanes to decode
   -h, -?    --help     print help, with examples
   -v        --version  print version info
+  -d        --debug    debug mode, developers only
 
 Examples:
  Encoding:
-   crackNum -i4   -- -2                    -- encode as 4-bit signed integer
-   crackNum -w4   2                        -- encode as 4-bit unsigned integer
-   crackNum -f3+4 2.5                      -- encode as float with 3 bits exponent, 4 bits significand
-   crackNum -f3+4 2.5 -rRTZ                -- encode as above, but use RTZ rounding mode.
-   crackNum -fbp  2.5                      -- encode as a brain-precision float
-   crackNum -fdp  2.5                      -- encode as a double-precision float
+   crackNum -i4    -- -2                    -- encode as 4-bit signed integer
+   crackNum -w4    2                        -- encode as 4-bit unsigned integer
+   crackNum -f3+4  2.5                      -- encode as float with 3 bits exponent, 4 bits significand
+   crackNum -f3+4  2.5 -rRTZ                -- encode as above, but use RTZ rounding mode.
+   crackNum -fbp   2.5                      -- encode as a brain-precision float
+   crackNum -fdp   2.5                      -- encode as a double-precision float
+   crackNum -fe4m3 2.5                      -- encode as an E4M3 FP8 float
+   crackNum -fe5m2 2.5                      -- encode as an E5M2 FP8 float
 
  Decoding:
    crackNum -i4      0b0110                -- decode as 4-bit signed integer, from binary
