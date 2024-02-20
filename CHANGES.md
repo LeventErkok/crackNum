@@ -10,6 +10,8 @@
   * Add support for E4M3, which is similar to fp4+4, except it interprets infinity and NaN
     values differently. We only support decoding for this format, not encoding.
 
+  * Fix a bug in cracking of arbitrary-sized floats, that yielded wrong values for some NaN cases
+
 ### Version 3.7, 2024-02-15
 
   * Support signaling/quiet indication for decoded NaN values.
