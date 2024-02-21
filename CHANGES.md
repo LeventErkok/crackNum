@@ -5,10 +5,9 @@
 
 ### Version 3.8, Not yet released
 
-  * Add support for E5M2, which is a synonym for fp5+3
-
-  * Add support for E4M3, which is similar to fp4+4, except it interprets infinity and NaN
-    values differently. We only support decoding for this format, not encoding.
+  * Add support for FP8 formats, as decribed in: https://arxiv.org/pdf/2209.05433.pdf
+      - E5M2: Which is essentially a synonym for f5+3
+      - E4M3: Similar to f4+4, except it does not have infinities and interprets NaN values differently
 
   * Fix a bug in cracking of arbitrary-sized floats, that yielded wrong values for some NaN cases
 

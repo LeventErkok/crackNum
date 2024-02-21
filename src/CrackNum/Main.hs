@@ -10,6 +10,7 @@
 -----------------------------------------------------------------------------
 
 {-# LANGUAGE CPP                 #-}
+{-# LANGUAGE DataKinds           #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections       #-}
 
@@ -19,7 +20,7 @@ module Main(main) where
 
 import Control.Monad         (when)
 import Data.Char             (isDigit, isSpace, toLower)
-import Data.List             (isPrefixOf, isSuffixOf, unfoldr)
+import Data.List             (isPrefixOf, isSuffixOf, unfoldr, isInfixOf)
 import Data.Maybe            (fromMaybe)
 
 import Text.Read             (readMaybe)
@@ -35,6 +36,8 @@ import Data.SBV           hiding (crack, satCmd)
 import Data.SBV.Float     hiding (FP)
 import Data.SBV.Dynamic   hiding (satWith, satCmd)
 import Data.SBV.Internals hiding (free, satCmd)
+
+import qualified Data.SBV as SBV
 
 import Data.Version    (showVersion)
 import Paths_crackNum  (version)
@@ -422,8 +425,8 @@ decodeLane debug mbLane inputBits kind = case kind of
                      SP     -> print =<< satWith config (dFloat  bs)
                      DP     -> print =<< satWith config (dDouble bs)
                      FP i j -> print =<< satWith config (dFP i j bs)
-                     E5M2   -> print =<< satWith config (dFP 5 3 bs)
-                     E4M3   -> print =<< satWith config (dE4M3 allBits)
+                     E5M2   -> de5m2 =<< satWith config (dFP 5 3 bs)
+                     E4M3   -> de4m3 config allBits
 
         dFloat :: [SBool] -> ConstraintSet
         dFloat  bs = do x <- sFloat "DECODED"
@@ -440,11 +443,55 @@ decodeLane debug mbLane inputBits kind = case kind of
                         let bits = svBlastBE $ svFloatingPointAsSWord sx
                         mapM_ constrain $ zipWith (.==) (map SBV bits) bs
 
-        dE4M3 [_, True, True, True, True, s1, s2, s3]
+        -- E4M3 deviates from IEEE, so we have to carefully handle the deviations!
+        de4m3 config allBits@[sign, True, True, True, True, s1, s2, s3]
           | [s1, s2, s3] /= [True, True, True]
           = -- Exceptions in the E4M3 format: Exponent is all 1s but significant isn't all ones
-            error "TBD"
-        dE4M3 allBits = dFP 4 4 (map literal allBits)
+            -- So, we have to manipulate the output
+            do res <- satWith config (dFP 4 4 (map literal allBits))
+               case res of
+                 SatResult (Satisfiable{}) -> de4m3Model debug (sign, s1, s2, s3) res
+                 _                         -> print res
+        -- Otherwise, it's just FP 4 4
+        de4m3 config allBits = print =<< satWith config (dFP 4 4 (map literal allBits))
+
+-- Print a model for E5M2, this is the same as dFP 5 3, we just fix the "printed" type
+de5m2 :: SatResult -> IO ()
+de5m2 res = case res of
+             SatResult (Satisfiable{}) -> mapM_ putStrLn $ map fixType (lines (show res))
+             _                         -> print res
+ where fixType :: String -> String
+       fixType s
+         | "DECODED" `isInfixOf` s
+         = takeWhile (/= ':') s ++ ":: E5M2"
+         | True
+         = s
+
+-- Print a deviating model for E4M3:
+de4m3Model :: Bool -> (Bool, Bool, Bool, Bool) -> SatResult -> IO ()
+de4m3Model debug (sign, s1, s2, s3) ieeeResult = do
+        let ifSet True  v = v
+            ifSet False _ = 0
+
+            val, sval :: Double
+            val  = 256 + ifSet s1 128 + ifSet s2 64 + ifSet s3 32
+            sval
+             | sign = -val
+             | True = val
+
+            modifiedResult = SBV.crack debug (literal sval :: SDouble)
+
+            isClassification = ("Classification:" `isInfixOf`)
+
+            fixDecoded l
+              | "DECODED" `isInfixOf` l
+              = "  DECODED = " ++ show sval ++ " :: E4M3"
+              | True
+              = l
+
+        -- Print from the original result upto Classification, rest from the modified result
+        mapM_ putStrLn $ map fixDecoded $ fst $ break isClassification (lines (show ieeeResult))
+        mapM_ putStrLn $                  snd $ break isClassification (lines modifiedResult)
 
 -- | Encoding
 encodeLane :: Bool -> Int -> NKind -> RM -> String -> IO ()
