@@ -588,6 +588,27 @@ unrecognized inp = die [ "Input does not represent floating point number we reco
                        , "provide a hexadecimal or binary representation of the input."
                        ]
 
+-- Bool is True if negative
+data ExtraE3M4 = E240 Bool   -- Not really extra but can be mapped to
+               | E256 Bool
+               | E288 Bool
+               | E320 Bool
+               | E352 Bool
+               | E384 Bool
+               | E416 Bool
+               | E448 Bool
+               deriving Show
+
+toD :: ExtraE3M4 -> Double
+toD (E240 isNeg) = if isNeg then -240 else 240
+toD (E256 isNeg) = if isNeg then -256 else 256
+toD (E288 isNeg) = if isNeg then -288 else 288
+toD (E320 isNeg) = if isNeg then -320 else 320
+toD (E352 isNeg) = if isNeg then -352 else 352
+toD (E384 isNeg) = if isNeg then -384 else 384
+toD (E416 isNeg) = if isNeg then -416 else 416
+toD (E448 isNeg) = if isNeg then -448 else 448
+
 -- Encoding E4M3 is tricky, because of deviation from IEEE. So, we do a case analysis, mostly
 encodeE4M3 :: Bool -> RM -> String -> IO ()
 encodeE4M3 debug rm inp = case reads (fixup True inp) of
@@ -632,17 +653,17 @@ encodeE4M3 debug rm inp = case reads (fixup True inp) of
 
        -- This list is sorted on the first value.
        -- Final bool is True if this value is considered "even" for rounding purposes
-       extraVals :: [(Double, String, Bool)]
-       extraVals =  [(-v, '1':s, eo) | (v, s, eo) <- reverse pos]
-                 ++ [( v, '0':s, eo) | (v, s, eo) <-         pos]
-         where pos = [ (240, "1110111", False)
-                     , (256, "1111000", True)
-                     , (288, "1111001", False)
-                     , (320, "1111010", True)
-                     , (352, "1111011", False)
-                     , (384, "1111100", True)
-                     , (416, "1111101", False)
-                     , (448, "1111110", True)
+       extraVals :: [(ExtraE3M4, String, Bool)]
+       extraVals =  [(v True,  '1':s, eo) | (v, s, eo) <- reverse pos]
+                 ++ [(v False, '0':s, eo) | (v, s, eo) <-         pos]
+         where pos = [ (E240, "1110111", False)
+                     , (E256, "1111000", True)
+                     , (E288, "1111001", False)
+                     , (E320, "1111010", True)
+                     , (E352, "1111011", False)
+                     , (E384, "1111100", True)
+                     , (E416, "1111101", False)
+                     , (E448, "1111110", True)
                      ]
 
        -- Pick the value we land on
@@ -652,12 +673,12 @@ encodeE4M3 debug rm inp = case reads (fixup True inp) of
                   -- The following two can't happen, but just in case:
                   []     -> error $ "encodeE4M3: Empty list of candidates for " ++ show v  -- Can't happen
                   cands  -> error $ "encodeE4M3: More than two candidates for " ++ show v ++ ": " ++ show cands
-         where dists  = [(abs (v - ev), p) | p@(ev, _, _) <- extraVals]
+         where dists  = [(abs (v - toD ev), p) | p@(ev, _, _) <- extraVals]
                minVal = minimum $ map fst dists
 
        -- choose is called if we're smack in between the two values given. Then, we pick
        -- depending on the rounding mode. Note that p1 < p2 is guaranteed here.
-       choose :: Double -> (Double, String, Bool) -> (Double, String, Bool) -> (Double, String, Bool)
+       choose :: Double -> (ExtraE3M4, String, Bool) -> (ExtraE3M4, String, Bool) -> (ExtraE3M4, String, Bool)
        choose v p1@(_, _, eo1) p2@(_, _, eo2) =
            let isNegative = v < 0 || isNegativeZero v
            in case rm of
