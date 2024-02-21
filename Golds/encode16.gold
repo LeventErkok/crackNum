@@ -1,0 +1,18 @@
+Arguments: -fe5m2 2.5
+Exit code: ExitSuccess
+Satisfiable. Model:
+  ENCODED = 2.5 :: E5M2
+                  7 65432 10
+                  S -E5-- S2
+   Binary layout: 0 10000 01
+      Hex layout: 41
+       Precision: 5 exponent bits, 2 significand bits
+            Sign: Positive
+        Exponent: 1 (Stored: 16, Bias: 15)
+  Classification: FP_NORMAL
+          Binary: 0b1.01p1
+           Octal: 0o2.4
+         Decimal: 2.5
+             Hex: 0x2.8
+   Rounding mode: RNE: Round nearest ties to even.
+            Note: Conversion from "2.5" was exact. No rounding happened.
