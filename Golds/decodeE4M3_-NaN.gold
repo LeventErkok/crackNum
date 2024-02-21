@@ -1,0 +1,14 @@
+Arguments: -fe4m3 0b_1111_1111
+Exit code: ExitSuccess
+Satisfiable. Model:
+  DECODED = NaN :: FloatingPoint 4 4
+                  7 6543 210
+                  S -E4- S3-
+   Binary layout: 1 1111 111
+      Hex layout: FF
+       Precision: 4 exponent bits, 3 significand bits
+            Sign: Negative
+        Exponent: 8 (Stored: 15, Bias: 7)
+  Classification: FP_NAN (Quiet)
+           Value: NaN
+            Note: Representation for NaN's is not unique

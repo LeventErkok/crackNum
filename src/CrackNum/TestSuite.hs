@@ -26,14 +26,15 @@ import System.Process (readProcessWithExitCode)
 
 import Data.List (intercalate)
 
-gold :: TestName -> [String] -> TestTree
-gold n args = goldenVsFileDiff n diff gf gfTmp (rm gfTmp >> run)
+gold :: TestName -> String -> TestTree
+gold n as = goldenVsFileDiff n diff gf gfTmp (rm gfTmp >> run)
   where gf    = "Golds" </> n <.> "gold"
         gfTmp = gf ++ "_temp"
 
         rm f  = removeFile f `C.catch` (\(_ :: C.SomeException) -> return ())
 
-        as  = unwords args
+        args = words as
+
         run = do (ec, so, se) <- readProcessWithExitCode "crackNum" args ""
                  writeFile gfTmp $ intercalate "\n" $ [ "Arguments: " ++ as
                                                       , "Exit code: " ++ show ec
@@ -50,25 +51,25 @@ runTests = defaultMain tests
 tests :: TestTree
 tests = testGroup "CrackNum" [
             testGroup "Encode" [
-               gold "encode0" ["-i4", "--", "-2"]
-             , gold "encode1" ["-w4", "2"]
-             , gold "encode2" ["-f3+4", "2.5"]
-             , gold "encode3" ["-f3+4", "2.5", "-rRTZ"]
-             , gold "encode4" ["-fbp", "2.5"]
-             , gold "encode5" ["-fdp", "2.5"]
+               gold "encode0" "-i4 -- -2"
+             , gold "encode1" "-w4 2"
+             , gold "encode2" "-f3+4 2.5"
+             , gold "encode3" "-f3+4 2.5 -rRTZ"
+             , gold "encode4" "-fbp 2.5"
+             , gold "encode5" "-fdp 2.5"
             ]
           , testGroup "Decode" [
-               gold "decode0" ["-i4",   "0b0110"]
-            ,  gold "decode1" ["-w4",   "0xE"]
-            ,  gold "decode2" ["-f3+4", "0b0111001"]
-            ,  gold "decode3" ["-fbp",  "0x000F"]
-            ,  gold "decode4" ["-fdp",  "0x8000000000000000"]
-            ,  gold "decode5" ["-fhp",  "0x7c01"]
-            ,  gold "decode6" ["-fhp",  "-l8", "128'hffffffffffffffffbdffaaffdc71fc60"]
+               gold "decode0" "-i4 0b0110"
+            ,  gold "decode1" "-w4 0xE"
+            ,  gold "decode2" "-f3+4 0b0111001"
+            ,  gold "decode3" "-fbp 0x000F"
+            ,  gold "decode4" "-fdp 0x8000000000000000"
+            ,  gold "decode5" "-fhp 0x7c01"
+            ,  gold "decode6" "-fhp -l8 128'hffffffffffffffffbdffaaffdc71fc60"
             ]
           , testGroup "DecodeE4M3" [
                gold ("decodeE4M3_" ++ show (if sign then (-val :: Int) else val))
-                    ["-fe4m3", "0b" ++ (if sign then "1" else "0") ++ "1111" ++ frac]
+                    $ "-fe4m3 0b" ++ (if sign then "1" else "0") ++ "1111" ++ frac
             | (val, frac) <- [ (256, "000")
                              , (288, "001")
                              , (320, "010")
@@ -79,8 +80,12 @@ tests = testGroup "CrackNum" [
                              ]
             , sign      <- [False, True]
             ]
+          , testGroup "DecodeE4M3_NaN" [
+               gold "decodeE4M3_+NaN" "-fe4m3 0b_0111_1111"
+            ,  gold "decodeE4M3_-NaN" "-fe4m3 0b_1111_1111"
+            ]
           , testGroup "Bad" [
-               gold "badInvocation0" ["-f3+4", "0b01"]
-            ,  gold "badInvocation1" ["-f3+4", "0xFFFF"]
+               gold "badInvocation0" "-f3+4 0b01"
+            ,  gold "badInvocation1" "-f3+4 0xFFFF"
             ]
         ]
