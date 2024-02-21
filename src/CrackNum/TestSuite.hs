@@ -66,6 +66,19 @@ tests = testGroup "CrackNum" [
             ,  gold "decode5" ["-fhp",  "0x7c01"]
             ,  gold "decode6" ["-fhp",  "-l8", "128'hffffffffffffffffbdffaaffdc71fc60"]
             ]
+          , testGroup "DecodeE4M3" [
+               gold ("decodeE4M3_" ++ show (if sign then (-val :: Int) else val))
+                    ["-fe4m3", "0b" ++ (if sign then "1" else "0") ++ "1111" ++ frac]
+            | (val, frac) <- [ (256, "000")
+                             , (288, "001")
+                             , (320, "010")
+                             , (352, "011")
+                             , (384, "100")
+                             , (416, "101")
+                             , (448, "110")
+                             ]
+            , sign      <- [False, True]
+            ]
           , testGroup "Bad" [
                gold "badInvocation0" ["-f3+4", "0b01"]
             ,  gold "badInvocation1" ["-f3+4", "0xFFFF"]

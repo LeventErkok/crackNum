@@ -1,0 +1,16 @@
+Arguments: -fe4m3 0b01111011
+Exit code: ExitSuccess
+Satisfiable. Model:
+  DECODED = 352.0 :: E4M3
+                  7 6543 210
+                  S -E4- S3-
+   Binary layout: 0 1111 011
+      Hex layout: 7B
+       Precision: 4 exponent bits, 3 significand bits
+            Sign: Positive
+        Exponent: 8 (Stored: 15, Bias: 7)
+  Classification: FP_NORMAL
+          Binary: 0b1.011p+8
+           Octal: 0o5.4p+6
+         Decimal: 352.0
+             Hex: 0x1.6p+8
