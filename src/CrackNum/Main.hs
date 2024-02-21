@@ -458,7 +458,7 @@ decodeLane debug mbLane inputBits kind = case kind of
 -- Print a model for E5M2, this is the same as dFP 5 3, we just fix the "printed" type
 fixE5M2Type :: SatResult -> IO ()
 fixE5M2Type res = case res of
-                   SatResult (Satisfiable{}) -> mapM_ putStrLn $ map fixType (lines (show res))
+                   SatResult (Satisfiable{}) -> mapM_ (putStrLn . fixType) (lines (show res))
                    _                         -> print res
  where fixType :: String -> String
        fixType s
@@ -490,8 +490,8 @@ de4m3Model debug (sign, s1, s2, s3) ieeeResult = do
               = l
 
         -- Print from the original result upto Classification, rest from the modified result
-        mapM_ putStrLn $ map fixDecoded $ fst $ break isClassification (lines (show ieeeResult))
-        mapM_ putStrLn $                  snd $ break isClassification (lines modifiedResult)
+        mapM_ (putStrLn . fixDecoded) $ takeWhile (not . isClassification) (lines (show ieeeResult))
+        mapM_ putStrLn                $ dropWhile (not . isClassification) (lines modifiedResult)
 
 -- | Encoding
 encodeLane :: Bool -> Int -> NKind -> RM -> String -> IO ()
