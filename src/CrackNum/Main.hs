@@ -615,14 +615,6 @@ encodeE4M3 debug inp = case reads (fixup True inp) of
        fixNaN s | "Representation for NaN's is not unique" `isInfixOf` s = []
                 | True                                                   = [s]
 
-       -- bounds representable in E4M3 are -448 to 448
-       isOutOfBounds :: Double -> Bool
-       isOutOfBounds v = abs v > 448
-
-       -- For values in this bound, we can treat it as FP 4 4
-       isIEEESemantics :: Double -> Bool
-       isIEEESemantics v = abs v <= 240
-
        getNaN = satWith config{crackNumSurfaceVals = [("ENCODED", 0x7F)]} $
                               do x :: SFloatingPoint 4 4 <- sFloatingPoint "ENCODED"
                                  constrain $ fpIsNaN x
@@ -635,15 +627,47 @@ encodeE4M3 debug inp = case reads (fixup True inp) of
          | isInfinite v
          = do getNaN >>= putStrLn . onEach fixNaN . fixEncoded
               putStrLn "            Note: The input value was infinite, which is not representable in E4M3."
-         | isOutOfBounds v -- becomes NaN
+         | True
+         = range v
+
+       extraVals :: [(Double, String)]
+       extraVals =  [(-v, '1':s) | (v, s) <- reverse pos]
+                 ++ [( v, '0':s) | (v, s) <-         pos]
+         where pos = [ (256, "1111000")
+                     , (288, "1111001")
+                     , (320, "1111010")
+                     , (352, "1111011")
+                     , (384, "1111100")
+                     , (416, "1111101")
+                     , (448, "1111110")
+                     ]
+
+       -- Pick the value we land on
+       pick v = case [p | (d, p) <- dists, d == minVal] of
+                  [x]    -> x
+                  [x, y] -> choose x y
+                  -- The following two can't happen, but just in case:
+                  []     -> error $ "encodeE4M3: Empty list of candidates for " ++ show v  -- Can't happen
+                  cands  -> error $ "encodeE4M3: More than two candidates for " ++ show v ++ ": " ++ show cands
+         where dists  = [(abs (v - ev), p) | p@(ev, _) <- extraVals]
+               minVal = minimum $ map fst dists
+
+       choose :: (Double, String) -> (Double, String) -> (Double, String)
+       choose p1 _ = p1
+
+       range v
+         | v < -448 || v > 448   -- Out-of-bounds becomes NaN
          = do getNaN >>= putStrLn . onEach fixNaN . fixEncoded
               putStrLn $ "            Note: The input value " ++ show v ++ " is out of bounds, and hence becomes NaN"
               putStrLn   "                  The representable range is [-448, 448]"
-         | isIEEESemantics v -- can just decode as usual
+
+         | v >= -240 || v <= 240   -- Fits into regular 4+4 format, so just decode
          = do res <- satWith config $ do x :: SFloatingPoint 4 4 <- sFloatingPoint "ENCODED"
                                          constrain $ x .== fromSDouble sRNE (literal v)
               putStrLn $ fixEncoded res
+
+         -- Otherwise, we're in the range [-448, -240)  OR (240, 448]
+         -- Pick the nearest and display that
          | True
-         -- We're in the tricky range between (-448, -240) OR (240, 448)
-         -- Need to find the matching value
-         = error $ "not supported yet" ++ show v
+         = print $ pick v
+
