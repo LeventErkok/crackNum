@@ -51,12 +51,22 @@ runTests = defaultMain tests
 tests :: TestTree
 tests = testGroup "CrackNum" [
             testGroup "Encode" [
-               gold "encode0" "-i4 -- -2"
-             , gold "encode1" "-w4 2"
-             , gold "encode2" "-f3+4 2.5"
-             , gold "encode3" "-f3+4 2.5 -rRTZ"
-             , gold "encode4" "-fbp 2.5"
-             , gold "encode5" "-fdp 2.5"
+               gold "encode0"  "-i4 -- -2"
+             , gold "encode1"  "-w4 2"
+             , gold "encode2"  "-f3+4 2.5"
+             , gold "encode3"  "-f3+4 2.5 -rRTZ"
+             , gold "encode4"  "-fbp 2.5"
+             , gold "encode5"  "-fdp 2.5"
+             , gold "encode6"  "-f3+3 -- -inf"
+             , gold "encode7"  "-f3+3 -- -infinity"
+             , gold "encode8"  "-f3+3     inf"
+             , gold "encode9"  "-f3+3     infinity"
+             , gold "encode10" "-f3+3     nan"
+             , gold "encode11" "-fsp  -- -inf"
+             , gold "encode12" "-fsp  -- -infinity"
+             , gold "encode13" "-fsp      inf"
+             , gold "encode14" "-fsp      infinity"
+             , gold "encode15" "-fsp      nan"
             ]
           , testGroup "Decode" [
                gold "decode0" "-i4 0b0110"

@@ -550,7 +550,7 @@ encodeLane debug lanes num rm inp
                         pure $ x .=== literal d
 
         ef (FP i j) wasE5M2 = do let (v, mbS) = convert i j
-                                 if bfIsNaN v && fixup False inp `notElem` ["NaN", "-NaN"]
+                                 if bfIsNaN v && fixup False inp /= "NaN"
                                     then die [ "Input does not represent floating point number we recognize."
                                              , "Saw: " ++ inp
                                              , ""
@@ -576,16 +576,16 @@ encodeLane debug lanes num rm inp
                         ]
 
 -- | Convert certain strings to more understandable format by read
+-- If first argument is True, then we're reading using reads, i.e., haskell syntax
+-- If first argument is False, then we're using big-float library, which has a different notion for infinity and nans
 fixup :: Bool -> String -> String
 fixup True inp  = case map toLower inp of
                     linp | linp `elem` ["inf",  "infinity"]  -> "Infinity"
                     linp | linp `elem` ["-inf", "-infinity"] -> "-Infinity"
                     linp | linp == "nan"                     -> "NaN"
-                    linp | linp == "-nan"                    -> "-NaN"
                     _                                        -> inp
 fixup False inp = case map toLower inp of
                     linp | linp `elem` ["inf",  "infinity"]  -> "inf"
                     linp | linp `elem` ["-inf", "-infinity"] -> "-inf"
                     linp | linp == "nan"                     -> "NaN"
-                    linp | linp == "-nan"                    -> "-NaN"
                     _                                        -> inp
