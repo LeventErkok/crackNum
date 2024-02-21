@@ -69,6 +69,9 @@ tests = testGroup "CrackNum" [
              , gold "encode15" "-fsp      nan"
              , gold "encode16" "-fe5m2 2.5"
             ]
+          , testGroup "EncodeE4M3" [
+               gold "encodeE4M3_nan" "-fe4m3 nan"
+            ]
           , testGroup "Decode" [
                gold "decode0" "-i4       0b0110"
             ,  gold "decode1" "-w4       0xE"

@@ -143,38 +143,38 @@ getFP "dp"   = Floating DP
 getFP "qp"   = Floating $ FP 15 113
 getFP "e5m2" = Floating E5M2
 getFP "e4m3" = Floating E4M3
-getFP ab   = case span isDigit ab of
-                (eb@(_:_), '+':r) -> case span isDigit r of
-                                      (sp@(_:_), "") -> mkEBSB (read eb) (read sp)
-                                      _              -> bad
-                _                 -> bad
-              where bad = BadFlag [ "Option " ++ show "-f" ++ " requires one of:"
-                                  , ""
-                                  , "    hp: Half float             ( 5 +  11)"
-                                  , "    bp: Brain float            ( 8 +   8)"
-                                  , "    sp: Single precision       ( 8 +  24)"
-                                  , "    dp: Single precision       (11 +  53)"
-                                  , "    qp: Quad   precision       (15 + 113)"
-                                  , "   a+b: Arbitrary IEEE-754     ( a +   b)"
-                                  , "  e5m2: FP8 format (IEEE-754)  ( 5 +   3)"
-                                  , "  e4m3: FP8 format (Alternate) ( 4 +   4)"
-                                  , ""
-                                  , "In the arbitrary format, the first number is the number of bits in the exponent"
-                                  , "and the second number is the number of bits in the significand, including the implicit bit."
-                                  ]
-                    mkEBSB :: Int -> Int -> Flag
-                    mkEBSB eb sb
-                     |    eb >= FP_MIN_EB && eb <= FP_MAX_EB
-                       && sb >= FP_MIN_SB && sb <= FP_MAX_SB
-                     = Floating $ FP eb sb
-                     | True
-                     = BadFlag [ "Invalid floating-point precision."
-                               , ""
-                               , "  Exponent    size must be between " ++ show (FP_MIN_EB :: Int) ++ " to "  ++ show (FP_MAX_EB :: Int)
-                               , "  Significant size must be between " ++ show (FP_MIN_SB :: Int) ++ " to "  ++ show (FP_MAX_SB :: Int)
-                               , ""
-                               , "Received: " ++ show eb ++ " " ++ show sb
-                               ]
+getFP ab     = case span isDigit ab of
+                  (eb@(_:_), '+':r) -> case span isDigit r of
+                                        (sp@(_:_), "") -> mkEBSB (read eb) (read sp)
+                                        _              -> bad
+                  _                 -> bad
+                where bad = BadFlag [ "Option " ++ show "-f" ++ " requires one of:"
+                                    , ""
+                                    , "    hp: Half float             ( 5 +  11)"
+                                    , "    bp: Brain float            ( 8 +   8)"
+                                    , "    sp: Single precision       ( 8 +  24)"
+                                    , "    dp: Single precision       (11 +  53)"
+                                    , "    qp: Quad   precision       (15 + 113)"
+                                    , "   a+b: Arbitrary IEEE-754     ( a +   b)"
+                                    , "  e5m2: FP8 format (IEEE-754)  ( 5 +   3)"
+                                    , "  e4m3: FP8 format (Alternate) ( 4 +   4)"
+                                    , ""
+                                    , "In the arbitrary format, the first number is the number of bits in the exponent"
+                                    , "and the second number is the number of bits in the significand, including the implicit bit."
+                                    ]
+                      mkEBSB :: Int -> Int -> Flag
+                      mkEBSB eb sb
+                       |    eb >= FP_MIN_EB && eb <= FP_MAX_EB
+                         && sb >= FP_MIN_SB && sb <= FP_MAX_SB
+                       = Floating $ FP eb sb
+                       | True
+                       = BadFlag [ "Invalid floating-point precision."
+                                 , ""
+                                 , "  Exponent    size must be between " ++ show (FP_MIN_EB :: Int) ++ " to "  ++ show (FP_MAX_EB :: Int)
+                                 , "  Significant size must be between " ++ show (FP_MIN_SB :: Int) ++ " to "  ++ show (FP_MAX_SB :: Int)
+                                 , ""
+                                 , "Received: " ++ show eb ++ " " ++ show sb
+                                 ]
 
 getRM :: String -> Flag
 getRM "rne" = RMode RNE
@@ -551,12 +551,7 @@ encodeLane debug lanes num rm inp
 
         ef (FP i j) wasE5M2 = do let (v, mbS) = convert i j
                                  if bfIsNaN v && fixup False inp /= "NaN"
-                                    then die [ "Input does not represent floating point number we recognize."
-                                             , "Saw: " ++ inp
-                                             , ""
-                                             , "For decoding bit-strings, prefix them with 0x, N'h, 0b and"
-                                             , "provide a hexadecimal or binary representation of the input."
-                                             ]
+                                    then unrecognized inp
                                     else do res <- satCmd (p v)
                                             if wasE5M2 then fixE5M2Type res
                                                        else print res
@@ -568,12 +563,7 @@ encodeLane debug lanes num rm inp
 
         ef E5M2 _ = ef (FP 5 3) True -- 3 is intentional; the format ignores the sign storage, but SBV doesn't, following SMTLib
 
-        -- Not yet supported
-        ef E4M3 _ = die [ "Encoding of E4M3 floating point format is not supported yet."
-                        , ""
-                        , "Only decoding of E4M3 is implemented."
-                        , "Please request this as a feature!"
-                        ]
+        ef E4M3 _ = encodeE4M3 debug inp
 
 -- | Convert certain strings to more understandable format by read
 -- If first argument is True, then we're reading using reads, i.e., haskell syntax
@@ -589,3 +579,45 @@ fixup False inp = case map toLower inp of
                     linp | linp `elem` ["-inf", "-infinity"] -> "-inf"
                     linp | linp == "nan"                     -> "NaN"
                     _                                        -> inp
+
+unrecognized :: String -> IO ()
+unrecognized inp = die [ "Input does not represent floating point number we recognize."
+                       , "Saw: " ++ inp
+                       , ""
+                       , "For decoding bit-strings, prefix them with 0x, N'h, 0b and"
+                       , "provide a hexadecimal or binary representation of the input."
+                       ]
+
+-- Encoding E4M3 is tricky, because of deviation from IEEE. So, we do a case analysis, mostly
+encodeE4M3 :: Bool -> String -> IO ()
+encodeE4M3 debug inp = case reads (fixup True inp) of
+                         [(v :: Double, "")] -> analyze v
+                         _                   -> unrecognized inp
+ where config = z3{ crackNum = True
+                  , verbose  = debug
+                  }
+
+       fixEncoded res@(SatResult (Satisfiable{})) = mapM_ putStrLn (concatMap fixNaN (map fixType (lines (show res))))
+       fixEncoded res                             = print res
+
+       fixType :: String -> String
+       fixType s
+         | any (`isInfixOf` s) ["ENCODED", "DECODED"]
+         = takeWhile (/= ':') s ++ ":: E4M3"
+         | True
+         = s
+
+       -- nan representation is unique for E4M3
+       fixNaN :: String -> [String]
+       fixNaN s | "Representation for NaN's is not unique" `isInfixOf` s = []
+                | True                                                   = [s]
+
+       analyze :: Double -> IO ()
+       analyze v
+         -- NaN has two representations, with surface value S.1111.111; we use 0x7F for simplicity
+         | isNaN v
+         = fixEncoded =<< satWith config{crackNumSurfaceVals = [("ENCODED", 0x7F)]}
+                                  (do x :: SFloatingPoint 4 4 <- sFloatingPoint "ENCODED"
+                                      constrain $ fpIsNaN x)
+         | True
+         = error "not supported yet"
