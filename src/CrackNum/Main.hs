@@ -20,7 +20,7 @@ module Main(main) where
 
 import Control.Monad         (when)
 import Data.Char             (isDigit, isSpace, toLower)
-import Data.List             (isPrefixOf, isSuffixOf, unfoldr, isInfixOf)
+import Data.List             (isPrefixOf, isSuffixOf, unfoldr, isInfixOf, intercalate)
 import Data.Maybe            (fromMaybe)
 
 import Text.Read             (readMaybe)
@@ -597,8 +597,9 @@ encodeE4M3 debug inp = case reads (fixup True inp) of
                   , verbose  = debug
                   }
 
-       fixEncoded res@(SatResult (Satisfiable{})) = mapM_ putStrLn (concatMap fixNaN (map fixType (lines (show res))))
-       fixEncoded res                             = print res
+       fixEncoded :: SatResult -> String
+       fixEncoded res@(SatResult (Satisfiable{})) = intercalate "\n" $ map fixType (lines (show res))
+       fixEncoded res                             = show res
 
        fixType :: String -> String
        fixType s
@@ -606,6 +607,8 @@ encodeE4M3 debug inp = case reads (fixup True inp) of
          = takeWhile (/= ':') s ++ ":: E4M3"
          | True
          = s
+
+       onEach f = intercalate "\n" . concatMap f . lines
 
        -- nan representation is unique for E4M3
        fixNaN :: String -> [String]
@@ -616,8 +619,15 @@ encodeE4M3 debug inp = case reads (fixup True inp) of
        analyze v
          -- NaN has two representations, with surface value S.1111.111; we use 0x7F for simplicity
          | isNaN v
-         = fixEncoded =<< satWith config{crackNumSurfaceVals = [("ENCODED", 0x7F)]}
-                                  (do x :: SFloatingPoint 4 4 <- sFloatingPoint "ENCODED"
-                                      constrain $ fpIsNaN x)
+         = do res <- satWith config{crackNumSurfaceVals = [("ENCODED", 0x7F)]}
+                             (do x :: SFloatingPoint 4 4 <- sFloatingPoint "ENCODED"
+                                 constrain $ fpIsNaN x)
+              putStrLn $ onEach fixNaN $ fixEncoded res
+         | isInfinite v
+         = do res <- satWith config{crackNumSurfaceVals = [("ENCODED", 0x7F)]}
+                             (do x :: SFloatingPoint 4 4 <- sFloatingPoint "ENCODED"
+                                 constrain $ fpIsNaN x)
+              putStrLn $ onEach fixNaN $ fixEncoded res
+              putStrLn "            Note: The input value was infinite, which is not representable in E4M3."
          | True
          = error "not supported yet"
