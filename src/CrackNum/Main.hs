@@ -462,7 +462,7 @@ fixE5M2Type res = case res of
                    _                         -> print res
  where fixType :: String -> String
        fixType s
-         | "DECODED" `isInfixOf` s
+         | any (`isInfixOf` s) ["ENCODED", "DECODED"]
          = takeWhile (/= ':') s ++ ":: E5M2"
          | True
          = s
