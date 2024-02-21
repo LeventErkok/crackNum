@@ -1,4 +1,4 @@
-Arguments: -fe4m3 nan
+Arguments: -fe4m3    nan
 Exit code: ExitSuccess
 Satisfiable. Model:
   ENCODED = NaN :: E4M3
