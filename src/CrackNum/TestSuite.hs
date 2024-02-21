@@ -70,15 +70,15 @@ tests = testGroup "CrackNum" [
              , gold "encode16" "-fe5m2 2.5"
             ]
           , testGroup "EncodeE4M3" [
-               gold "encodeE4M3_nan"  "-fe4m3    nan"
-            ,  gold "encodeE4M3_+inf" "-fe4m3    inf"
-            ,  gold "encodeE4M3_-inf" "-fe4m3 -- -inf"
-            ,  gold "encodeE4M3_in1"  "-fe4m3 -- -448.0001"
-            ,  gold "encodeE4M3_in2"  "-fe4m3 --  448.0001"
-            ,  gold "encodeE4M3_in3"  "-fe4m3 -- -239.9999"
-            ,  gold "encodeE4M3_in4"  "-fe4m3 --  239.9999"
-            ,  gold "encodeE4M3_in5"  "-fe4m3 --  0"
-            ,  gold "encodeE4M3_in6"  "-fe4m3 --  -0"
+               gold "encodeE4M3_nan"   "-fe4m3    nan"
+            ,  gold "encodeE4M3_+inf"  "-fe4m3    inf"
+            ,  gold "encodeE4M3_-inf"  "-fe4m3 -- -inf"
+            ,  gold "encodeE4M3_in1"   "-fe4m3 -- -448.0001"
+            ,  gold "encodeE4M3_in2"   "-fe4m3 --  448.0001"
+            ,  gold "encodeE4M3_bnd1"  "-fe4m3 -- -239.9999"
+            ,  gold "encodeE4M3_bnd2"  "-fe4m3 --  239.9999"
+            ,  gold "encodeE4M3_zero1" "-fe4m3 --  0"
+            ,  gold "encodeE4M3_zero2" "-fe4m3 --  -0"
             ]
           , testGroup "Decode" [
                gold "decode0" "-i4       0b0110"
