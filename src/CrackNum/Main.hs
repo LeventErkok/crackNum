@@ -425,7 +425,7 @@ decodeLane debug mbLane inputBits kind = case kind of
                      SP     -> print =<< satWith config (dFloat  bs)
                      DP     -> print =<< satWith config (dDouble bs)
                      FP i j -> print =<< satWith config (dFP i j bs)
-                     E5M2   -> de5m2 =<< satWith config (dFP 5 3 bs)
+                     E5M2   -> fixE5M2Type =<< satWith config (dFP 5 3 bs)
                      E4M3   -> de4m3 config allBits
 
         dFloat :: [SBool] -> ConstraintSet
@@ -456,10 +456,10 @@ decodeLane debug mbLane inputBits kind = case kind of
         de4m3 config allBits = print =<< satWith config (dFP 4 4 (map literal allBits))
 
 -- Print a model for E5M2, this is the same as dFP 5 3, we just fix the "printed" type
-de5m2 :: SatResult -> IO ()
-de5m2 res = case res of
-             SatResult (Satisfiable{}) -> mapM_ putStrLn $ map fixType (lines (show res))
-             _                         -> print res
+fixE5M2Type :: SatResult -> IO ()
+fixE5M2Type res = case res of
+                   SatResult (Satisfiable{}) -> mapM_ putStrLn $ map fixType (lines (show res))
+                   _                         -> print res
  where fixType :: String -> String
        fixType s
          | "DECODED" `isInfixOf` s
@@ -504,7 +504,7 @@ encodeLane debug lanes num rm inp
   = case num of
       SInt   n -> print =<< ei True  n
       SWord  n -> print =<< ei False n
-      SFloat s -> ef s
+      SFloat s -> ef s (s == E5M2)
   where satCmd = satWith z3{crackNum=True, verbose=debug}
 
         ei :: Bool -> Int -> IO SatResult
@@ -522,7 +522,7 @@ encodeLane debug lanes num rm inp
                         Ok -> (v, Nothing)
                         _  -> (v, Just (trim (show s)))
           where bfOpts = allowSubnormal <> rnd (toLibBFRM rm) <> expBits (fromIntegral i) <> precBits (fromIntegral j)
-                (v, s) = bfFromString 10 bfOpts inp
+                (v, s) = bfFromString 10 bfOpts (fixup False inp)
                 trim xs | "[" `isPrefixOf` xs && "]" `isSuffixOf` xs = init (drop 1 xs)
                         | True                                       = xs
 
@@ -532,53 +532,60 @@ encodeLane debug lanes num rm inp
                         Nothing -> putStrLn $ "            Note: Conversion from " ++ show inp ++ " was exact. No rounding happened."
                         Just s  -> putStrLn $ "            Note: Conversion from " ++ show inp ++ " was not faithful. Status: " ++ s ++ "."
 
-        ef :: FP -> IO ()
-        ef SP = case reads (fixup inp) of
-                  [(v :: Float, "")] -> do print =<< satCmd (p v)
-                                           note $ snd $ convert 8 24
-                  _                  -> ef (FP 8 24)
+        ef :: FP -> Bool -> IO ()
+        ef SP _ = case reads (fixup True inp) of
+                    [(v :: Float, "")] -> do print =<< satCmd (p v)
+                                             note $ snd $ convert 8 24
+                    _                  -> ef (FP 8 24) False
          where p :: Float -> Predicate
                p f = do x <- sFloat "ENCODED"
                         pure $ x .=== literal f
 
-        ef DP = case reads (fixup inp) of
-                  [(v :: Double, "")] -> do print =<< satCmd (p v)
-                                            note $ snd $ convert 11 53
-                  _                   -> ef (FP 11 53)
+        ef DP _ = case reads (fixup True inp) of
+                    [(v :: Double, "")] -> do print =<< satCmd (p v)
+                                              note $ snd $ convert 11 53
+                    _                   -> ef (FP 11 53) False
          where p :: Double -> Predicate
                p d = do x <- sDouble "ENCODED"
                         pure $ x .=== literal d
 
-        ef (FP i j) = do let (v, mbS) = convert i j
-                         if bfIsNaN v
-                            then die [ "Input does not represent floating point number we recognize."
-                                     , "Saw: " ++ inp
-                                     , ""
-                                     , "For decoding bit-strings, prefix them with 0x, N'h, 0b and"
-                                     , "provide a hexadecimal or binary representation of the input."
-                                     ]
-                            else do print =<< satCmd (p v)
-                                    note mbS
-          where p :: BigFloat -> Predicate
-                p bf = do let k = KFP i j
-                          sx <- svNewVar k "ENCODED"
-                          pure $ SBV $ sx `svStrongEqual` SVal k (Left (CV k (CFP (fpFromBigFloat i j bf))))
+        ef (FP i j) wasE5M2 = do let (v, mbS) = convert i j
+                                 if bfIsNaN v && fixup False inp `notElem` ["NaN", "-NaN"]
+                                    then die [ "Input does not represent floating point number we recognize."
+                                             , "Saw: " ++ inp
+                                             , ""
+                                             , "For decoding bit-strings, prefix them with 0x, N'h, 0b and"
+                                             , "provide a hexadecimal or binary representation of the input."
+                                             ]
+                                    else do res <- satCmd (p v)
+                                            if wasE5M2 then fixE5M2Type res
+                                                       else print res
+                                            note mbS
+                  where p :: BigFloat -> Predicate
+                        p bf = do let k = KFP i j
+                                  sx <- svNewVar k "ENCODED"
+                                  pure $ SBV $ sx `svStrongEqual` SVal k (Left (CV k (CFP (fpFromBigFloat i j bf))))
 
-        ef E5M2 = ef (FP 5 3)  -- 3 is intentional; the format ignores the sign storage, but SBV doesn't, following SMTLib
+        ef E5M2 _ = ef (FP 5 3) True -- 3 is intentional; the format ignores the sign storage, but SBV doesn't, following SMTLib
 
         -- Not yet supported
-        ef E4M3 = die [ "Encoding of E4M3 floating point format is not supported yet."
-                      , ""
-                      , "Only decoding of E4M3 is implemented."
-                      , "Please request this as a feature!"
-                      ]
+        ef E4M3 _ = die [ "Encoding of E4M3 floating point format is not supported yet."
+                        , ""
+                        , "Only decoding of E4M3 is implemented."
+                        , "Please request this as a feature!"
+                        ]
 
 -- | Convert certain strings to more understandable format by read
-fixup :: String -> String
-fixup inp
- | linp `elem` ["inf",  "infinity"]  = "Infinity"
- | linp `elem` ["-inf", "-infinity"] = "-Infinity"
- | linp == "nan"                     = "NaN"
- | linp == "-nan"                    = "-NaN"
- | True                              = inp
- where linp = map toLower inp
+fixup :: Bool -> String -> String
+fixup True inp  = case map toLower inp of
+                    linp | linp `elem` ["inf",  "infinity"]  -> "Infinity"
+                    linp | linp `elem` ["-inf", "-infinity"] -> "-Infinity"
+                    linp | linp == "nan"                     -> "NaN"
+                    linp | linp == "-nan"                    -> "-NaN"
+                    _                                        -> inp
+fixup False inp = case map toLower inp of
+                    linp | linp `elem` ["inf",  "infinity"]  -> "inf"
+                    linp | linp `elem` ["-inf", "-infinity"] -> "-inf"
+                    linp | linp == "nan"                     -> "NaN"
+                    linp | linp == "-nan"                    -> "-NaN"
+                    _                                        -> inp
