@@ -1,0 +1,16 @@
+Arguments: -fe4m3 --  -240
+Exit code: ExitSuccess
+Satisfiable. Model:
+  ENCODED = -240 :: E4M3
+                  7 6543 210
+                  S -E4- S3-
+   Binary layout: 1 1110 111
+      Hex layout: F7
+       Precision: 4 exponent bits, 3 significand bits
+            Sign: Negative
+        Exponent: 7 (Stored: 14, Bias: 7)
+  Classification: FP_NORMAL
+          Binary: -0b1.111p7
+           Octal: -0o3.6p6
+         Decimal: -240
+             Hex: -0xfp4
