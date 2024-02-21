@@ -79,6 +79,10 @@ tests = testGroup "CrackNum" [
             ,  gold "encodeE4M3_bnd2"  "-fe4m3 --  239.9999"
             ,  gold "encodeE4M3_zero1" "-fe4m3 --  0"
             ,  gold "encodeE4M3_zero2" "-fe4m3 --  -0"
+            ,  gold "encodeE4M3_mr1"   "-fe4m3 --   240"
+            ,  gold "encodeE4M3_mr2"   "-fe4m3 --   240.00"
+            ,  gold "encodeE4M3_mr3"   "-fe4m3 --  -240"
+            ,  gold "encodeE4M3_mr4"   "-fe4m3 --  -240.00"
             ]
           , testGroup "Decode" [
                gold "decode0" "-i4       0b0110"
