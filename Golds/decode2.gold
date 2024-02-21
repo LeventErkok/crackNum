@@ -1,4 +1,4 @@
-Arguments: -f3+4 0b0111001
+Arguments: -f3+4     0b0111001
 Exit code: ExitSuccess
 Satisfiable. Model:
   DECODED = NaN :: FloatingPoint 3 4

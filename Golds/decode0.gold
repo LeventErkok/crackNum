@@ -1,4 +1,4 @@
-Arguments: -i4 0b0110
+Arguments: -i4       0b0110
 Exit code: ExitSuccess
 Satisfiable. Model:
   DECODED = 6 :: IntN 4

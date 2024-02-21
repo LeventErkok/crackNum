@@ -1,4 +1,4 @@
-Arguments: -w4 0xE
+Arguments: -w4       0xE
 Exit code: ExitSuccess
 Satisfiable. Model:
   DECODED = 14 :: WordN 4
