@@ -1,0 +1,16 @@
+Arguments: -fsp  -- -inf
+Exit code: ExitSuccess
+Satisfiable. Model:
+  ENCODED = -Infinity :: Float
+                  3  2          1         0
+                  1 09876543 21098765432109876543210
+                  S ---E8--- ----------S23----------
+   Binary layout: 1 11111111 00000000000000000000000
+      Hex layout: FF80 0000
+       Precision: Single
+            Sign: Negative
+        Exponent: 128 (Stored: 255, Bias: 127)
+  Classification: FP_INFINITE
+           Value: -Infinity
+   Rounding mode: RNE: Round nearest ties to even.
+            Note: Conversion from "-inf" was exact. No rounding happened.

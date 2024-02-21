@@ -1,0 +1,16 @@
+Arguments: -f3+3     nan
+Exit code: ExitSuccess
+Satisfiable. Model:
+  ENCODED = NaN :: FloatingPoint 3 3
+                  5 432 10
+                  S E3- S2
+   Binary layout: 0 111 10
+      Hex layout: 1E
+       Precision: 3 exponent bits, 2 significand bits
+            Sign: Positive
+        Exponent: 4 (Stored: 7, Bias: 3)
+  Classification: FP_NAN
+           Value: NaN
+            Note: Representation for NaN's is not unique
+   Rounding mode: RNE: Round nearest ties to even.
+            Note: Conversion from "nan" was exact. No rounding happened.

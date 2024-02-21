@@ -1,0 +1,15 @@
+Arguments: -f3+3     infinity
+Exit code: ExitSuccess
+Satisfiable. Model:
+  ENCODED = Infinity :: FloatingPoint 3 3
+                  5 432 10
+                  S E3- S2
+   Binary layout: 0 111 00
+      Hex layout: 1C
+       Precision: 3 exponent bits, 2 significand bits
+            Sign: Positive
+        Exponent: 4 (Stored: 7, Bias: 3)
+  Classification: FP_INFINITE
+           Value: Infinity
+   Rounding mode: RNE: Round nearest ties to even.
+            Note: Conversion from "infinity" was exact. No rounding happened.
