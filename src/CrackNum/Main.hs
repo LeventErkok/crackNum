@@ -638,7 +638,7 @@ encodeE4M3 debug inp = case reads (fixup True inp) of
          | isOutOfBounds v -- becomes NaN
          = do getNaN >>= putStrLn . onEach fixNaN . fixEncoded
               putStrLn $ "            Note: The input value " ++ show v ++ " is out of bounds, and hence becomes NaN"
-              putStrLn $ "                  The representable range is [-448, 448]"
+              putStrLn   "                  The representable range is [-448, 448]"
          | isIEEESemantics v -- can just decode as usual
          = do res <- satWith config $ do x :: SFloatingPoint 4 4 <- sFloatingPoint "ENCODED"
                                          constrain $ x .== fromSDouble sRNE (literal v)
