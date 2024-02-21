@@ -1,0 +1,15 @@
+Arguments: -fe4m3 --  448.0001
+Exit code: ExitSuccess
+Satisfiable. Model:
+  ENCODED = NaN :: E4M3
+                  7 6543 210
+                  S -E4- S3-
+   Binary layout: 0 1111 111
+      Hex layout: 7F
+       Precision: 4 exponent bits, 3 significand bits
+            Sign: Positive
+        Exponent: 8 (Stored: 15, Bias: 7)
+  Classification: FP_NAN (Quiet)
+           Value: NaN
+            Note: The input value 448.0001 is out of bounds, and hence becomes NaN
+                  The representable range is [-448, 448]

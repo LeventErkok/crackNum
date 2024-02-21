@@ -615,19 +615,35 @@ encodeE4M3 debug inp = case reads (fixup True inp) of
        fixNaN s | "Representation for NaN's is not unique" `isInfixOf` s = []
                 | True                                                   = [s]
 
+       -- bounds representable in E4M3 are -448 to 448
+       isOutOfBounds :: Double -> Bool
+       isOutOfBounds v = abs v > 448
+
+       -- For values in this bound, we can treat it as FP 4 4
+       isIEEESemantics :: Double -> Bool
+       isIEEESemantics v = abs v <= 240
+
+       getNaN = satWith config{crackNumSurfaceVals = [("ENCODED", 0x7F)]} $
+                              do x :: SFloatingPoint 4 4 <- sFloatingPoint "ENCODED"
+                                 constrain $ fpIsNaN x
+
        analyze :: Double -> IO ()
        analyze v
          -- NaN has two representations, with surface value S.1111.111; we use 0x7F for simplicity
          | isNaN v
-         = do res <- satWith config{crackNumSurfaceVals = [("ENCODED", 0x7F)]}
-                             (do x :: SFloatingPoint 4 4 <- sFloatingPoint "ENCODED"
-                                 constrain $ fpIsNaN x)
-              putStrLn $ onEach fixNaN $ fixEncoded res
+         = getNaN >>= putStrLn . onEach fixNaN . fixEncoded
          | isInfinite v
-         = do res <- satWith config{crackNumSurfaceVals = [("ENCODED", 0x7F)]}
-                             (do x :: SFloatingPoint 4 4 <- sFloatingPoint "ENCODED"
-                                 constrain $ fpIsNaN x)
-              putStrLn $ onEach fixNaN $ fixEncoded res
+         = do getNaN >>= putStrLn . onEach fixNaN . fixEncoded
               putStrLn "            Note: The input value was infinite, which is not representable in E4M3."
+         | isOutOfBounds v -- becomes NaN
+         = do getNaN >>= putStrLn . onEach fixNaN . fixEncoded
+              putStrLn $ "            Note: The input value " ++ show v ++ " is out of bounds, and hence becomes NaN"
+              putStrLn $ "                  The representable range is [-448, 448]"
+         | isIEEESemantics v -- can just decode as usual
+         = do res <- satWith config $ do x :: SFloatingPoint 4 4 <- sFloatingPoint "ENCODED"
+                                         constrain $ x .== fromSDouble sRNE (literal v)
+              putStrLn $ fixEncoded res
          | True
-         = error "not supported yet"
+         -- We're in the tricky range between (-448, -240) OR (240, 448)
+         -- Need to find the matching value
+         = error $ "not supported yet" ++ show v
