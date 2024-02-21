@@ -1,4 +1,4 @@
-Arguments: -fhp -l8 128'hffffffffffffffffbdffaaffdc71fc60
+Arguments: -fhp  -l8 128'hffffffffffffffffbdffaaffdc71fc60
 Exit code: ExitSuccess
 == Lane 7 ============================================================
 Satisfiable. Model:

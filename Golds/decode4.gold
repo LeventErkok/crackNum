@@ -1,4 +1,4 @@
-Arguments: -fdp 0x8000000000000000
+Arguments: -fdp      0x8000000000000000
 Exit code: ExitSuccess
 Satisfiable. Model:
   DECODED = -0.0 :: Double

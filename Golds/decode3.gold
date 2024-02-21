@@ -1,4 +1,4 @@
-Arguments: -fbp 0x000F
+Arguments: -fbp      0x000F
 Exit code: ExitSuccess
 Satisfiable. Model:
   DECODED = 1.378e-39 :: FloatingPoint 8 8

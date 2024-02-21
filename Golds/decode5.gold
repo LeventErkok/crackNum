@@ -1,4 +1,4 @@
-Arguments: -fhp 0x7c01
+Arguments: -fhp      0x7c01
 Exit code: ExitSuccess
 Satisfiable. Model:
   DECODED = NaN :: FloatingPoint 5 11
