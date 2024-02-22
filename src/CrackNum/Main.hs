@@ -735,9 +735,10 @@ encodeE4M3 debug rm inp = case reads (fixup True inp) of
                   storedExp = toInt expoBits
                   actualExp = storedExp - 7
 
-              putStrLn $ "FAKED: " ++ show k
+                  (bBin, bOct, bDec, bHex) = inBases k
+
               putStrLn   "Satisfiable. Model:"
-              putStrLn   "  ENCODED = 2.5 :: E4M3"
+              putStrLn $ "  ENCODED = " ++ bDec ++ " :: E4M3"
               putStrLn   "                  7 6543 210"
               putStrLn   "                  S -E4- S3-"
               putStrLn $ "   Binary layout: " ++ binary
@@ -746,8 +747,6 @@ encodeE4M3 debug rm inp = case reads (fixup True inp) of
               putStrLn $ "            Sign: " ++ if signBit then "Negative" else "Positive"
               putStrLn $ "        Exponent: " ++ show actualExp ++ " (Stored: " ++ show storedExp ++ ", Bias: 7)"
               putStrLn   "  Classification: FP_NORMAL"
-
-              let (bBin, bOct, bDec, bHex) = inBases k
 
               putStrLn $ "          Binary: " ++ bBin
               putStrLn $ "           Octal: " ++ bOct

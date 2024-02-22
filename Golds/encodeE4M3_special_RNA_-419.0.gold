@@ -1,0 +1,18 @@
+Arguments: -fe4m3 -rRNA -- -419.0
+Exit code: ExitSuccess
+Satisfiable. Model:
+  ENCODED = -416.0 :: E4M3
+                  7 6543 210
+                  S -E4- S3-
+   Binary layout: 1 1111 101
+      Hex layout: fd
+       Precision: 4 exponent bits, 3 significand bits
+            Sign: Negative
+        Exponent: 8 (Stored: 15, Bias: 7)
+  Classification: FP_NORMAL
+          Binary: -0b1.101p+8
+           Octal: -0o6.4p+6
+         Decimal: -416.0
+             Hex: -0x1.Ap+8
+   Rounding mode: RNA: Round nearest ties to away.
+            Note: Original value of -419.0, represented as E4M3 special value
