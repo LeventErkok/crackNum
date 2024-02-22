@@ -609,6 +609,21 @@ toD (E384 isNeg) = if isNeg then -384 else 384
 toD (E416 isNeg) = if isNeg then -416 else 416
 toD (E448 isNeg) = if isNeg then -448 else 448
 
+neg4 :: Bool -> (String, String, String, String) -> (String, String, String, String)
+neg4 True  (a, b, c, d) = ('-':a, '-':b, '-':c, '-':d)
+neg4 False (a, b, c, d) = (a, b, c, d)
+
+-- binary, octal, decimal, hex
+inBases :: ExtraE3M4 -> (String, String, String, String)
+inBases (E240 isNeg) = neg4 isNeg ("0b1.111p+7", "0o3.6p+6", "240.0", "0xFp+4")
+inBases (E256 isNeg) = neg4 isNeg ("0b1p+8",     "0o4p+6",   "256.0", "0x1p+8")
+inBases (E288 isNeg) = neg4 isNeg ("0b1.001p+8", "0o4.4p+6", "288.0", "0x1.2p+8")
+inBases (E320 isNeg) = neg4 isNeg ("0b1.01p+8",  "0o5p+6",   "320.0", "0x1.4p+8")
+inBases (E352 isNeg) = neg4 isNeg ("0b1.011p+8", "0o5.4p+6", "352.0", "0x1.6p+8")
+inBases (E384 isNeg) = neg4 isNeg ("0b1.1p+8",   "0o6p+6",   "384.0", "0x1.8p+8")
+inBases (E416 isNeg) = neg4 isNeg ("0b1.101p+8", "0o6.4p+6", "416.0", "0x1.Ap+8")
+inBases (E448 isNeg) = neg4 isNeg ("0b1.11p+8",  "0o7p+6",   "448.0", "0x1.Cp+8")
+
 -- Encoding E4M3 is tricky, because of deviation from IEEE. So, we do a case analysis, mostly
 encodeE4M3 :: Bool -> RM -> String -> IO ()
 encodeE4M3 debug rm inp = case reads (fixup True inp) of
@@ -731,9 +746,12 @@ encodeE4M3 debug rm inp = case reads (fixup True inp) of
               putStrLn $ "            Sign: " ++ if signBit then "Negative" else "Positive"
               putStrLn $ "        Exponent: " ++ show actualExp ++ " (Stored: " ++ show storedExp ++ ", Bias: 7)"
               putStrLn   "  Classification: FP_NORMAL"
-              ------
-              putStrLn   "          Binary: 0b1.01p1"
-              putStrLn   "           Octal: 0o2.4"
-              putStrLn   "         Decimal: 2.5"
-              putStrLn   "             Hex: 0x2.8"
+
+              let (bBin, bOct, bDec, bHex) = inBases k
+
+              putStrLn $ "          Binary: " ++ bBin
+              putStrLn $ "           Octal: " ++ bOct
+              putStrLn $ "         Decimal: " ++ bDec
+              putStrLn $ "             Hex: " ++ bHex
+              putStrLn $ "   Rounding mode: " ++ show rm
               putStrLn $ "            Note: Original value of " ++ show v ++ ", represented as E4M3 special value"
