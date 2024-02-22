@@ -705,4 +705,35 @@ encodeE4M3 debug rm inp = case reads (fixup True inp) of
          -- Otherwise, we're in the range [-448, -240)  OR (240, 448]
          -- Pick the nearest and display that
          | True
-         = print $ pick v
+         = do let (k, bitString, _evenOdd) = pick v
+
+                  toInt binDigits = foldr (\(idx, b) sofar -> if b == '0' then sofar
+                                                                          else setBit sofar idx)
+                                          (0 :: Integer)
+                                          (zip [0..] (reverse binDigits))
+
+                  (signBit, expoBits, binary) = case bitString of
+                        [s, e1, e2, e3, e4, m1, m2, m3] ->
+                            (s == '1', [e1, e2, e3, e4], s : " " ++ e1 : e2 : e3 : e4 : " " ++ m1 : m2 : [m3])
+                        _ -> error $ "encodee4M3: Unexpected bitstring: " ++ show bitString
+
+                  storedExp = toInt expoBits
+                  actualExp = storedExp - 7
+
+              putStrLn $ "FAKED: " ++ show k
+              putStrLn   "Satisfiable. Model:"
+              putStrLn   "  ENCODED = 2.5 :: E4M3"
+              putStrLn   "                  7 6543 210"
+              putStrLn   "                  S -E4- S3-"
+              putStrLn $ "   Binary layout: " ++ binary
+              putStrLn $ "      Hex layout: " ++ showHex (toInt bitString) ""
+              putStrLn   "       Precision: 4 exponent bits, 3 significand bits"
+              putStrLn $ "            Sign: " ++ if signBit then "Negative" else "Positive"
+              putStrLn $ "        Exponent: " ++ show actualExp ++ " (Stored: " ++ show storedExp ++ ", Bias: 7)"
+              putStrLn   "  Classification: FP_NORMAL"
+              ------
+              putStrLn   "          Binary: 0b1.01p1"
+              putStrLn   "           Octal: 0o2.4"
+              putStrLn   "         Decimal: 2.5"
+              putStrLn   "             Hex: 0x2.8"
+              putStrLn $ "            Note: Original value of " ++ show v ++ ", represented as E4M3 special value"
