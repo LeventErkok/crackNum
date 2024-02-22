@@ -1,0 +1,18 @@
+Arguments: -fe4m3 -rRTN -- -248.0
+Exit code: ExitSuccess
+Satisfiable. Model:
+  ENCODED = -256.0 :: E4M3
+                  7 6543 210
+                  S -E4- S3-
+   Binary layout: 1 1111 000
+      Hex layout: f8
+       Precision: 4 exponent bits, 3 significand bits
+            Sign: Negative
+        Exponent: 8 (Stored: 15, Bias: 7)
+  Classification: FP_NORMAL
+          Binary: -0b1p+8
+           Octal: -0o4p+6
+         Decimal: -256.0
+             Hex: -0x1p+8
+   Rounding mode: RTN: Round towards negative infinity.
+            Note: Original value of -248.0, represented as E4M3 special value

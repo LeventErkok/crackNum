@@ -1,0 +1,18 @@
+Arguments: -fe4m3 -rRNE --  432.0
+Exit code: ExitSuccess
+Satisfiable. Model:
+  ENCODED = 448.0 :: E4M3
+                  7 6543 210
+                  S -E4- S3-
+   Binary layout: 0 1111 110
+      Hex layout: 7e
+       Precision: 4 exponent bits, 3 significand bits
+            Sign: Positive
+        Exponent: 8 (Stored: 15, Bias: 7)
+  Classification: FP_NORMAL
+          Binary: 0b1.11p+8
+           Octal: 0o7p+6
+         Decimal: 448.0
+             Hex: 0x1.Cp+8
+   Rounding mode: RNE: Round nearest ties to even.
+            Note: Original value of 432.0, represented as E4M3 special value

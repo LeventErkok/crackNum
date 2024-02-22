@@ -71,18 +71,25 @@ tests = testGroup "CrackNum" [
             ]
           , testGroup "EncodeE4M3" [
                gold "encodeE4M3_nan"   "-fe4m3    nan"
-            ,  gold "encodeE4M3_+inf"  "-fe4m3    inf"
-            ,  gold "encodeE4M3_-inf"  "-fe4m3 -- -inf"
-            ,  gold "encodeE4M3_in1"   "-fe4m3 -- -448.0001"
-            ,  gold "encodeE4M3_in2"   "-fe4m3 --  448.0001"
-            ,  gold "encodeE4M3_bnd1"  "-fe4m3 -- -239.9999"
-            ,  gold "encodeE4M3_bnd2"  "-fe4m3 --  239.9999"
-            ,  gold "encodeE4M3_zero1" "-fe4m3 --  0"
-            ,  gold "encodeE4M3_zero2" "-fe4m3 --  -0"
-            ,  gold "encodeE4M3_mr1"   "-fe4m3 --   240"
-            ,  gold "encodeE4M3_mr2"   "-fe4m3 --   240.00"
-            ,  gold "encodeE4M3_mr3"   "-fe4m3 --  -240"
-            ,  gold "encodeE4M3_mr4"   "-fe4m3 --  -240.00"
+             , gold "encodeE4M3_+inf"  "-fe4m3    inf"
+             , gold "encodeE4M3_-inf"  "-fe4m3 -- -inf"
+             , gold "encodeE4M3_in1"   "-fe4m3 -- -448.0001"
+             , gold "encodeE4M3_in2"   "-fe4m3 --  448.0001"
+             , gold "encodeE4M3_bnd1"  "-fe4m3 -- -239.9999"
+             , gold "encodeE4M3_bnd2"  "-fe4m3 --  239.9999"
+             , gold "encodeE4M3_zero1" "-fe4m3 --  0"
+             , gold "encodeE4M3_zero2" "-fe4m3 --  -0"
+             , gold "encodeE4M3_mr1"   "-fe4m3 --   240"
+             , gold "encodeE4M3_mr2"   "-fe4m3 --   240.00"
+             , gold "encodeE4M3_mr3"   "-fe4m3 --  -240"
+             , gold "encodeE4M3_mr4"   "-fe4m3 --  -240.00"
+            ]
+          , testGroup "EncodeE4M3Special" $ concat [
+               [ gold ("encodeE4M3_special_" ++ rm ++ "_+" ++ show i) ("-fe4m3 -r" ++ rm ++ " --  " ++ show i)
+               , gold ("encodeE4M3_special_" ++ rm ++ "_-" ++ show i) ("-fe4m3 -r" ++ rm ++ " -- -" ++ show i)
+               ]
+            | rm           <- ["RNE", "RNA", "RTP", "RTN", "RTZ"]
+            ,  i :: Double <- [240.01, 248, 419, 432]
             ]
           , testGroup "Decode" [
                gold "decode0" "-i4       0b0110"
