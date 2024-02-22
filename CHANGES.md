@@ -1,9 +1,9 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 3.7, 2024-02-15
+* Latest Hackage released version: 3.8, 2024-02-21
 
-### Version 3.8, Not yet released
+### Version 3.8, 2024-02-21
 
   * Add support for FP8 formats, as decribed in: https://arxiv.org/pdf/2209.05433.pdf
       - E5M2: Which is essentially a synonym for f5+3
