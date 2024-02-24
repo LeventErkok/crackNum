@@ -349,14 +349,16 @@ parseToBits :: String -> IO [Bool]
 parseToBits inp = do
      let isSkippable c = c `elem` "_-" || isSpace c
 
-     (mbPadTo, isHex, stream) <- case map toLower (filter (not . isSkippable) inp) of
+         cleanInput = map toLower (filter (not . isSkippable) inp)
+
+     (mbPadTo, isHex, stream) <- case cleanInput of
                                    '0':'x':rest -> pure (Nothing, True,  rest)
                                    '0':'b':rest -> pure (Nothing, False, rest)
                                    _            ->
-                                     case break (`elem` "'h") inp of
+                                     case break (`elem` "'h") cleanInput of
                                        (pre@(_:_), '\'' : 'h' : rest) | all isDigit pre -> pure (Just (read pre), True, rest)
                                        _  -> die [ "Input string must start with 0b, 0x, or N'h for decoding."
-                                                 , "Received prefix: " ++ show (take 2 inp)
+                                                 , "Received prefix: " ++ show (take 2 cleanInput)
                                                  ]
 
      let cvtBin '1' = pure [True]
