@@ -1,0 +1,12 @@
+Arguments: -w2 -rRNE 2'h1
+Exit code: ExitSuccess
+Satisfiable. Model:
+  DECODED = 1 :: WordN 2
+                  10
+   Binary layout: 01
+      Hex layout: 1
+            Type: Unsigned 2-bit word
+          Binary: 0b1
+           Octal: 0o1
+         Decimal: 1
+             Hex: 0x1
