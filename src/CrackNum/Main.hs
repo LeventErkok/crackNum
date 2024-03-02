@@ -64,6 +64,11 @@ fpSize (FP i j) = i+j
 fpSize E5M2     = 8
 fpSize E4M3     = 8
 
+kSize :: NKind -> Int
+kSize (SInt  i)  = i
+kSize (SWord i)  = i
+kSize (SFloat f) = fpSize f
+
 -- | Rounding modes we support
 data RM = RNE  -- ^ Round nearest ties to even
         | RNA  -- ^ Round nearest ties to away
@@ -284,28 +289,46 @@ crack pn argv = case getOpt Permute pgmOptions argv of
                                                                                     , "Length must be an exact multiple of the element size."
                                                                                     ]
 
-                                              (decode, lanesInferred) <- case arg of
-                                                                           '0':'x':_ -> pure (True, Nothing)
-                                                                           '0':'b':_ -> pure (True, Nothing)
-                                                                           _         -> case break (`elem` "'h") arg of
-                                                                                          (pre@(_:_), '\'':'h':_)
-                                                                                            | all isDigit pre -> (True,) <$> inferLanes (read pre)
-                                                                                          _                   -> pure (False, Nothing)
+                                              (decode, isVerilog, lanesInferred) <-
+                                                        case arg of
+                                                          '0':'x':_ -> pure (True, False, Nothing)
+                                                          '0':'b':_ -> pure (True, False, Nothing)
+                                                          _         -> case break (`elem` "'h") arg of
+                                                                         (pre@(_:_), '\'':'h':_)
+                                                                           | all isDigit pre -> (True, True, ) <$> inferLanes (read pre)
+                                                                         _                   -> pure (False, False, Nothing)
 
                                               let lanes
                                                     | tryInfer = fromMaybe lanesGiven lanesInferred
                                                     | True     = lanesGiven
 
                                               if decode
-                                                 then decodeAllLanes debug lanes kind    arg
-                                                 else encodeLane     debug lanes kind rm arg
+                                                 then decodeAllLanes isVerilog debug lanes kind    arg
+                                                 else encodeLane               debug lanes kind rm arg
 
-decodeAllLanes :: Bool -> Int -> NKind -> String -> IO ()
-decodeAllLanes debug lanes kind arg = do
+decodeAllLanes :: Bool -> Bool -> Int -> NKind -> String -> IO ()
+decodeAllLanes isVerilog debug lanes kind arg = do
    when (lanes < 0) $ die
       ["Number of lanes must be non-negative. Got: " ++ show lanes]
 
-   bits <- parseToBits arg
+   unalteredBits <- parseToBits arg
+
+   bits <- if not isVerilog
+           then pure unalteredBits
+           else do let needed = lanes * kSize kind
+                       have   = length unalteredBits
+                   case needed `compare` have of
+                    EQ -> pure unalteredBits
+                    LT -> -- we have too much, drop but only if they're all False:
+                          let (pre, post) = splitAt (have - needed) unalteredBits
+                          in if all not pre
+                                then pure post
+                                else die [ "Needed " ++ show needed ++ " bits, got " ++ show have ++ " bits, " ++ show (have - needed) ++ " extra bits."
+                                         , "But these bits are not all zeros! So, dropping isn't safe."
+                                         , "They are: " ++ map (\d -> if d then '1' else '0') pre
+                                         ]
+                    GT -> -- we don't have enough. Add enough bits to satisfy
+                          pure $ replicate (needed - have) False ++ unalteredBits
 
    let l           = length bits
        bitsPerLane = l `div` lanes
@@ -329,6 +352,7 @@ decodeAllLanes debug lanes kind arg = do
                                   decodeLane debug (if lanes == 1 then Nothing else Just i) curLaneBits kind
                                   laneLoop (i-1) remBits
    laneLoop (lanes - 1) bits
+
 -- | Kinds of numbers we understand
 data NKind = SInt   Int -- ^ Signed   integer of n bits
            | SWord  Int -- ^ Unsigned integer of n bits

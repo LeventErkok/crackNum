@@ -92,14 +92,15 @@ tests = testGroup "CrackNum" [
             ,  i :: Double <- [240.01, 248, 419, 432]
             ]
           , testGroup "Decode" [
-               gold "decode0" "-i4       0b0110"
-            ,  gold "decode1" "-w4       0xE"
-            ,  gold "decode2" "-f3+4     0b0111001"
-            ,  gold "decode3" "-fbp      0x000F"
-            ,  gold "decode4" "-fdp      0x8000000000000000"
-            ,  gold "decode5" "-fhp      0x7c01"
-            ,  gold "decode6" "-fhp  -l8 128'hffffffffffffffffbdffaaffdc71fc60"
-             , gold "decode7" "-fe5m2    0b01111011"
+              gold "decode0" "-i4       0b0110"
+            , gold "decode1" "-w4       0xE"
+            , gold "decode2" "-f3+4     0b0111001"
+            , gold "decode3" "-fbp      0x000F"
+            , gold "decode4" "-fdp      0x8000000000000000"
+            , gold "decode5" "-fhp      0x7c01"
+            , gold "decode6" "-fhp  -l8 128'hffffffffffffffffbdffaaffdc71fc60"
+            , gold "decode7" "-fe5m2    0b01111011"
+            , gold "decode8" "-w2 -rRNE 2\'h1"
             ]
           , testGroup "DecodeE4M3" [
                gold ("decodeE4M3_" ++ show (if sign then (-val :: Int) else val))

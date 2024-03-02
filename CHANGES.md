@@ -1,7 +1,11 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 3.9, 2024-02-23
+* Latest Hackage released version: 3.10, 2024-03-01
+
+### Version 3.10, 2024-03-01
+  
+  * More relaxed parsing for verilog input format
 
 ### Version 3.9, 2024-02-23
   
