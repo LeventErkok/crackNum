@@ -1,0 +1,17 @@
+Arguments: -fsp -- -0x2p3
+Exit code: ExitSuccess
+Satisfiable. Model:
+  ENCODED = -16.0 :: FloatingPoint 8 24
+                  3  2          1         0
+                  1 09876543 21098765432109876543210
+                  S ---E8--- ----------S23----------
+   Binary layout: 1 10000011 00000000000000000000000
+      Hex layout: C180 0000
+       Precision: Single (8 exponent bits, 23 significand bits.)
+            Sign: Negative
+        Exponent: 4 (Stored: 131, Bias: 127)
+  Classification: FP_NORMAL
+          Binary: -0b1p4
+           Octal: -0o2p3
+         Decimal: -16.0
+             Hex: -0x1p4
