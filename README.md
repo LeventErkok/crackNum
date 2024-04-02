@@ -137,6 +137,7 @@ Examples:
    crackNum -fdp   2.5                      -- encode as a double-precision float
    crackNum -fe4m3 2.5                      -- encode as an E4M3 FP8 float
    crackNum -fe5m2 2.5                      -- encode as an E5M2 FP8 float
+   crackNum -fsp   0x3.2p5                  -- encode as single-precision from hex-float
 
  Decoding:
    crackNum -i4      0b0110                -- decode as 4-bit signed integer, from binary
@@ -150,7 +151,8 @@ Examples:
  Notes:
    - For encoding:
        - Use -- to separate your argument if it's a negative number.
-       - For floats: You can pass in NaN, Inf, -0, -Inf etc as the argument, along with a decimal float.
+       - For floats: You can pass in NaN, Inf, -0, -Inf etc as the argument
+                     along with a decimal (2.3, -4.1e5) or hexadecimal float (0x2.4p3)
    - For decoding:
        - Use hexadecimal (0x) binary (0b), or N'h (verilog) notation as input.
          Input must have one of these prefixes.
