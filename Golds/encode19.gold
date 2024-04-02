@@ -1,0 +1,17 @@
+Arguments: -fhp -- 0x1.3p4
+Exit code: ExitSuccess
+Satisfiable. Model:
+  ENCODED = 19.0 :: FloatingPoint 5 11
+                  1       0
+                  5 43210 9876543210
+                  S -E5-- ---S10----
+   Binary layout: 0 10011 0011000000
+      Hex layout: 4CC0
+       Precision: Half (5 exponent bits, 10 significand bits.)
+            Sign: Positive
+        Exponent: 4 (Stored: 19, Bias: 15)
+  Classification: FP_NORMAL
+          Binary: 0b1.0011p4
+           Octal: 0o2.3p3
+         Decimal: 19.0
+             Hex: 0x1.3p4

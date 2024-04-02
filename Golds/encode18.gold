@@ -1,0 +1,17 @@
+Arguments: -fdp -- 0x1.3
+Exit code: ExitSuccess
+Satisfiable. Model:
+  ENCODED = 1.1875 :: FloatingPoint 11 53
+                  6     5          4         3         2         1         0
+                  4 32109876543 21098765432109876543210987654321098765432109876543210
+                  S ----E11---- -------------------------S53-------------------------
+   Binary layout: 0 01111111111 00110000000000000000000000000000000000000000000000000
+      Hex layout: 0 7FE6 0000 0000 0000
+       Precision: 11 exponent bits, 53 significand bits
+            Sign: Positive
+        Exponent: 0 (Stored: 1023, Bias: 1023)
+  Classification: FP_NORMAL
+          Binary: 0b1.0011
+           Octal: 0o1.14
+         Decimal: 1.1875
+             Hex: 0x1.3
