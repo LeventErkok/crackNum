@@ -18,10 +18,16 @@
 
 module Main(main) where
 
-import Control.Monad         (when)
-import Data.Char             (isDigit, isSpace, toLower)
-import Data.List             (isPrefixOf, isSuffixOf, unfoldr, isInfixOf, intercalate)
-import Data.Maybe            (fromMaybe)
+import Control.Monad   (when)
+import Control.DeepSeq (rnf)
+import Data.Char       (isDigit, isSpace, toLower)
+import Data.List       (isPrefixOf, isSuffixOf, unfoldr, isInfixOf, intercalate)
+import Data.Maybe      (fromMaybe)
+
+import GHC.Utils.Misc (readHexRational)
+import GHC.Real       (Ratio((:%)))
+
+import qualified Control.Exception as C
 
 import Text.Read             (readMaybe)
 import System.Environment    (getArgs, getProgName, withArgs)
@@ -85,13 +91,21 @@ instance Show RM where
   show RTN = "RTN: Round towards negative infinity."
   show RTZ = "RTZ: Round towards zero."
 
--- Covert to LibBF rounding mode
+-- Convert to LibBF rounding mode
 toLibBFRM :: RM -> RoundMode
 toLibBFRM RNE = NearEven
 toLibBFRM RNA = NearAway
 toLibBFRM RTP = ToPosInf
 toLibBFRM RTN = ToNegInf
 toLibBFRM RTZ = ToZero
+
+-- Convert to SBV rounding mode
+toSBVRM :: RM -> SRoundingMode
+toSBVRM RNE = sRNE
+toSBVRM RNA = sRNA
+toSBVRM RTP = sRTP
+toSBVRM RTN = sRTN
+toSBVRM RTZ = sRTZ
 
 -- | Options accepted by the executable
 data Flag = Signed   Int       -- ^ Crack as a signed    word with the given number of bits
@@ -226,6 +240,7 @@ usage pn = putStr $ unlines [ helpStr pn
                             , "   " ++ pn ++ " -fdp   2.5                      -- encode as a double-precision float"
                             , "   " ++ pn ++ " -fe4m3 2.5                      -- encode as an E4M3 FP8 float"
                             , "   " ++ pn ++ " -fe5m2 2.5                      -- encode as an E5M2 FP8 float"
+                            , "   " ++ pn ++ " -fsp   0x3.2p5                  -- encode as single-precision from hex-float"
                             , ""
                             , " Decoding:"
                             , "   " ++ pn ++ " -i4      0b0110                -- decode as 4-bit signed integer, from binary"
@@ -239,7 +254,8 @@ usage pn = putStr $ unlines [ helpStr pn
                             , " Notes:"
                             , "   - For encoding:"
                             , "       - Use -- to separate your argument if it's a negative number."
-                            , "       - For floats: You can pass in NaN, Inf, -0, -Inf etc as the argument, along with a decimal float."
+                            , "       - For floats: You can pass in NaN, Inf, -0, -Inf etc as the argument"
+                            , "                     along with a decimal (2.3, -4.1e5) or hexadecimal float (0x2.4p3)"
                             , "   - For decoding:"
                             , "       - Use hexadecimal (0x) binary (0b), or N'h (verilog) notation as input."
                             , "         Input must have one of these prefixes."
@@ -291,7 +307,9 @@ crack pn argv = case getOpt Permute pgmOptions argv of
 
                                               (decode, isVerilog, lanesInferred) <-
                                                         case arg of
-                                                          '0':'x':_ -> pure (True, False, Nothing)
+                                                          '0':'x':r -> if any (`elem` ".p") r
+                                                                          then pure (False, False, Nothing)
+                                                                          else pure (True, False, Nothing)
                                                           '0':'b':_ -> pure (True, False, Nothing)
                                                           _         -> case break (`elem` "'h") arg of
                                                                          (pre@(_:_), '\'':'h':_)
@@ -531,7 +549,7 @@ encodeLane debug lanes num rm inp
       SInt   n -> print =<< ei True  n
       SWord  n -> print =<< ei False n
       SFloat s -> ef s (s == E5M2)
-  where satCmd = satWith z3{crackNum=True, verbose=debug}
+  where satCmd = satWith z3{crackNum=True, verbose=debug, isNonModelVar = (/= "ENCODED")}
 
         ei :: Bool -> Int -> IO SatResult
         ei sgn n = case reads inp of
@@ -577,7 +595,12 @@ encodeLane debug lanes num rm inp
 
         ef (FP i j) wasE5M2 = do let (v, mbS) = convert i j
                                  if bfIsNaN v && fixup False inp /= "NaN"
-                                    then unrecognized inp
+                                    then -- maybe it's a hexfloat?
+                                         do let hr = readHexRational inp
+                                            () <- (rnf hr `seq` return ()) `C.catch` (\(_ :: C.SomeException) -> unrecognized inp)
+                                            res <- satCmd (pRat hr)
+                                            if wasE5M2 then fixE5M2Type res
+                                                       else print res
                                     else do res <- satCmd (p v)
                                             if wasE5M2 then fixE5M2Type res
                                                        else print res
@@ -586,6 +609,20 @@ encodeLane debug lanes num rm inp
                         p bf = do let k = KFP i j
                                   sx <- svNewVar k "ENCODED"
                                   pure $ SBV $ sx `svStrongEqual` SVal k (Left (CV k (CFP (fpFromBigFloat i j bf))))
+
+                        pRat :: Rational -> Predicate
+                        pRat (a :% b) = do let k = KFP i j
+                                           sx <- svNewVar k "ENCODED"
+                                           sr <- sReal_
+                                           let top, bot :: SReal
+                                               top = sFromIntegral (literal a)
+                                               bot = sFromIntegral (literal b)
+                                               val = top / bot
+                                               r st = do msv <- sbvToSV st (toSBVRM rm)
+                                                         xsv <- sbvToSV st sr
+                                                         newExpr st k (SBVApp (IEEEFP (FP_Cast KReal k msv)) [xsv])
+                                           pure $   sr .== val
+                                                .&& SBV sx .== SBV (SVal k (Right (cache r)))
 
         ef E5M2 _ = ef (FP 5 3) True -- 3 is intentional; the format ignores the sign storage, but SBV doesn't, following SMTLib
 
