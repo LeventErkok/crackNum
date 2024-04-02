@@ -68,6 +68,9 @@ tests = testGroup "CrackNum" [
              , gold "encode14" "-fsp      infinity"
              , gold "encode15" "-fsp      nan"
              , gold "encode16" "-fe5m2 2.5"
+             , gold "encode17" "-fsp -- -0x2p3"
+             , gold "encode18" "-fdp -- 0x1.3"
+             , gold "encode19" "-fhp -- 0x1.3p4"
             ]
           , testGroup "EncodeE4M3" [
                gold "encodeE4M3_nan"   "-fe4m3    nan"
