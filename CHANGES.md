@@ -3,6 +3,10 @@
 
 * Latest Hackage released version: 3.10, 2024-03-01
 
+### Version 3.11, 2024-04-05
+
+  * Allow for encoding of hexadecimal floats
+
 ### Version 3.10, 2024-03-01
   
   * More relaxed parsing for verilog input format
