@@ -1,7 +1,7 @@
 Arguments: -fbp      0x000F
 Exit code: ExitSuccess
 Satisfiable. Model:
-  DECODED = 1.378e-39 :: FloatingPoint 8 8
+  DECODED = 1.37753e-39 :: FloatingPoint 8 8
                   1      0
                   5 43210987 6543210
                   S ---E8--- --S7---
@@ -13,5 +13,5 @@ Satisfiable. Model:
   Classification: FP_SUBNORMAL
           Binary: 0b1.111p-130
            Octal: 0o7.4p-132
-         Decimal: 1.378e-39
+         Decimal: 1.37753e-39
              Hex: 0x7.8p-132

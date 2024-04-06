@@ -58,7 +58,7 @@ Satisfiable. Model:
             Note: Representation for NaN's is not unique
 == Lane 3 ============================================================
 Satisfiable. Model:
-  DECODED = -1.499 :: FloatingPoint 5 11
+  DECODED = -1.4990234 :: FloatingPoint 5 11
                   1       0
                   5 43210 9876543210
                   S -E5-- ---S10----
@@ -70,11 +70,11 @@ Satisfiable. Model:
   Classification: FP_NORMAL
           Binary: -0b1.0111111111
            Octal: -0o1.3774
-         Decimal: -1.499
+         Decimal: -1.4990234
              Hex: -0x1.7fc
 == Lane 2 ============================================================
 Satisfiable. Model:
-  DECODED = -0.054657 :: FloatingPoint 5 11
+  DECODED = -0.054656982 :: FloatingPoint 5 11
                   1       0
                   5 43210 9876543210
                   S -E5-- ---S10----
@@ -86,7 +86,7 @@ Satisfiable. Model:
   Classification: FP_NORMAL
           Binary: -0b1.1011111111p-5
            Octal: -0o3.377p-6
-         Decimal: -0.054657
+         Decimal: -0.054656982
              Hex: -0xd.fep-8
 == Lane 1 ============================================================
 Satisfiable. Model:
