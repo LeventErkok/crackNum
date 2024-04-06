@@ -1,7 +1,7 @@
 Arguments: -fe5m2    0b01111011
 Exit code: ExitSuccess
 Satisfiable. Model:
-  DECODED = 57000 :: E5M2
+  DECODED = 57300 :: E5M2
                   7 65432 10
                   S -E5-- S2
    Binary layout: 0 11110 11
@@ -12,5 +12,5 @@ Satisfiable. Model:
   Classification: FP_NORMAL
           Binary: 0b1.11p15
            Octal: 0o1.6p15
-         Decimal: 57000
+         Decimal: 57300
              Hex: 0xep12
