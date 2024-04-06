@@ -1,7 +1,7 @@
 Arguments: -fe4m3 --  239.9999
 Exit code: ExitSuccess
 Satisfiable. Model:
-  ENCODED = 240 :: E4M3
+  ENCODED = 240.0 :: E4M3
                   7 6543 210
                   S -E4- S3-
    Binary layout: 0 1110 111
@@ -12,5 +12,5 @@ Satisfiable. Model:
   Classification: FP_NORMAL
           Binary: 0b1.111p7
            Octal: 0o3.6p6
-         Decimal: 240
+         Decimal: 240.0
              Hex: 0xfp4
