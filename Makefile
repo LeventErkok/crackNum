@@ -72,7 +72,7 @@ checkLinks:
 	@brok --no-cache --only-failures $(DOCTESTSOURCES) COPYRIGHT LICENSE $(wildcard *.md)
 
 ci:
-	haskell-ci crackNum.cabal --no-tests --no-benchmarks --no-doctest --no-hlint --email-notifications
+	haskell-ci github crackNum.cabal --no-tests --no-benchmarks
 
 tags:
 	$(call mkTags)
