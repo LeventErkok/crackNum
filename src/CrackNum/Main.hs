@@ -691,7 +691,10 @@ inBases (E448 isNeg) = neg4 isNeg ("0b1.11p+8",  "0o7p+6",   "448.0", "0x1.Cp+8"
 encodeE4M3 :: Bool -> RM -> String -> IO ()
 encodeE4M3 debug rm inp = case reads (fixup True inp) of
                             [(v :: Double, "")] -> analyze v
-                            _                   -> unrecognized inp
+                            _                   -> -- maybe it's a hexfloat?
+                                                   do let hr = readHexRational inp
+                                                      (rnf hr `seq` analyze (fromRational hr))
+                                                        `C.catch` (\(_ :: C.SomeException) -> unrecognized inp)
  where config = z3{ crackNum = True
                   , verbose  = debug
                   }
