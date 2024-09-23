@@ -248,7 +248,7 @@ usage pn = putStr $ unlines [ helpStr pn
                             , "   " ++ pn ++ " -f3+4    0b0111001             -- decode as float with 3 bits exponent, 4 bits significand"
                             , "   " ++ pn ++ " -fbp     0x000F                -- decode as a brain-precision float"
                             , "   " ++ pn ++ " -fdp     0x8000000000000000    -- decode as a double-precision float"
-                            , "   " ++ pn ++ " -fhp     0x8000000000000000    -- decode as a double-precision float"
+                            , "   " ++ pn ++ " -fhp     0x8000                -- decode as a half-precision float"
                             , "   " ++ pn ++ " -l4 -fhp 64\\'hbdffaaffdc71fc60 -- decode as half-precision float over 4 lanes using verilog notation"
                             , ""
                             , " Notes:"

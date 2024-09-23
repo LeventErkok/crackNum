@@ -3,6 +3,10 @@
 
 * Latest Hackage released version: 3.10, 2024-03-01
 
+### Version 3.13, 2024-09-23
+
+  * Fix help text
+
 ### Version 3.12, 2024-04-05
 
   * Fix hexadecimal float parsing for e4m3
