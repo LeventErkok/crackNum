@@ -8,9 +8,9 @@
 #
 # For more information, see https://github.com/haskell-CI/haskell-ci
 #
-# version: 0.19.20240316
+# version: 0.12.1
 #
-# REGENDATA ("0.19.20240316",["github","crackNum.cabal","--no-tests","--no-benchmarks"])
+# REGENDATA ("0.12.1",["github","crackNum.cabal","--no-tests","--no-benchmarks"])
 #
 name: Haskell-CI
 on:
@@ -19,61 +19,48 @@ on:
 jobs:
   linux:
     name: Haskell-CI - Linux - ${{ matrix.compiler }}
-    runs-on: ubuntu-20.04
-    timeout-minutes:
-      60
+    runs-on: ubuntu-18.04
     container:
-      image: buildpack-deps:bionic
+      image: buildpack-deps:xenial
     continue-on-error: ${{ matrix.allow-failure }}
     strategy:
       matrix:
         include:
-          - compiler: ghc-9.8.2
-            compilerKind: ghc
-            compilerVersion: 9.8.2
-            setup-method: ghcup
+          - compiler: ghc-9.0.1
             allow-failure: false
       fail-fast: false
     steps:
       - name: apt
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends gnupg ca-certificates dirmngr curl git software-properties-common libtinfo5
-          mkdir -p "$HOME/.ghcup/bin"
-          curl -sL https://downloads.haskell.org/ghcup/0.1.20.0/x86_64-linux-ghcup-0.1.20.0 > "$HOME/.ghcup/bin/ghcup"
-          chmod a+x "$HOME/.ghcup/bin/ghcup"
-          "$HOME/.ghcup/bin/ghcup" config add-release-channel https://raw.githubusercontent.com/haskell/ghcup-metadata/master/ghcup-prereleases-0.0.8.yaml;
-          "$HOME/.ghcup/bin/ghcup" install ghc "$HCVER" || (cat "$HOME"/.ghcup/logs/*.* && false)
-          "$HOME/.ghcup/bin/ghcup" install cabal 3.10.2.0 || (cat "$HOME"/.ghcup/logs/*.* && false)
+          apt-get install -y --no-install-recommends gnupg ca-certificates dirmngr curl git software-properties-common
+          apt-add-repository -y 'ppa:hvr/ghc'
+          apt-get update
+          apt-get install -y $CC cabal-install-3.4
         env:
-          HCKIND: ${{ matrix.compilerKind }}
-          HCNAME: ${{ matrix.compiler }}
-          HCVER: ${{ matrix.compilerVersion }}
+          CC: ${{ matrix.compiler }}
       - name: Set PATH and environment variables
         run: |
           echo "$HOME/.cabal/bin" >> $GITHUB_PATH
-          echo "LANG=C.UTF-8" >> "$GITHUB_ENV"
-          echo "CABAL_DIR=$HOME/.cabal" >> "$GITHUB_ENV"
-          echo "CABAL_CONFIG=$HOME/.cabal/config" >> "$GITHUB_ENV"
-          HCDIR=/opt/$HCKIND/$HCVER
-          HC=$("$HOME/.ghcup/bin/ghcup" whereis ghc "$HCVER")
-          HCPKG=$(echo "$HC" | sed 's#ghc$#ghc-pkg#')
-          HADDOCK=$(echo "$HC" | sed 's#ghc$#haddock#')
-          echo "HC=$HC" >> "$GITHUB_ENV"
-          echo "HCPKG=$HCPKG" >> "$GITHUB_ENV"
-          echo "HADDOCK=$HADDOCK" >> "$GITHUB_ENV"
-          echo "CABAL=$HOME/.ghcup/bin/cabal-3.10.2.0 -vnormal+nowrap" >> "$GITHUB_ENV"
+          echo "LANG=C.UTF-8" >> $GITHUB_ENV
+          echo "CABAL_DIR=$HOME/.cabal" >> $GITHUB_ENV
+          echo "CABAL_CONFIG=$HOME/.cabal/config" >> $GITHUB_ENV
+          HCDIR=$(echo "/opt/$CC" | sed 's/-/\//')
+          HCNAME=ghc
+          HC=$HCDIR/bin/$HCNAME
+          echo "HC=$HC" >> $GITHUB_ENV
+          echo "HCPKG=$HCDIR/bin/$HCNAME-pkg" >> $GITHUB_ENV
+          echo "HADDOCK=$HCDIR/bin/haddock" >> $GITHUB_ENV
+          echo "CABAL=/opt/cabal/3.4/bin/cabal -vnormal+nowrap" >> $GITHUB_ENV
           HCNUMVER=$(${HC} --numeric-version|perl -ne '/^(\d+)\.(\d+)\.(\d+)(\.(\d+))?$/; print(10000 * $1 + 100 * $2 + ($3 == 0 ? $5 != 1 : $3))')
-          echo "HCNUMVER=$HCNUMVER" >> "$GITHUB_ENV"
-          echo "ARG_TESTS=--disable-tests" >> "$GITHUB_ENV"
-          echo "ARG_BENCH=--disable-benchmarks" >> "$GITHUB_ENV"
-          echo "HEADHACKAGE=false" >> "$GITHUB_ENV"
-          echo "ARG_COMPILER=--$HCKIND --with-compiler=$HC" >> "$GITHUB_ENV"
-          echo "GHCJSARITH=0" >> "$GITHUB_ENV"
+          echo "HCNUMVER=$HCNUMVER" >> $GITHUB_ENV
+          echo "ARG_TESTS=--disable-tests" >> $GITHUB_ENV
+          echo "ARG_BENCH=--disable-benchmarks" >> $GITHUB_ENV
+          echo "HEADHACKAGE=false" >> $GITHUB_ENV
+          echo "ARG_COMPILER=--$HCNAME --with-compiler=$HC" >> $GITHUB_ENV
+          echo "GHCJSARITH=0" >> $GITHUB_ENV
         env:
-          HCKIND: ${{ matrix.compilerKind }}
-          HCNAME: ${{ matrix.compiler }}
-          HCVER: ${{ matrix.compilerVersion }}
+          CC: ${{ matrix.compiler }}
       - name: env
         run: |
           env
@@ -96,10 +83,6 @@ jobs:
           repository hackage.haskell.org
             url: http://hackage.haskell.org/
           EOF
-          cat >> $CABAL_CONFIG <<EOF
-          program-default-options
-            ghc-options: $GHCJOBS +RTS -M3G -RTS
-          EOF
           cat $CABAL_CONFIG
       - name: versions
         run: |
@@ -112,14 +95,14 @@ jobs:
       - name: install cabal-plan
         run: |
           mkdir -p $HOME/.cabal/bin
-          curl -sL https://github.com/haskell-hvr/cabal-plan/releases/download/v0.7.3.0/cabal-plan-0.7.3.0-x86_64-linux.xz > cabal-plan.xz
-          echo 'f62ccb2971567a5f638f2005ad3173dba14693a45154c1508645c52289714cb2  cabal-plan.xz' | sha256sum -c -
+          curl -sL https://github.com/haskell-hvr/cabal-plan/releases/download/v0.6.2.0/cabal-plan-0.6.2.0-x86_64-linux.xz > cabal-plan.xz
+          echo 'de73600b1836d3f55e32d80385acc055fd97f60eaa0ab68a755302685f5d81bc  cabal-plan.xz' | sha256sum -c -
           xz -d < cabal-plan.xz > $HOME/.cabal/bin/cabal-plan
           rm -f cabal-plan.xz
           chmod a+x $HOME/.cabal/bin/cabal-plan
           cabal-plan --version
       - name: checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
         with:
           path: source
       - name: initial cabal.project for sdist
@@ -138,8 +121,7 @@ jobs:
       - name: generate cabal.project
         run: |
           PKGDIR_crackNum="$(find "$GITHUB_WORKSPACE/unpacked" -maxdepth 1 -type d -regex '.*/crackNum-[0-9.]*')"
-          echo "PKGDIR_crackNum=${PKGDIR_crackNum}" >> "$GITHUB_ENV"
-          rm -f cabal.project cabal.project.local
+          echo "PKGDIR_crackNum=${PKGDIR_crackNum}" >> $GITHUB_ENV
           touch cabal.project
           touch cabal.project.local
           echo "packages: ${PKGDIR_crackNum}" >> cabal.project
@@ -154,8 +136,8 @@ jobs:
         run: |
           $CABAL v2-build $ARG_COMPILER $ARG_TESTS $ARG_BENCH --dry-run all
           cabal-plan
-      - name: restore cache
-        uses: actions/cache/restore@v3
+      - name: cache
+        uses: actions/cache@v2
         with:
           key: ${{ runner.os }}-${{ matrix.compiler }}-${{ github.sha }}
           path: ~/.cabal/store
@@ -174,16 +156,7 @@ jobs:
         run: |
           cd ${PKGDIR_crackNum} || false
           ${CABAL} -vnormal check
-      - name: haddock
-        run: |
-          $CABAL v2-haddock --disable-documentation --haddock-all $ARG_COMPILER --with-haddock $HADDOCK $ARG_TESTS $ARG_BENCH all
       - name: unconstrained build
         run: |
           rm -f cabal.project.local
           $CABAL v2-build $ARG_COMPILER --disable-tests --disable-benchmarks all
-      - name: save cache
-        uses: actions/cache/save@v3
-        if: always()
-        with:
-          key: ${{ runner.os }}-${{ matrix.compiler }}-${{ github.sha }}
-          path: ~/.cabal/store
