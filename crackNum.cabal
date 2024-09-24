@@ -1,6 +1,6 @@
 Cabal-version      : 2.2
 Name               : crackNum
-Version            : 3.13
+Version            : 3.14
 Synopsis           : Crack various integer and floating-point data formats
 Description        : Crack IEEE-754 float formats and arbitrary sized words and integers, showing the layout.
                      .
