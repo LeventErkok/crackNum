@@ -15,7 +15,7 @@ Category           : Tools
 Build-type         : Simple
 Extra-Source-Files : README.md, COPYRIGHT, CHANGES.md
 
-Tested-With       : GHC==9.6.1
+Tested-With       : GHC==9.10.1
 
 source-repository head
     type:       git
