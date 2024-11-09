@@ -557,9 +557,9 @@ encodeLane debug lanes num rm inp
                      _                    -> die ["Expected an integer value to decode, received: " ++ show inp]
           where p :: Integer -> Predicate
                 p iv = do let k = KBounded sgn n
-                              v = SBV $ SVal k $ Left $ mkConstCV k iv
+                              v = SVal k $ Left $ mkConstCV k iv
                           x <- (if sgn then sIntN else sWordN) n "ENCODED"
-                          pure $ SBV x .== v
+                          pure $ SBV (x `svEqual` v)
 
         convert :: Int -> Int -> (BigFloat, Maybe String)
         convert i j = case s of
@@ -622,7 +622,7 @@ encodeLane debug lanes num rm inp
                                                          xsv <- sbvToSV st sr
                                                          newExpr st k (SBVApp (IEEEFP (FP_Cast KReal k msv)) [xsv])
                                            pure $   sr .== val
-                                                .&& SBV sx .== SBV (SVal k (Right (cache r)))
+                                                .&& SBV (sx `svEqual` SVal k (Right (cache r)))
 
         ef E5M2 _ = ef (FP 5 3) True -- 3 is intentional; the format ignores the sign storage, but SBV doesn't, following SMTLib
 

@@ -1,7 +1,11 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 3.14, 2024-09-23
+* Latest Hackage released version: 3.15, 2024-11-09
+
+### Version 3.15, 2024-11-09
+
+  * Bump up SBV dependence to >= 11.0
 
 ### Version 3.14, 2024-09-23
 
