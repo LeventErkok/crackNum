@@ -115,6 +115,34 @@ Satisfiable. Model:
              Hex: 0x1.f18p-8
 ```
 
+### Graphical interface (macOS, optional)
+
+Optionally, crackNum comes with a native macOS GUI: pick a format on the left,
+type a value, and see the encoding/decoding in detail. It is entirely optional —
+crackNum is fully functional as a command-line tool without it. The GUI is just
+a thin front-end that calls the `crackNum` binary underneath, so it supports
+exactly the same formats.
+
+Building it requires the Swift compiler that comes with the Xcode Command Line
+Tools (`xcode-select --install`). From a checkout of this repository:
+
+```
+$ cd gui
+$ make install      # builds CrackNum.app and copies it into /Applications
+```
+
+Once installed, launch it from Spotlight/Launchpad, or straight from the
+command line via the `--gui` option, which forwards any format/rounding flags
+and value to the app:
+
+```
+$ crackNum --gui                 -- open the graphical interface
+$ crackNum --gui -fsp 2.5        -- open it with single-precision selected, and 2.5 cracked
+$ crackNum --gui 0xdeadbeef      -- open it pre-filled with a value to decode
+```
+
+See [`gui/README.md`](gui/README.md) for more details and other build targets.
+
 ### Usage info
 ```
 Usage: crackNum value OR binary/hex-pattern
@@ -126,6 +154,7 @@ Usage: crackNum value OR binary/hex-pattern
   -h, -?    --help     print help, with examples
   -v        --version  print version info
   -d        --debug    debug mode, developers only
+            --gui      launch the graphical interface (macOS)
 
 Examples:
  Encoding:
@@ -147,6 +176,10 @@ Examples:
    crackNum -fdp     0x8000000000000000    -- decode as a double-precision float
    crackNum -fhp     0x8000                -- decode as a half-precision float
    crackNum -l4 -fhp 64\'hbdffaaffdc71fc60 -- decode as half-precision float over 4 lanes using verilog notation
+
+ GUI (macOS):
+   crackNum --gui                     -- launch the graphical interface
+   crackNum --gui 0xdeadbeef          -- launch the GUI, pre-filled with the given value
 
  Notes:
    - For encoding:
