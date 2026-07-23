@@ -1,9 +1,7 @@
 # CrackNum GUI (native macOS)
 
 A native SwiftUI front-end for the [`crackNum`](../) command-line tool: pick a
-format, type a value, and see the encoding/decoding in detail. It replaces the
-old Tcl/Tk interface — no Tcl, no Xcode required.
-
+format, type a value, and see the encoding/decoding in detail.
 The GUI is just a front-end: all cracking is done by the `crackNum` binary,
 which the app calls under the hood.
 
@@ -11,20 +9,12 @@ which the app calls under the hood.
 
 - macOS 13+ and the Swift toolchain (`swift --version` — comes with the Xcode
   Command Line Tools: `xcode-select --install`).
-- `crackNum` and `z3` reachable on your `PATH`. Nothing is hardcoded: the app
-  searches the `PATH` it inherits and, failing that, asks your login shell — so
-  it works both from a terminal and when launched from Finder. Verify with:
-
-  ```sh
-  which crackNum   # e.g. ~/.cabal/bin/crackNum
-  which z3         # e.g. /Applications/z3/bin/z3
-  ```
+- `crackNum` and `z3` reachable on your `PATH`.
 
 ## Build, run, install
 
 ```sh
 make            # build CrackNum.app
-make run        # build and launch (make run VALUE=0b1010 to pre-fill)
 make install    # copy CrackNum.app into /Applications
 make uninstall  # remove it
 make clean      # remove build artifacts
