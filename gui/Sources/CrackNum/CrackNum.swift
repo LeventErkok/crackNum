@@ -227,42 +227,33 @@ struct ParsedArgs {
 }
 
 extension Model {
-    /// Parse crackNum's flag grammar: -f<fmt>, -w<N>, -i<N>, -r<mode>, -l<N>, -d,
-    /// with values either attached (-fsp) or as a separate token (-f sp). `--`
-    /// separates a value that begins with '-'. Unknown flags are ignored.
+    /// Parse the crackNum flags forwarded by `crackNum --gui …`: -f<fmt>, -w<N>,
+    /// -i<N>, -r<mode> in their attached form (-fsp, -w32, -rRTZ), plus `--` to
+    /// introduce a value that begins with '-'. crackNum's Haskell front-end has
+    /// already parsed and validated these, so we only handle the canonical
+    /// attached forms; any other flag (-l lanes, -d, -v, …) is ignored.
     static func parseArgs(_ args: [String]) -> ParsedArgs {
         var p = ParsedArgs()
         var values: [String] = []
         var i = 0
 
-        // Value of an option whose argument may be attached (-fsp) or separate (-f sp).
-        func optArg(_ tok: String, _ prefix: String) -> String {
-            let rest = String(tok.dropFirst(prefix.count))
-            if !rest.isEmpty { return rest }
-            if i + 1 < args.count { i += 1; return args[i] }
-            return ""
-        }
-
         while i < args.count {
             let a = args[i]
             if a == "--" {                       // rest are values (e.g. a negative number)
-                i += 1
-                while i < args.count { values.append(args[i]); i += 1 }
+                values.append(contentsOf: args[(i + 1)...])
                 break
             }
-            if a == "-f" || a.hasPrefix("-f") {
-                applyFloat(&p, optArg(a, "-f").lowercased())
-            } else if a == "-w" || a.hasPrefix("-w") {
-                applyInteger(&p, unsigned: true, optArg(a, "-w"))
-            } else if a == "-i" || a.hasPrefix("-i") {
-                applyInteger(&p, unsigned: false, optArg(a, "-i"))
-            } else if a == "-r" || a.hasPrefix("-r") {
-                let rm = optArg(a, "-r").uppercased()
+            if a.hasPrefix("-f") {
+                applyFloat(&p, String(a.dropFirst(2)).lowercased())
+            } else if a.hasPrefix("-w") {
+                applyInteger(&p, unsigned: true, String(a.dropFirst(2)))
+            } else if a.hasPrefix("-i") {
+                applyInteger(&p, unsigned: false, String(a.dropFirst(2)))
+            } else if a.hasPrefix("-r") {
+                let rm = String(a.dropFirst(2)).uppercased()
                 if roundingModes.contains(rm) { p.rounding = rm }
-            } else if a == "-l" || a.hasPrefix("-l") {
-                _ = optArg(a, "-l")              // lanes: not applicable to the GUI, consume & ignore
             } else if a.hasPrefix("-") && a != "-" {
-                // Some other flag (-d, --debug, -v, …): ignore.
+                // Some other flag (-l lanes, -d, --debug, -v, …): ignore.
             } else {
                 values.append(a)
             }
@@ -281,7 +272,6 @@ extension Model {
         case "bp":   p.formatCode = "fbp"
         case "e4m3": p.formatCode = "fe4m3"
         case "e5m2": p.formatCode = "fe5m2"
-        case "qp":   p.formatCode = "fcs"; p.expWidth = 15; p.bitWidth = 15 + 113
         default:
             // Custom "E+S": E exponent bits, S significand bits (incl. implicit).
             let parts = v.split(separator: "+", maxSplits: 1)
@@ -477,8 +467,6 @@ struct ContentView: View {
 }
 
 // MARK: - App entry
-
-// MARK: - App entry
 //
 // We drive NSApplication directly and create the window in AppKit (hosting the
 // SwiftUI view) rather than using SwiftUI's `WindowGroup` scene. SwiftUI's scene
@@ -496,7 +484,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let window = NSWindow(contentViewController: hosting)
         window.title = "CrackNum"
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
-        window.setContentSize(NSSize(width: 900, height: 600))
+        window.setContentSize(NSSize(width: 1040, height: 600))
         window.center()
         self.window = window   // retain it
 
