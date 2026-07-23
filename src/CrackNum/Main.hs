@@ -30,10 +30,12 @@ import GHC.Real       (Ratio((:%)))
 import qualified Control.Exception as C
 
 import Text.Read             (readMaybe)
-import System.Environment    (getArgs, getProgName, withArgs)
+import System.Environment    (getArgs, getProgName, withArgs, lookupEnv)
 import System.Console.GetOpt (ArgOrder(Permute), getOpt, ArgDescr(..), OptDescr(..), usageInfo)
-import System.Exit           (exitFailure)
+import System.Exit           (exitFailure, ExitCode(..))
 import System.IO             (hPutStr, stderr)
+import System.Process        (rawSystem)
+import qualified System.Info as Info
 
 import LibBF
 import Numeric
@@ -116,6 +118,7 @@ data Flag = Signed   Int       -- ^ Crack as a signed    word with the given num
           | BadFlag  [String]  -- ^ Bad input
           | Version            -- ^ Version
           | Debug              -- ^ Run in debug mode. Debugging only.
+          | GUI                -- ^ Launch the graphical interface
           | Help               -- ^ Show help
           deriving (Show, Eq)
 
@@ -221,6 +224,7 @@ pgmOptions = [
     , Option "h?" ["help"]    (NoArg Help)                             "print help, with examples"
     , Option "v"  ["version"] (NoArg Version)                          "print version info"
     , Option "d"  ["debug"]   (NoArg Debug)                            "debug mode, developers only"
+    , Option ""   ["gui"]     (NoArg GUI)                              "launch the graphical interface (macOS)"
     ]
 
 -- | Help info
@@ -251,6 +255,10 @@ usage pn = putStr $ unlines [ helpStr pn
                             , "   " ++ pn ++ " -fhp     0x8000                -- decode as a half-precision float"
                             , "   " ++ pn ++ " -l4 -fhp 64\\'hbdffaaffdc71fc60 -- decode as half-precision float over 4 lanes using verilog notation"
                             , ""
+                            , " GUI (macOS):"
+                            , "   " ++ pn ++ " --gui                     -- launch the graphical interface"
+                            , "   " ++ pn ++ " --gui 0xdeadbeef          -- launch the GUI, pre-filled with the given value"
+                            , ""
                             , " Notes:"
                             , "   - For encoding:"
                             , "       - Use -- to separate your argument if it's a negative number."
@@ -269,6 +277,32 @@ die :: [String] -> IO a
 die xs = do hPutStr stderr $ unlines $ "ERROR:" : map ("  " ++) xs
             exitFailure
 
+-- | Launch the graphical interface (macOS only), forwarding all remaining arguments
+-- (format flags, rounding mode, and/or the value to crack) so the GUI can preselect
+-- them. The GUI itself calls back into this executable to do the actual cracking. The
+-- location of the app can be overridden with the CRACKNUM_GUI environment variable
+-- (pointing at the .app bundle); otherwise we ask LaunchServices to find it by name.
+launchGUI :: [String] -> IO ()
+launchGUI vals
+  | Info.os /= "darwin"
+  = die [ "The --gui option is only available on macOS."
+        , "On other platforms, use crackNum directly from the command line."
+        ]
+  | True
+  = do mbApp <- lookupEnv "CRACKNUM_GUI"
+       let args = case mbApp of
+                    Just p  -> ["-n", p,                "--args"] ++ vals
+                    Nothing -> ["-n", "-a", "CrackNum", "--args"] ++ vals
+       ec <- rawSystem "open" args
+       case ec of
+         ExitSuccess   -> pure ()
+         ExitFailure _ -> die [ "Unable to launch the CrackNum GUI application."
+                              , ""
+                              , "Make sure the CrackNum app is installed (e.g. in /Applications),"
+                              , "or set the CRACKNUM_GUI environment variable to its .app bundle path."
+                              ]
+
+
 -- | main entry point to crackNum
 crack :: String -> [String] -> IO ()
 crack pn argv = case getOpt Permute pgmOptions argv of
@@ -276,6 +310,7 @@ crack pn argv = case getOpt Permute pgmOptions argv of
                   (os, rs, [])
                     | Version `elem` os -> putStrLn $ pn ++ " v" ++ showVersion version ++ ", " ++ copyRight
                     | Help    `elem` os -> usage pn
+                    | GUI     `elem` os -> launchGUI (filter (/= "--gui") argv)
                     | True              -> do let rm = case reverse [r | RMode r <- os] of
                                                          (r:_) -> r
                                                          _     -> RNE
