@@ -3,6 +3,11 @@
 
 * Latest Hackage released version: 3.15, 2024-11-09
 
+### Version 3.16, Not yet released
+
+  * Add the `--gui` option, launching a graphical interface (macOS) for
+    interactively encoding/decoding values.
+
 ### Version 3.15, 2024-11-09
 
   * Bump up SBV dependence to >= 11.0
