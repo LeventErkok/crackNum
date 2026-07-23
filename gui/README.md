@@ -14,7 +14,9 @@ which the app calls under the hood.
 ## Build, run, install
 
 ```sh
-make            # build CrackNum.app
+make            # build CrackNum.app (with its icon)
+make run        # build and launch it
+make icon       # regenerate AppIcon.icns from make-icon.swift
 make install    # copy CrackNum.app into /Applications
 make uninstall  # remove it
 make clean      # remove build artifacts
@@ -38,8 +40,9 @@ font size and `?` to show the help text again.
 
 ## Command-line arguments
 
-The app accepts the same flags as `crackNum`, so `crackNum --gui` can forward
-them to pre-select a format and value:
+When launched via `crackNum --gui`, the app reads the forwarded crackNum flags
+to pre-select a format and value. It understands the common flags — `-f`/`-w`/`-i`
+formats, `-r` rounding, `--`, and a bare value — in their usual attached form:
 
 ```sh
 crackNum --gui -fsp 2.5        # opens with Single selected, 2.5 cracked

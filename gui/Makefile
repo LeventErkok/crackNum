@@ -3,14 +3,15 @@
 #
 #   make            build a double-clickable CrackNum.app (release)
 #   make run        build and launch it
+#   make icon       regenerate AppIcon.icns from make-icon.swift
 #   make install    install CrackNum.app into /Applications
-#   make install-cli install an optional `cngui` terminal launcher
-#   make uninstall  remove the app (and the CLI launcher)
+#   make uninstall  remove the app
 #   make debug      quick debug build of the raw executable
 #   make clean      remove build artifacts
 
 APP        := CrackNum
 BUNDLE     := $(APP).app
+ICNS       := AppIcon.icns
 CONFIG     := release
 BINPATH    := $(shell swift build -c $(CONFIG) --show-bin-path 2>/dev/null)
 EXECUTABLE := $(BINPATH)/$(APP)
@@ -20,23 +21,18 @@ EXECUTABLE := $(BINPATH)/$(APP)
 # no admin rights: make install APPDIR=$HOME/Applications
 APPDIR := /Applications
 
-# Optional CLI launcher (see `install-cli`). Deliberately NOT named `crackNum`:
-# the crackNum binary already owns that name, and the default filesystem is
-# case-insensitive, so `cracknum` would collide with it.
-CLIDIR  := /usr/local/bin
-CLINAME := cngui
-
-.PHONY: all app run install uninstall install-cli uninstall-cli debug clean
+.PHONY: all app run icon install uninstall debug clean
 
 all: app
 
 # Build the executable and assemble it into a minimal .app bundle so it
 # behaves like a real GUI app (appears in the Dock, takes focus, etc).
-app:
+app: $(ICNS)
 	swift build -c $(CONFIG)
 	@rm -rf $(BUNDLE)
-	@mkdir -p $(BUNDLE)/Contents/MacOS
+	@mkdir -p $(BUNDLE)/Contents/MacOS $(BUNDLE)/Contents/Resources
 	@cp "$(EXECUTABLE)" $(BUNDLE)/Contents/MacOS/$(APP)
+	@cp "$(ICNS)" $(BUNDLE)/Contents/Resources/$(ICNS)
 	@printf '%s\n' \
 	  '<?xml version="1.0" encoding="UTF-8"?>' \
 	  '<plist version="1.0"><dict>' \
@@ -44,15 +40,28 @@ app:
 	  '  <key>CFBundleDisplayName</key><string>$(APP)</string>' \
 	  '  <key>CFBundleIdentifier</key><string>io.github.leventerkok.crackNum</string>' \
 	  '  <key>CFBundleExecutable</key><string>$(APP)</string>' \
+	  '  <key>CFBundleIconFile</key><string>$(ICNS)</string>' \
 	  '  <key>CFBundlePackageType</key><string>APPL</string>' \
 	  '  <key>CFBundleShortVersionString</key><string>1.0</string>' \
 	  '  <key>LSMinimumSystemVersion</key><string>13.0</string>' \
 	  '  <key>NSHighResolutionCapable</key><true/>' \
 	  '</dict></plist>' > $(BUNDLE)/Contents/Info.plist
-	@echo "Built $(BUNDLE) — run with 'make run' or 'open $(BUNDLE)'"
+	@echo "Built $(BUNDLE)"
 
 run: app
 	open $(BUNDLE) $(if $(VALUE),--args $(VALUE))
+
+# Render the icon PNGs (make-icon.swift) and pack them into an .icns.
+$(ICNS): make-icon.swift
+	@rm -rf $(APP).iconset
+	@mkdir -p $(APP).iconset
+	swift make-icon.swift $(APP).iconset
+	iconutil -c icns -o $(ICNS) $(APP).iconset
+	@rm -rf $(APP).iconset
+	@echo "Generated $(ICNS)"
+
+icon: $(ICNS)
+
 
 # The standard macOS install: drop the .app into /Applications. That's all most
 # apps do — Spotlight, Launchpad and the Dock pick it up from there.
@@ -61,24 +70,11 @@ run: app
 install: app
 	@rm -rf "$(APPDIR)/$(BUNDLE)"
 	@cp -R "$(BUNDLE)" "$(APPDIR)/"
-	@echo "Installed $(APPDIR)/$(BUNDLE)"
-	@echo "Launch from Spotlight/Launchpad, or: open -n -a $(APP) --args 2.5"
-	@echo "For a terminal launcher, run: make install-cli"
+	@echo "Installed $(APPDIR)/$(BUNDLE) — you can now use: crackNum --gui"
 
-uninstall: uninstall-cli
+uninstall:
 	@rm -rf "$(APPDIR)/$(BUNDLE)"
 	@echo "Removed $(APPDIR)/$(BUNDLE)"
-
-# Optional: a distinctly-named CLI launcher for the GUI (like VS Code's `code`
-# or GitHub Desktop's `github`). Forwards its args as the initial value.
-install-cli:
-	@mkdir -p "$(CLIDIR)"
-	@printf '#!/bin/sh\n# CrackNum GUI launcher. Forwards args as the initial value.\nexec open -n -a "%s/%s" --args "$$@"\n' "$(APPDIR)" "$(BUNDLE)" > "$(CLIDIR)/$(CLINAME)"
-	@chmod +x "$(CLIDIR)/$(CLINAME)"
-	@echo "Installed $(CLIDIR)/$(CLINAME) — run e.g.: $(CLINAME) 0b1010"
-
-uninstall-cli:
-	@rm -f "$(CLIDIR)/$(CLINAME)"
 
 # Raw executable, handy for seeing stdout in the terminal.
 debug:
@@ -87,4 +83,4 @@ debug:
 
 clean:
 	swift package clean
-	@rm -rf $(BUNDLE) .build
+	@rm -rf $(BUNDLE) $(APP).iconset .build

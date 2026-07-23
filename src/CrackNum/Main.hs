@@ -298,8 +298,14 @@ launchGUI vals
          ExitSuccess   -> pure ()
          ExitFailure _ -> die [ "Unable to launch the CrackNum GUI application."
                               , ""
-                              , "Make sure the CrackNum app is installed (e.g. in /Applications),"
-                              , "or set the CRACKNUM_GUI environment variable to its .app bundle path."
+                              , "The CrackNum GUI app does not seem to be installed. To install it,"
+                              , "get the crackNum sources and build the GUI (macOS 13+, Swift toolchain):"
+                              , ""
+                              , "    git clone http://github.com/LeventErkok/crackNum.git"
+                              , "    cd crackNum/gui"
+                              , "    make install       # builds and copies CrackNum.app into /Applications"
+                              , ""
+                              , "Then re-run: crackNum --gui" ++ (if null vals then "" else ' ' : unwords vals)
                               ]
 
 
