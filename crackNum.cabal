@@ -17,7 +17,7 @@ Extra-Source-Files : README.md, COPYRIGHT, CHANGES.md
 
 source-repository head
     type:       git
-    location:   git://github.com/LeventErkok/crackNum.git
+    location:   https://github.com/LeventErkok/crackNum.git
 
 Executable crackNum
    main-is         : CrackNum/Main.hs
