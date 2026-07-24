@@ -123,6 +123,8 @@ crackNum is fully functional as a command-line tool without it. The GUI is just
 a thin front-end that calls the `crackNum` binary underneath, so it supports
 exactly the same formats.
 
+![crackNum macOS GUI](https://raw.githubusercontent.com/LeventErkok/crackNum/master/crackNumGUI.png)
+
 Building it requires the Swift compiler that comes with the Xcode Command Line
 Tools (`xcode-select --install`). From a checkout of this repository:
 
