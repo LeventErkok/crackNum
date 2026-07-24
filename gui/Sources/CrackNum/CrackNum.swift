@@ -508,6 +508,13 @@ private func makeMainMenu() -> NSMenu {
     appMenu.addItem(.separator())
     appMenu.addItem(withTitle: "Quit CrackNum", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
 
+    let fileItem = NSMenuItem()
+    mainMenu.addItem(fileItem)
+    let fileMenu = NSMenu(title: "File")
+    fileItem.submenu = fileMenu
+    // ⌘W closes the key window (routed through the responder chain).
+    fileMenu.addItem(withTitle: "Close", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+
     let editItem = NSMenuItem()
     mainMenu.addItem(editItem)
     let editMenu = NSMenu(title: "Edit")
