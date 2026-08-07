@@ -146,8 +146,8 @@ getSize flg f n = case readMaybe n of
 
 #include "MachDeps.h"
 
-#define FP_MIN_EB 2
-#define FP_MIN_SB 2
+#define FP_MIN_EB 1
+#define FP_MIN_SB 1
 #if WORD_SIZE_IN_BITS == 64
 #define FP_MAX_EB 61
 #define FP_MAX_SB 4611686018427387902

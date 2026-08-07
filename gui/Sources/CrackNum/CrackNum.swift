@@ -149,7 +149,7 @@ func precisionFlag(for kind: Format.Kind, bitWidth: Int, expWidth: Int) -> FlagR
     case .fixedFloat(let f): return .flag("-\(f)")
     case .customFloat:
         let sigWidth = bitWidth - expWidth - 1
-        if expWidth < 2 || sigWidth < 2 {
+        if expWidth < 1 || sigWidth < 1 {
             return .invalid("""
             Invalid custom FP format:
               Total width: \(bitWidth)
@@ -157,7 +157,7 @@ func precisionFlag(for kind: Format.Kind, bitWidth: Int, expWidth: Int) -> FlagR
                 Exponent   : \(String(format: "%4d", expWidth))
                 Significand: \(String(format: "%4d", sigWidth)) (Total = Sign + Exponent + Significand)
 
-            Exponent and significand must be at least 2 bits each.
+            Exponent and significand must be at least 1 bits each.
             """)
         }
         // crackNum's -fE+S: E exponent bits, S significand bits *including* the implied bit.
