@@ -1,0 +1,19 @@
+Arguments: -ffp4 -rRTP -- -7.0
+Exit code: ExitSuccess
+Satisfiable. Model:
+  ENCODED = -6.0 :: FP4
+                  3 21 0
+                  S E2 S
+   Binary layout: 1 11 1
+      Hex layout: F
+       Precision: 2 exponent bits, 1 significand bit
+            Sign: Negative
+        Exponent: 2 (Stored: 3, Bias: 1)
+  Classification: FP_NORMAL
+          Binary: -0b1.1p+2
+           Octal: -0o6
+         Decimal: -6.0
+             Hex: -0x6
+   Rounding mode: RTP: Round towards positive infinity.
+            Note: Original value of -7.0 is out of range, saturated to -6.0.
+                  The representable range is [-6, 6].

@@ -1,0 +1,18 @@
+Arguments: -ffp4 -rRNE --  1.25
+Exit code: ExitSuccess
+Satisfiable. Model:
+  ENCODED = 1.0 :: FP4
+                  3 21 0
+                  S E2 S
+   Binary layout: 0 01 0
+      Hex layout: 2
+       Precision: 2 exponent bits, 1 significand bit
+            Sign: Positive
+        Exponent: 0 (Stored: 1, Bias: 1)
+  Classification: FP_NORMAL
+          Binary: 0b1
+           Octal: 0o1
+         Decimal: 1.0
+             Hex: 0x1
+   Rounding mode: RNE: Round nearest ties to even.
+            Note: Original value of 1.25 was rounded to 1.0.

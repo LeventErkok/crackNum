@@ -1,0 +1,7 @@
+Arguments: -ffp4    inf
+Exit code: ExitFailure 1
+
+STDERR:
+ERROR:
+  FP4 has no representation for infinity.
+  The representable range is [-6, 6].

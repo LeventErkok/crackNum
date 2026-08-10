@@ -62,6 +62,7 @@ data FP = SP          -- Single precision
         | FP Int Int  -- Arbitrary precision with given exponent and significand sizes
         | E5M2        -- Synonym for FP 5 3 (yes, confusing M2->3, but that's the naming)
         | E4M3        -- Custom FP8 format with no infinities and limited NaNs
+        | FP4         -- NVIDIA FP4 (E2M1) format with no infinities and no NaNs
         deriving (Show, Eq)
 
 -- | How many bits does this float occupy
@@ -71,6 +72,7 @@ fpSize DP       = 64
 fpSize (FP i j) = i+j
 fpSize E5M2     = 8
 fpSize E4M3     = 8
+fpSize FP4      = 4
 
 kSize :: NKind -> Int
 kSize (SInt  i)  = i
@@ -165,6 +167,7 @@ getFP "dp"   = Floating DP
 getFP "qp"   = Floating $ FP 15 113
 getFP "e5m2" = Floating E5M2
 getFP "e4m3" = Floating E4M3
+getFP "fp4"  = Floating FP4
 getFP ab     = case span isDigit ab of
                   (eb@(_:_), '+':r) -> case span isDigit r of
                                         (sp@(_:_), "") -> mkEBSB (read eb) (read sp)
@@ -180,6 +183,7 @@ getFP ab     = case span isDigit ab of
                                     , "   a+b: Arbitrary IEEE-754     ( a +   b)"
                                     , "  e5m2: FP8 format (IEEE-754)  ( 5 +   3)"
                                     , "  e4m3: FP8 format (Alternate) ( 4 +   4)"
+                                    , "   fp4: FP4 format (E2M1)      ( 2 +   2)"
                                     , ""
                                     , "In the arbitrary format, the first number is the number of bits in the exponent"
                                     , "and the second number is the number of bits in the significand, including the implicit bit."
@@ -244,6 +248,7 @@ usage pn = putStr $ unlines [ helpStr pn
                             , "   " ++ pn ++ " -fdp   2.5                      -- encode as a double-precision float"
                             , "   " ++ pn ++ " -fe4m3 2.5                      -- encode as an E4M3 FP8 float"
                             , "   " ++ pn ++ " -fe5m2 2.5                      -- encode as an E5M2 FP8 float"
+                            , "   " ++ pn ++ " -ffp4  2.5                      -- encode as an FP4 (E2M1) float"
                             , "   " ++ pn ++ " -fsp   0x3.2p5                  -- encode as single-precision from hex-float"
                             , ""
                             , " Decoding:"
@@ -253,6 +258,7 @@ usage pn = putStr $ unlines [ helpStr pn
                             , "   " ++ pn ++ " -fbp     0x000F                -- decode as a brain-precision float"
                             , "   " ++ pn ++ " -fdp     0x8000000000000000    -- decode as a double-precision float"
                             , "   " ++ pn ++ " -fhp     0x8000                -- decode as a half-precision float"
+                            , "   " ++ pn ++ " -ffp4    0b0111                -- decode as an FP4 (E2M1) float"
                             , "   " ++ pn ++ " -l4 -fhp 64\\'hbdffaaffdc71fc60 -- decode as half-precision float over 4 lanes using verilog notation"
                             , ""
                             , " GUI (macOS):"
@@ -264,6 +270,8 @@ usage pn = putStr $ unlines [ helpStr pn
                             , "       - Use -- to separate your argument if it's a negative number."
                             , "       - For floats: You can pass in NaN, Inf, -0, -Inf etc as the argument"
                             , "                     along with a decimal (2.3, -4.1e5) or hexadecimal float (0x2.4p3)"
+                            , "       - FP4 (E2M1) has neither NaN nor Inf, so those inputs are rejected. Finite"
+                            , "         values outside its range of [-6, 6] saturate to the nearest end-point."
                             , "   - For decoding:"
                             , "       - Use hexadecimal (0x) binary (0b), or N'h (verilog) notation as input."
                             , "         Input must have one of these prefixes."
@@ -512,6 +520,7 @@ decodeLane debug mbLane inputBits kind = case kind of
                      FP i j -> print =<< satWith config (dFP i j bs)
                      E5M2   -> fixE5M2Type =<< satWith config (dFP 5 3 bs)
                      E4M3   -> de4m3 config allBits
+                     FP4    -> dFP4  config allBits
 
         dFloat :: [SBool] -> ConstraintSet
         dFloat  bs = do x <- sFloat "DECODED"
@@ -540,43 +549,70 @@ decodeLane debug mbLane inputBits kind = case kind of
         -- Otherwise, it's just FP 4 4
         de4m3 config allBits = print =<< satWith config (dFP 4 4 (map literal allBits))
 
--- Print a model for E5M2, this is the same as dFP 5 3, we just fix the "printed" type
-fixE5M2Type :: SatResult -> IO ()
-fixE5M2Type res = case res of
-                   SatResult (Satisfiable{}) -> mapM_ (putStrLn . fixType) (lines (show res))
-                   _                         -> print res
+        -- FP4 also deviates from IEEE.
+        dFP4 config allBits@[sign, True, True, s1] =
+           -- normally would be infinity if s1 = 0, and NaN if s1 = 1; but maps to 4/6 instead
+           do  res <- satWith config (dFP 2 2 (map literal allBits))
+               case res of
+                 SatResult (Satisfiable{}) -> dFP4Model debug (sign, s1) res
+                 _                         -> print res
+
+        -- Otherwise, it's just FP 2 2
+        dFP4 config allBits = print =<< satWith config (dFP 2 2 (map literal allBits))
+
+-- The non-IEEE formats are all modeled by an IEEE look-alike, so SBV displays the look-alike's
+-- type name. Rewrite it to the format the user actually asked for.
+retype :: FP -> SatResult -> String
+retype fmt res@(SatResult (Satisfiable{})) = intercalate "\n" $ map fixType (lines (show res))
  where fixType :: String -> String
        fixType s
          | any (`isInfixOf` s) ["ENCODED", "DECODED"]
-         = takeWhile (/= ':') s ++ ":: E5M2"
+         = takeWhile (/= ':') s ++ ":: " ++ show fmt
          | True
          = s
+retype _   res                             = show res
+
+-- Print a model for E5M2, this is the same as dFP 5 3, we just fix the "printed" type
+fixE5M2Type :: SatResult -> IO ()
+fixE5M2Type = putStrLn . retype E5M2
 
 -- Print a deviating model for E4M3:
 de4m3Model :: Bool -> (Bool, Bool, Bool, Bool) -> SatResult -> IO ()
-de4m3Model debug (sign, s1, s2, s3) ieeeResult = do
-        let ifSet True  v = v
-            ifSet False _ = 0
+de4m3Model debug (sign, s1, s2, s3) = modOut debug sign val E4M3
+  where val :: Double
+        val  = 256 + ifSet s1 128 + ifSet s2 64 + ifSet s3 32
 
-            val, sval :: Double
-            val  = 256 + ifSet s1 128 + ifSet s2 64 + ifSet s3 32
-            sval
-             | sign = -val
-             | True = val
+        ifSet True  v = v
+        ifSet False _ = 0
+
+-- Print a deviating model for FP4:
+dFP4Model :: Bool -> (Bool, Bool) -> SatResult -> IO ()
+dFP4Model debug (sign, s1) = modOut debug sign val FP4
+  where val :: Double
+        val | s1   = 6
+            | True = 4
+
+-- Handle modified output. The bit-layout of these values is precisely what the IEEE look-alike
+-- says it is, so we take that part verbatim; but the value itself, and everything that is derived
+-- from it, has to come from the double we actually mean. Note that this works for encoding just
+-- as well as it does for decoding; the only difference is the label SBV uses.
+modOut :: Bool -> Bool -> Double -> FP -> SatResult -> IO ()
+modOut debug sign val fmt ieeeResult = do
+        let sval :: Double
+            sval | sign = -val
+                 | True = val
 
             modifiedResult = SBV.crack debug (literal sval :: SDouble)
 
             isClassification = ("Classification:" `isInfixOf`)
 
-            fixDecoded l
-              | "DECODED" `isInfixOf` l
-              = "  DECODED = " ++ show sval ++ " :: E4M3"
-              | True
-              = l
+            fixVal l = case [tag | tag <- ["ENCODED", "DECODED"], tag `isInfixOf` l] of
+                         tag : _ -> "  " ++ tag ++ " = " ++ show sval ++ " :: " ++ show fmt
+                         []      -> l
 
         -- Print from the original result upto Classification, rest from the modified result
-        mapM_ (putStrLn . fixDecoded) $ takeWhile (not . isClassification) (lines (show ieeeResult))
-        mapM_ putStrLn                $ dropWhile (not . isClassification) (lines modifiedResult)
+        mapM_ (putStrLn . fixVal) $ takeWhile (not . isClassification) (lines (show ieeeResult))
+        mapM_ putStrLn            $ dropWhile (not . isClassification) (lines modifiedResult)
 
 -- | Encoding
 encodeLane :: Bool -> Int -> NKind -> RM -> String -> IO ()
@@ -669,6 +705,8 @@ encodeLane debug lanes num rm inp
 
         ef E4M3 _ = encodeE4M3 debug rm inp
 
+        ef FP4  _ = encodeFP4  debug rm inp
+
 -- | Convert certain strings to more understandable format by read
 -- If first argument is True, then we're reading using reads, i.e., haskell syntax
 -- If first argument is False, then we're using big-float library, which has a different notion for infinity and nans
@@ -741,15 +779,7 @@ encodeE4M3 debug rm inp = case reads (fixup True inp) of
                   }
 
        fixEncoded :: SatResult -> String
-       fixEncoded res@(SatResult (Satisfiable{})) = intercalate "\n" $ map fixType (lines (show res))
-       fixEncoded res                             = show res
-
-       fixType :: String -> String
-       fixType s
-         | any (`isInfixOf` s) ["ENCODED", "DECODED"]
-         = takeWhile (/= ':') s ++ ":: E4M3"
-         | True
-         = s
+       fixEncoded = retype E4M3
 
        onEach f = intercalate "\n" . concatMap f . lines
 
@@ -861,3 +891,107 @@ encodeE4M3 debug rm inp = case reads (fixup True inp) of
               putStrLn $ "             Hex: " ++ bHex
               putStrLn $ "   Rounding mode: " ++ show rm
               putStrLn $ "            Note: Original value of " ++ show v ++ ", represented as E4M3 special value"
+
+-- Likewise encoding FP4 is tricky since it deviates from IEEE. But luckily there aren't too many
+-- values to worry about here: There are precisely 8 magnitudes, so we simply round by hand.
+encodeFP4 :: Bool -> RM -> String -> IO ()
+encodeFP4 debug rm inp = case reads (fixup True inp) of
+                           [(v :: Double, "")] -> analyze v
+                           _                   -> -- maybe it's a hexfloat? Note that we must scope the
+                                                  -- catch over the parse only: analyze can legitimately
+                                                  -- die, and die throws an exit-exception of its own.
+                                                  do let hr = readHexRational inp
+                                                     ok <- (rnf hr `seq` pure True)
+                                                             `C.catch` (\(_ :: C.SomeException) -> pure False)
+                                                     if ok then analyze (fromRational hr)
+                                                           else unrecognized inp
+ where config = z3{ crackNum = True
+                  , verbose  = debug
+                  }
+
+       -- The magnitudes FP4 can represent, in increasing order. Note that the index of each
+       -- magnitude is precisely the value of the low 3 bits of its encoding. The last two
+       -- (4 and 6) are where FP4 deviates from IEEE, which would call them infinity and NaN.
+       mags :: [Double]
+       mags = [0, 0.5, 1, 1.5, 2, 3, 4, 6]
+
+       -- Round the magnitude to the index of one of the representable magnitudes, honoring
+       -- the rounding mode. Note that rounding a negative value towards +oo is the same thing
+       -- as rounding its magnitude towards 0; hence the need for the sign here.
+       roundMag :: Bool -> Double -> Int
+       roundMag isNeg m
+         | m >= 6                                     -- Larger than we can represent; saturate
+         = 7
+         | e : _ <- [i | (i, mv) <- zip [0..] mags, mv == m]  -- Exactly representable
+         = e
+         | True
+         = case rm of
+             RTZ -> lo
+             RTP -> if isNeg then lo else hi
+             RTN -> if isNeg then hi else lo
+             RNE -> nearest (if even lo then lo else hi)
+             RNA -> nearest hi
+        where lo = last [i | (i, mv) <- zip [0..] mags, mv < m]
+              hi = lo + 1
+
+              -- Ties are broken by the given choice; note that comparing against the sum
+              -- avoids any rounding of its own, since all the values involved are exact.
+              nearest tie = case compare (2 * m) (mags !! lo + mags !! hi) of
+                              LT -> lo
+                              GT -> hi
+                              EQ -> tie
+
+       analyze :: Double -> IO ()
+       analyze v
+         | isNaN v
+         = die [ "FP4 has no representation for NaN." ]
+         | isInfinite v
+         = die [ "FP4 has no representation for infinity."
+               , "The representable range is [-6, 6]."
+               ]
+         | True
+         = do let isNeg = v < 0 || isNegativeZero v
+                  idx   = roundMag isNeg (abs v)
+                  t     = (if isNeg then negate else id) (mags !! idx)
+
+              if idx >= 6 then deviant isNeg idx
+                          else regular t
+
+              trailer v t
+
+       -- Everything with magnitude at most 3 is a bona-fide IEEE FP 2 2 value, so let SBV
+       -- print it; we merely fix the type name it displays. Note that the rounding mode is
+       -- irrelevant here, since we've already rounded and the value is exactly representable.
+       regular :: Double -> IO ()
+       regular t = do res <- satWith config $ do x :: SFloatingPoint 2 2 <- sFloatingPoint "ENCODED"
+                                                 constrain $ x .=== fromSDouble sRNE (literal t)
+                      putStrLn $ retype FP4 res
+
+       -- 4 and 6 sit exactly where IEEE puts infinity and NaN, so we ask SBV for the look-alike
+       -- and pin the surface bits; that gives us the correct layout without having to guess at
+       -- SBV's formatting. modOut then replaces the value, and everything derived from it.
+       deviant :: Bool -> Int -> IO ()
+       deviant isNeg idx = do
+              let bits :: Integer
+                  bits = (if isNeg then 8 else 0) + (if idx == 7 then 7 else 6)
+
+              res <- satWith config{crackNumSurfaceVals = [("ENCODED", bits)]} $
+                        do x :: SFloatingPoint 2 2 <- sFloatingPoint "ENCODED"
+                           constrain $ if idx == 7
+                                          then fpIsNaN x   -- 6: the NaN slot, whose sign is not observable
+                                          else fpIsInfinite x .&& (if isNeg then fpIsNegative x else fpIsPositive x)
+
+              modOut debug isNeg (mags !! idx) FP4 res
+
+       -- Since FP4 has no infinities, out-of-range values saturate to the largest magnitude.
+       trailer :: Double -> Double -> IO ()
+       trailer v t = do putStrLn $ "   Rounding mode: " ++ show rm
+                        note
+         where note
+                | abs v > 6
+                = do putStrLn $ "            Note: Original value of " ++ show v ++ " is out of range, saturated to " ++ show t ++ "."
+                     putStrLn   "                  The representable range is [-6, 6]."
+                | v == t
+                = putStrLn $ "            Note: Conversion from " ++ show inp ++ " was exact. No rounding happened."
+                | True
+                = putStrLn $ "            Note: Original value of " ++ show v ++ " was rounded to " ++ show t ++ "."

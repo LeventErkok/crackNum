@@ -1,0 +1,6 @@
+Arguments: -ffp4    nan
+Exit code: ExitFailure 1
+
+STDERR:
+ERROR:
+  FP4 has no representation for NaN.

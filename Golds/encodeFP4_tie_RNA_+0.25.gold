@@ -1,0 +1,18 @@
+Arguments: -ffp4 -rRNA --  0.25
+Exit code: ExitSuccess
+Satisfiable. Model:
+  ENCODED = 0.5 :: FP4
+                  3 21 0
+                  S E2 S
+   Binary layout: 0 00 1
+      Hex layout: 1
+       Precision: 2 exponent bits, 1 significand bit
+            Sign: Positive
+        Exponent: 0 (Subnormal, with fixed exponent value. Stored: 0, Bias: 1)
+  Classification: FP_SUBNORMAL
+          Binary: 0b1p-1
+           Octal: 0o4p-3
+         Decimal: 0.5
+             Hex: 0x8p-4
+   Rounding mode: RNA: Round nearest ties to away.
+            Note: Original value of 0.25 was rounded to 0.5.

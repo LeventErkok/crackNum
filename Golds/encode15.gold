@@ -5,10 +5,10 @@ Satisfiable. Model:
                   3  2          1         0
                   1 09876543 21098765432109876543210
                   S ---E8--- ----------S23----------
-   Binary layout: 1 11111111 10000000000000000000000
-      Hex layout: FFC0 0000
+   Binary layout: 0 11111111 10000000000000000000000
+      Hex layout: 7FC0 0000
        Precision: Single
-            Sign: Negative
+            Sign: Positive
         Exponent: 128 (Stored: 255, Bias: 127)
   Classification: FP_NAN
            Value: NaN
