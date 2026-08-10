@@ -168,6 +168,7 @@ Examples:
    crackNum -fdp   2.5                      -- encode as a double-precision float
    crackNum -fe4m3 2.5                      -- encode as an E4M3 FP8 float
    crackNum -fe5m2 2.5                      -- encode as an E5M2 FP8 float
+   crackNum -ffp4  2.5                      -- encode as an FP4 (E2M1) float
    crackNum -fsp   0x3.2p5                  -- encode as single-precision from hex-float
 
  Decoding:
@@ -177,6 +178,7 @@ Examples:
    crackNum -fbp     0x000F                -- decode as a brain-precision float
    crackNum -fdp     0x8000000000000000    -- decode as a double-precision float
    crackNum -fhp     0x8000                -- decode as a half-precision float
+   crackNum -ffp4    0b0111                -- decode as an FP4 (E2M1) float
    crackNum -l4 -fhp 64\'hbdffaaffdc71fc60 -- decode as half-precision float over 4 lanes using verilog notation
 
  GUI (macOS):
@@ -188,6 +190,8 @@ Examples:
        - Use -- to separate your argument if it's a negative number.
        - For floats: You can pass in NaN, Inf, -0, -Inf etc as the argument
                      along with a decimal (2.3, -4.1e5) or hexadecimal float (0x2.4p3)
+       - FP4 (E2M1) has neither NaN nor Inf, so those inputs are rejected. Finite
+         values outside its range of [-6, 6] saturate to the nearest end-point.
    - For decoding:
        - Use hexadecimal (0x) binary (0b), or N'h (verilog) notation as input.
          Input must have one of these prefixes.

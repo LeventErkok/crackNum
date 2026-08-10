@@ -1,0 +1,16 @@
+Arguments: -ffp4 0b1010
+Exit code: ExitSuccess
+Satisfiable. Model:
+  DECODED = -1.0 :: FloatingPoint 2 2
+                  3 21 0
+                  S E2 S
+   Binary layout: 1 01 0
+      Hex layout: A
+       Precision: 2 exponent bits, 1 significand bit
+            Sign: Negative
+        Exponent: 0 (Stored: 1, Bias: 1)
+  Classification: FP_NORMAL
+          Binary: -0b1
+           Octal: -0o1
+         Decimal: -1.0
+             Hex: -0x1

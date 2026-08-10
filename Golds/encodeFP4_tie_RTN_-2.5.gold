@@ -1,0 +1,18 @@
+Arguments: -ffp4 -rRTN -- -2.5
+Exit code: ExitSuccess
+Satisfiable. Model:
+  ENCODED = -3.0 :: FP4
+                  3 21 0
+                  S E2 S
+   Binary layout: 1 10 1
+      Hex layout: D
+       Precision: 2 exponent bits, 1 significand bit
+            Sign: Negative
+        Exponent: 1 (Stored: 2, Bias: 1)
+  Classification: FP_NORMAL
+          Binary: -0b1.1p1
+           Octal: -0o3
+         Decimal: -3.0
+             Hex: -0x3
+   Rounding mode: RTN: Round towards negative infinity.
+            Note: Original value of -2.5 was rounded to -3.0.

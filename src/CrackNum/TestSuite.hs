@@ -94,6 +94,30 @@ tests = testGroup "CrackNum" [
             | rm           <- ["RNE", "RNA", "RTP", "RTN", "RTZ"]
             ,  i :: Double <- [240.01, 248, 419, 432]
             ]
+          , testGroup "EncodeFP4" [
+               gold "encodeFP4_nan"   "-ffp4    nan"
+             , gold "encodeFP4_+inf"  "-ffp4    inf"
+             , gold "encodeFP4_-inf"  "-ffp4 -- -inf"
+             , gold "encodeFP4_zero1" "-ffp4 --  0"
+             , gold "encodeFP4_zero2" "-ffp4 --  -0"
+             , gold "encodeFP4_sub"   "-ffp4 --  0.5"     -- Subnormal
+             , gold "encodeFP4_norm"  "-ffp4 --  1.5"
+             , gold "encodeFP4_dev1"  "-ffp4 --  4"       -- Deviates from IEEE: would be +Inf
+             , gold "encodeFP4_dev2"  "-ffp4 --  6"       -- Deviates from IEEE: would be NaN
+             , gold "encodeFP4_dev3"  "-ffp4 -- -6"
+             , gold "encodeFP4_oob1"  "-ffp4 --  100"     -- Saturates
+             , gold "encodeFP4_oob2"  "-ffp4 -- -100"
+             , gold "encodeFP4_hex"   "-ffp4 --  0x1.8p2"
+            ]
+          -- Every value that sits exactly half-way between two representable magnitudes,
+          -- plus one out-of-range value, over all rounding modes.
+          , testGroup "EncodeFP4Ties" $ concat [
+               [ gold ("encodeFP4_tie_" ++ rm ++ "_+" ++ show i) ("-ffp4 -r" ++ rm ++ " --  " ++ show i)
+               , gold ("encodeFP4_tie_" ++ rm ++ "_-" ++ show i) ("-ffp4 -r" ++ rm ++ " -- -" ++ show i)
+               ]
+            | rm           <- ["RNE", "RNA", "RTP", "RTN", "RTZ"]
+            ,  i :: Double <- [0.25, 0.75, 1.25, 1.75, 2.5, 3.5, 5, 7]
+            ]
           , testGroup "Decode" [
               gold "decode0" "-i4       0b0110"
             , gold "decode1" "-w4       0xE"
@@ -121,6 +145,14 @@ tests = testGroup "CrackNum" [
           , testGroup "DecodeE4M3_NaN" [
                gold "decodeE4M3_+NaN" "-fe4m3 0b_0111_1111"
             ,  gold "decodeE4M3_-NaN" "-fe4m3 0b_1111_1111"
+            ]
+          -- FP4 is small enough that we can simply decode every last one of its 16 patterns.
+          , testGroup "DecodeFP4" [
+               gold ("decodeFP4_" ++ bits) ("-ffp4 0b" ++ bits)
+            | s <- ["0", "1"]
+            , e <- ["00", "01", "10", "11"]
+            , m <- ["0", "1"]
+            , let bits = s ++ e ++ m
             ]
           , testGroup "Bad" [
                gold "badInvocation0" "-f3+4 0b01"

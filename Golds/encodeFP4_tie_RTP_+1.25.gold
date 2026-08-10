@@ -1,0 +1,18 @@
+Arguments: -ffp4 -rRTP --  1.25
+Exit code: ExitSuccess
+Satisfiable. Model:
+  ENCODED = 1.5 :: FP4
+                  3 21 0
+                  S E2 S
+   Binary layout: 0 01 1
+      Hex layout: 3
+       Precision: 2 exponent bits, 1 significand bit
+            Sign: Positive
+        Exponent: 0 (Stored: 1, Bias: 1)
+  Classification: FP_NORMAL
+          Binary: 0b1.1
+           Octal: 0o1.4
+         Decimal: 1.5
+             Hex: 0x1.8
+   Rounding mode: RTP: Round towards positive infinity.
+            Note: Original value of 1.25 was rounded to 1.5.

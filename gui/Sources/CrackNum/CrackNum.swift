@@ -102,6 +102,7 @@ struct FormatSection: Identifiable {
 
 let formatSections: [FormatSection] = [
     FormatSection(title: "Float", formats: [
+        Format(id: "ffp4",  label: "FP4 (E2M1)", kind: .fixedFloat("ffp4")),
         Format(id: "fe4m3", label: "FP8 (E4M3)", kind: .fixedFloat("fe4m3")),
         Format(id: "fe5m2", label: "FP8 (E5M2)", kind: .fixedFloat("fe5m2")),
         Format(id: "fhp",   label: "Half",       kind: .fixedFloat("fhp")),
@@ -272,6 +273,7 @@ extension Model {
         case "bp":   p.formatCode = "fbp"
         case "e4m3": p.formatCode = "fe4m3"
         case "e5m2": p.formatCode = "fe5m2"
+        case "fp4":  p.formatCode = "ffp4"
         default:
             // Custom "E+S": E exponent bits, S significand bits (incl. implicit).
             let parts = v.split(separator: "+", maxSplits: 1)

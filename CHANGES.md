@@ -1,7 +1,14 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 3.15, 2024-11-09
+* Latest Hackage released version: 3.17, 2026-08-10
+
+### Version 3.17, 2026-08-10
+
+  * Add support for the FP4 (E2M1) format, via `-ffp4`. Like E4M3, this format
+    deviates from IEEE-754: The all-ones exponent encodes the values 4 and 6,
+    instead of infinity and NaN. Consequently, FP4 can represent neither NaN nor
+    infinity, and finite values outside of [-6, 6] saturate to the end-points.
 
 ### Version 3.16, 2026-07-24
 
