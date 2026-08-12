@@ -115,27 +115,35 @@ Satisfiable. Model:
              Hex: 0x1.f18p-8
 ```
 
-### Graphical interface (macOS, optional)
+### Graphical interface (optional)
 
-Optionally, crackNum comes with a native macOS GUI: pick a format on the left,
-type a value, and see the encoding/decoding in detail. It is entirely optional —
-crackNum is fully functional as a command-line tool without it. The GUI is just
-a thin front-end that calls the `crackNum` binary underneath, so it supports
-exactly the same formats.
+Optionally, crackNum comes with a GUI: pick a format on the left, type a value,
+and see the encoding/decoding in detail. It is entirely optional — crackNum is
+fully functional as a command-line tool without it. The GUI is just a thin
+front-end that calls the `crackNum` binary underneath, so it supports exactly
+the same formats.
 
-![crackNum macOS GUI](https://raw.githubusercontent.com/LeventErkok/crackNum/master/crackNumGUI.png)
+![crackNum GUI](https://raw.githubusercontent.com/LeventErkok/crackNum/master/crackNumGUI.png)
 
-Building it requires the Swift compiler that comes with the Xcode Command Line
-Tools (`xcode-select --install`). From a checkout of this repository:
+**macOS** — a native Swift/AppKit app. Building requires the Swift compiler that
+comes with the Xcode Command Line Tools (`xcode-select --install`):
 
 ```
 $ cd gui
 $ make install      # builds CrackNum.app and copies it into /Applications
 ```
 
-Once installed, launch it from Spotlight/Launchpad, or straight from the
-command line via the `--gui` option, which forwards any format/rounding flags
-and value to the app:
+**Linux** — a Tcl/Tk script (`tclGUI/crackNum.tcl`). Requires `wish` (Tk 8.6+):
+
+```
+$ nix profile install nixpkgs#tk   # or: sudo apt install tk / sudo dnf install tk
+```
+
+Add `tclGUI/` to your PATH (or symlink `crackNum.tcl` onto your PATH), then use
+`--gui` as usual. See [`tclGUI/README.md`](tclGUI/README.md) for details.
+
+On both platforms, launch the GUI from the command line via the `--gui` option,
+which forwards any format/rounding flags and value to the app:
 
 ```
 $ crackNum --gui                 -- open the graphical interface
@@ -143,7 +151,7 @@ $ crackNum --gui -fsp 2.5        -- open it with single-precision selected, and 
 $ crackNum --gui 0xdeadbeef      -- open it pre-filled with a value to decode
 ```
 
-See [`gui/README.md`](gui/README.md) for more details and other build targets.
+See [`gui/README.md`](gui/README.md) for macOS build details and other build targets.
 
 ### Usage info
 ```
@@ -156,7 +164,7 @@ Usage: crackNum value OR binary/hex-pattern
   -h, -?    --help     print help, with examples
   -v        --version  print version info
   -d        --debug    debug mode, developers only
-            --gui      launch the graphical interface (macOS)
+            --gui      launch the graphical interface
 
 Examples:
  Encoding:
@@ -181,7 +189,7 @@ Examples:
    crackNum -ffp4    0b0111                -- decode as an FP4 (E2M1) float
    crackNum -l4 -fhp 64\'hbdffaaffdc71fc60 -- decode as half-precision float over 4 lanes using verilog notation
 
- GUI (macOS):
+ GUI:
    crackNum --gui                     -- launch the graphical interface
    crackNum --gui 0xdeadbeef          -- launch the GUI, pre-filled with the given value
 

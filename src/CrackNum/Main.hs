@@ -34,6 +34,7 @@ import System.Environment    (getArgs, getProgName, withArgs, lookupEnv)
 import System.Console.GetOpt (ArgOrder(Permute), getOpt, ArgDescr(..), OptDescr(..), usageInfo)
 import System.Exit           (exitFailure, ExitCode(..))
 import System.IO             (hPutStr, stderr)
+import System.Directory      (findExecutable)
 import System.Process        (rawSystem)
 import qualified System.Info as Info
 
@@ -228,7 +229,7 @@ pgmOptions = [
     , Option "h?" ["help"]    (NoArg Help)                             "print help, with examples"
     , Option "v"  ["version"] (NoArg Version)                          "print version info"
     , Option "d"  ["debug"]   (NoArg Debug)                            "debug mode, developers only"
-    , Option ""   ["gui"]     (NoArg GUI)                              "launch the graphical interface (macOS)"
+    , Option ""   ["gui"]     (NoArg GUI)                              "launch the graphical interface"
     ]
 
 -- | Help info
@@ -261,7 +262,7 @@ usage pn = putStr $ unlines [ helpStr pn
                             , "   " ++ pn ++ " -ffp4    0b0111                -- decode as an FP4 (E2M1) float"
                             , "   " ++ pn ++ " -l4 -fhp 64\\'hbdffaaffdc71fc60 -- decode as half-precision float over 4 lanes using verilog notation"
                             , ""
-                            , " GUI (macOS):"
+                            , " GUI:"
                             , "   " ++ pn ++ " --gui                     -- launch the graphical interface"
                             , "   " ++ pn ++ " --gui 0xdeadbeef          -- launch the GUI, pre-filled with the given value"
                             , ""
@@ -285,18 +286,16 @@ die :: [String] -> IO a
 die xs = do hPutStr stderr $ unlines $ "ERROR:" : map ("  " ++) xs
             exitFailure
 
--- | Launch the graphical interface (macOS only), forwarding all remaining arguments
+-- | Launch the graphical interface, forwarding all remaining arguments
 -- (format flags, rounding mode, and/or the value to crack) so the GUI can preselect
--- them. The GUI itself calls back into this executable to do the actual cracking. The
--- location of the app can be overridden with the CRACKNUM_GUI environment variable
--- (pointing at the .app bundle); otherwise we ask LaunchServices to find it by name.
+-- them. The GUI itself calls back into this executable to do the actual cracking.
+--
+-- On macOS the GUI is a Swift/AppKit app; CRACKNUM_GUI can override the .app bundle
+-- location. On Linux the GUI is a Tcl/Tk script; both 'wish' and 'crackNum.tcl' are
+-- located via PATH.
 launchGUI :: [String] -> IO ()
 launchGUI vals
-  | Info.os /= "darwin"
-  = die [ "The --gui option is only available on macOS."
-        , "On other platforms, use crackNum directly from the command line."
-        ]
-  | True
+  | Info.os == "darwin"
   = do mbApp <- lookupEnv "CRACKNUM_GUI"
        let args = case mbApp of
                     Just p  -> ["-n", p,                "--args"] ++ vals
@@ -315,6 +314,36 @@ launchGUI vals
                               , ""
                               , "Then re-run: crackNum --gui" ++ (if null vals then "" else ' ' : unwords vals)
                               ]
+  | Info.os == "linux"
+  = do mbWish <- findExecutable "wish"
+       wish   <- case mbWish of
+                   Just w  -> pure w
+                   Nothing -> die [ "Cannot find 'wish' on your PATH."
+                                  , "Install Tcl/Tk to get wish, e.g.:"
+                                  , ""
+                                  , "    nix profile install nixpkgs#tk"
+                                  , "    sudo apt install tk       # Debian/Ubuntu"
+                                  , "    sudo dnf install tk       # RHEL/Fedora"
+                                  ]
+       mbTcl  <- findExecutable "crackNum.tcl"
+       tcl    <- case mbTcl of
+                   Just p  -> pure p
+                   Nothing -> die [ "Cannot find 'crackNum.tcl' on your PATH."
+                                  , "Add the tclGUI directory to your PATH, e.g.:"
+                                  , ""
+                                  , "    export PATH=/path/to/crackNum/tclGUI:$PATH"
+                                  ]
+       ec <- rawSystem wish (tcl : vals)
+       case ec of
+         ExitSuccess   -> pure ()
+         ExitFailure _ -> die [ "Unable to launch the CrackNum GUI."
+                              , ""
+                              , "Tried: " ++ wish ++ " " ++ tcl
+                              ]
+  | True
+  = die [ "The --gui option is not supported on this platform (" ++ Info.os ++ ")."
+        , "Use crackNum directly from the command line."
+        ]
 
 
 -- | main entry point to crackNum

@@ -3,6 +3,12 @@
 
 * Latest Hackage released version: 3.17, 2026-08-10
 
+### Version 3.18, 2026-08-12
+
+  * Add a Tcl/Tk GUI (`tclGUI/crackNum.tcl`) that works on Linux and macOS.
+    When `--gui` is used on Linux, `crackNum` now launches this interface
+    (requires `wish` and `crackNum.tcl` on the PATH) instead of erroring out.
+
 ### Version 3.17, 2026-08-10
 
   * Add support for the FP4 (E2M1) format, via `-ffp4`. Like E4M3, this format
