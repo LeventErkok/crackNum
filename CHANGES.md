@@ -3,7 +3,7 @@
 
 * Latest Hackage released version: 3.17, 2026-08-10
 
-### Version 3.18, 2026-08-12
+### Version 3.18, Not yet released
 
   * Add a Tcl/Tk GUI (`tclGUI/crackNum.tcl`) that works on Linux and macOS.
     When `--gui` is used on Linux, `crackNum` now launches this interface
