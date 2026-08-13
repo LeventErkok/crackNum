@@ -134,6 +134,8 @@ $ cd GUI/swiftGUI
 $ make install      # builds CrackNum.app and copies it into /Applications
 ```
 
+See [`GUI/swiftGUI/README.md`](GUI/swiftGUI/README.md) for macOS build details and other build targets.
+
 **Linux** — a Tcl/Tk script (`GUI/tclGUI/crackNum.tcl`). The script ships with the
 package and is installed alongside the binary, so there is nothing to build; you
 only need `wish` (Tk 8.6+):
@@ -155,8 +157,6 @@ $ crackNum --gui                 -- open the graphical interface
 $ crackNum --gui -fsp 2.5        -- open it with single-precision selected, and 2.5 cracked
 $ crackNum --gui 0xdeadbeef      -- open it pre-filled with a value to decode
 ```
-
-See [`GUI/swiftGUI/README.md`](GUI/swiftGUI/README.md) for macOS build details and other build targets.
 
 ### Usage info
 ```
