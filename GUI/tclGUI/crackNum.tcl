@@ -11,7 +11,12 @@ proc locate {name} {
     set path [split $raw :]
     foreach dir $path {
         set candidate [file join $dir $name]
-        if {[file executable $candidate]} { return $candidate }
+        # 'file executable' is true for directories too (they carry the search
+        # bit), so a directory named e.g. crackNum sitting on the PATH would
+        # otherwise be picked up and then fail to execute. Insist on a file.
+        if {[file isfile $candidate] && [file executable $candidate]} {
+            return $candidate
+        }
     }
     return ""
 }
