@@ -7,9 +7,8 @@
 # ---------------------------------------------------------------------------
 
 proc locate {name} {
-    set path [split [expr {
-        [info exists ::env(PATH)] ? $::env(PATH) : "/usr/bin:/bin"
-    }] :]
+    if {[info exists ::env(PATH)]} { set raw $::env(PATH) } else { set raw "/usr/bin:/bin" }
+    set path [split $raw :]
     foreach dir $path {
         set candidate [file join $dir $name]
         if {[file executable $candidate]} { return $candidate }
@@ -69,7 +68,6 @@ array set ROUNDING_LABELS {
 set state(selection) ""   ;# selected format id
 set state(value)     ""
 set state(rounding)  "RNE"
-set state(lanes)     1
 set state(bitWidth)  64
 set state(expWidth)  11
 set state(fontSize)  11
@@ -158,19 +156,20 @@ proc runCrackNum {} {
 
     set flag $flagResult
     set rm   "-r$state(rounding)"
-    set val  [expr {$state(value) eq "" ? "0" : $state(value)}]
+
+    # NB: do NOT use [expr] to default this. expr parses its operands as numbers,
+    # so "0xdeadbeef" would arrive as 3735928559 and crackNum would encode the
+    # decimal instead of decoding the bit-pattern.
+    set val $state(value)
+    if {$val eq ""} { set val 0 }
 
     # Pass SBV_Z3 so crackNum finds z3 even when PATH is minimal.
-    set savedZ3 [expr {[info exists ::env(SBV_Z3)] ? $::env(SBV_Z3) : ""}]
+    if {[info exists ::env(SBV_Z3)]} { set savedZ3 $::env(SBV_Z3) } else { set savedZ3 "" }
     set ::env(SBV_Z3) $Z3
 
-    set cmd [list $CRACKNUM $flag $rm]
-    # Only pass -l when it's actually multi-lane: giving -l1 explicitly would
-    # suppress crackNum's lane inference for Verilog (N'h) input.
-    if {[string is integer -strict $state(lanes)] && $state(lanes) > 1} {
-        lappend cmd -l$state(lanes)
-    }
-    lappend cmd -- $val
+    # We never pass -l: crackNum infers the lane count from Verilog (N'h) input,
+    # and everything else is a single lane.
+    set cmd [list $CRACKNUM $flag $rm -- $val]
 
     # 2>@1 folds stderr into the captured result, so errors show up in the pane.
     set rc [catch {exec {*}$cmd 2>@1} output]
@@ -384,21 +383,6 @@ bind .main.side.rm.cb <<ComboboxSelected>> {
     crack
 }
 
-# Lanes (decoding only; crackNum rejects -l when encoding)
-frame .main.side.ln
-pack .main.side.ln -fill x -pady {6 0}
-label .main.side.ln.l -text "Lanes:"
-pack  .main.side.ln.l -side left
-entry .main.side.ln.e -textvariable state(lanes) -width 6 -justify right \
-    -font {Courier 11}
-pack  .main.side.ln.e -side right
-bind  .main.side.ln.e <Return> crack
-
-label .main.side.ln2 \
-    -text "(lanes apply to decoding only)" \
-    -font {TkDefaultFont 8} -foreground gray -wraplength 200 -justify left
-pack .main.side.ln2 -fill x
-
 # Custom parameters
 labelframe .main.side.custom -text "Custom parameters" -padx 4 -pady 4
 pack .main.side.custom -fill x -pady {8 0}
@@ -492,9 +476,6 @@ proc parseArgs {argv} {
         } elseif {[string match "-r*" $a]} {
             set rm [string toupper [string range $a 2 end]]
             if {$rm in {RNE RNA RTP RTN RTZ}} { set state(rounding) $rm }
-        } elseif {[string match "-l*" $a]} {
-            set v [string range $a 2 end]
-            if {[string is integer -strict $v] && $v > 0} { set state(lanes) $v }
         } elseif {![string match "-*" $a]} {
             lappend values $a
         }
