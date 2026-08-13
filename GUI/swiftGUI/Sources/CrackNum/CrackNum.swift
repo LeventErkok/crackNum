@@ -50,6 +50,11 @@ enum Tools {
         let fm = FileManager.default
         for dir in path.split(separator: ":") {
             let candidate = "\(dir)/\(name)"
+            // isExecutableFile is true for directories too (they carry the search
+            // bit), so a directory named e.g. crackNum sitting on the PATH would
+            // otherwise be picked up and then fail to execute. Insist on a file.
+            var isDir: ObjCBool = false
+            guard fm.fileExists(atPath: candidate, isDirectory: &isDir), !isDir.boolValue else { continue }
             if fm.isExecutableFile(atPath: candidate) { return candidate }
         }
         return nil

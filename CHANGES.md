@@ -1,7 +1,14 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 3.19, 2026-08-13
+* Latest Hackage released version: 3.20, 2026-08-13
+
+### Version 3.20, 2026-08-13
+
+  * Fix tool lookup in both GUIs: a *directory* named `crackNum` (or `z3`) sitting
+    on the PATH was accepted as the executable, since directories carry the search
+    bit and so look executable. The GUI would then fail with a "permission denied"
+    on that directory. We now require a regular file.
 
 ### Version 3.19, 2026-08-13
 
