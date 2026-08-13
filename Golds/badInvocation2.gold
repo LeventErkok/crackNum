@@ -1,0 +1,8 @@
+Arguments: -f3+1 0.5
+Exit code: ExitFailure 1
+
+STDERR:
+ERROR:
+  The solver does not support this format:
+    3 exponent bits, 1 significand bit
+  z3 requires at least 2 of each.

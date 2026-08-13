@@ -125,22 +125,27 @@ the same formats.
 
 ![crackNum GUI](https://raw.githubusercontent.com/LeventErkok/crackNum/master/crackNumGUI.png)
 
-**macOS** — a native Swift/AppKit app. Building requires the Swift compiler that
-comes with the Xcode Command Line Tools (`xcode-select --install`):
+**macOS** — a native Swift/AppKit app (`GUI/swiftGUI/`). Building requires the
+Swift compiler that comes with the Xcode Command Line Tools
+(`xcode-select --install`):
 
 ```
-$ cd gui
+$ cd GUI/swiftGUI
 $ make install      # builds CrackNum.app and copies it into /Applications
 ```
 
-**Linux** — a Tcl/Tk script (`tclGUI/crackNum.tcl`). Requires `wish` (Tk 8.6+):
+**Linux** — a Tcl/Tk script (`GUI/tclGUI/crackNum.tcl`). The script ships with the
+package and is installed alongside the binary, so there is nothing to build; you
+only need `wish` (Tk 8.6+):
 
 ```
 $ nix profile install nixpkgs#tk   # or: sudo apt install tk / sudo dnf install tk
 ```
 
-Add `tclGUI/` to your PATH (or symlink `crackNum.tcl` onto your PATH), then use
-`--gui` as usual. See [`tclGUI/README.md`](tclGUI/README.md) for details.
+Then `crackNum --gui` just works. If you want to run a modified copy of the
+script, either put it on your PATH as `crackNum.tcl`, or point at it directly
+with `CRACKNUM_TCL=/path/to/crackNum.tcl`. See
+[`GUI/tclGUI/README.md`](GUI/tclGUI/README.md) for details.
 
 On both platforms, launch the GUI from the command line via the `--gui` option,
 which forwards any format/rounding flags and value to the app:
@@ -151,7 +156,7 @@ $ crackNum --gui -fsp 2.5        -- open it with single-precision selected, and 
 $ crackNum --gui 0xdeadbeef      -- open it pre-filled with a value to decode
 ```
 
-See [`gui/README.md`](gui/README.md) for macOS build details and other build targets.
+See [`GUI/swiftGUI/README.md`](GUI/swiftGUI/README.md) for macOS build details and other build targets.
 
 ### Usage info
 ```

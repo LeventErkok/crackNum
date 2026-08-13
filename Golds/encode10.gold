@@ -9,7 +9,7 @@ Satisfiable. Model:
        Precision: 3 exponent bits, 2 significand bits
             Sign: Positive
         Exponent: 4 (Stored: 7, Bias: 3)
-  Classification: FP_NAN
+  Classification: FP_NAN (Quiet)
            Value: NaN
             Note: Representation for NaN's is not unique
    Rounding mode: RNE: Round nearest ties to even.

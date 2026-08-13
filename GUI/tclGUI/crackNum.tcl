@@ -69,6 +69,7 @@ array set ROUNDING_LABELS {
 set state(selection) ""   ;# selected format id
 set state(value)     ""
 set state(rounding)  "RNE"
+set state(lanes)     1
 set state(bitWidth)  64
 set state(expWidth)  11
 set state(fontSize)  11
@@ -111,10 +112,13 @@ proc precisionFlag {} {
                 customWord  { return "-w$state(bitWidth)" }
                 customInt   { return "-i$state(bitWidth)" }
                 customFloat {
+                    # Only check that the widths describe a well-formed layout; crackNum
+                    # itself owns the remaining limits (and reports solver restrictions
+                    # readably).
                     set bw $state(bitWidth)
                     set ew $state(expWidth)
                     set sig [expr {$bw - $ew - 1}]
-                    if {$ew < 1 || $sig < 1} {
+                    if {$ew < 1 || $sig < 0} {
                         return [list invalid \
 "Invalid custom FP format:
   Total width: $bw
@@ -122,7 +126,7 @@ proc precisionFlag {} {
     Exponent   : [format %4d $ew]
     Significand: [format %4d $sig] (Total = Sign + Exponent + Significand)
 
-Exponent and significand must be at least 1 bit each."]
+Exponent must be at least 1 bit, and the total width must leave room for it and the sign."]
                     }
                     return "-f${ew}+[expr {$bw - $ew}]"
                 }
@@ -160,8 +164,16 @@ proc runCrackNum {} {
     set savedZ3 [expr {[info exists ::env(SBV_Z3)] ? $::env(SBV_Z3) : ""}]
     set ::env(SBV_Z3) $Z3
 
-    set cmd [list $CRACKNUM $flag $rm -- $val]
-    set rc  [catch {exec -ignorestderr {*}$cmd 2>@1} output]
+    set cmd [list $CRACKNUM $flag $rm]
+    # Only pass -l when it's actually multi-lane: giving -l1 explicitly would
+    # suppress crackNum's lane inference for Verilog (N'h) input.
+    if {[string is integer -strict $state(lanes)] && $state(lanes) > 1} {
+        lappend cmd -l$state(lanes)
+    }
+    lappend cmd -- $val
+
+    # 2>@1 folds stderr into the captured result, so errors show up in the pane.
+    set rc [catch {exec {*}$cmd 2>@1} output]
 
     if {$savedZ3 eq ""} { unset -nocomplain ::env(SBV_Z3) } \
     else                { set ::env(SBV_Z3) $savedZ3 }
@@ -217,10 +229,9 @@ proc applyFontSize {} {
     .output configure -font [list Courier $state(fontSize)]
 }
 
-proc zoomIn  {} { incr ::state(fontSize);         applyFontSize }
+proc zoomIn  {} { incr ::state(fontSize); applyFontSize }
 proc zoomOut {} {
-    if {$::state(fontSize) > 6} { incr ::state(fontSize) -1 }
-    applyFontSize
+    if {$::state(fontSize) > 6} { incr ::state(fontSize) -1; applyFontSize }
 }
 
 # ---------------------------------------------------------------------------
@@ -373,6 +384,21 @@ bind .main.side.rm.cb <<ComboboxSelected>> {
     crack
 }
 
+# Lanes (decoding only; crackNum rejects -l when encoding)
+frame .main.side.ln
+pack .main.side.ln -fill x -pady {6 0}
+label .main.side.ln.l -text "Lanes:"
+pack  .main.side.ln.l -side left
+entry .main.side.ln.e -textvariable state(lanes) -width 6 -justify right \
+    -font {Courier 11}
+pack  .main.side.ln.e -side right
+bind  .main.side.ln.e <Return> crack
+
+label .main.side.ln2 \
+    -text "(lanes apply to decoding only)" \
+    -font {TkDefaultFont 8} -foreground gray -wraplength 200 -justify left
+pack .main.side.ln2 -fill x
+
 # Custom parameters
 labelframe .main.side.custom -text "Custom parameters" -padx 4 -pady 4
 pack .main.side.custom -fill x -pady {8 0}
@@ -466,6 +492,9 @@ proc parseArgs {argv} {
         } elseif {[string match "-r*" $a]} {
             set rm [string toupper [string range $a 2 end]]
             if {$rm in {RNE RNA RTP RTN RTZ}} { set state(rounding) $rm }
+        } elseif {[string match "-l*" $a]} {
+            set v [string range $a 2 end]
+            if {[string is integer -strict $v] && $v > 0} { set state(lanes) $v }
         } elseif {![string match "-*" $a]} {
             lappend values $a
         }
@@ -474,15 +503,15 @@ proc parseArgs {argv} {
     if {[llength $values]} { set state(value) [join $values " "] }
 
     # Sync treeview selection highlight
-    if {$state(selection) ne ""} {
-        if {[info exists FMT_ITEM($state(selection))]} {
-            set iid $FMT_ITEM($state(selection))
-            .main.side.lb selection set $iid
-            .main.side.lb see $iid
-        }
-        # Sync rounding combo label
-        .main.side.rm.cb set [rmCode2Label $state(rounding)]
+    if {$state(selection) ne "" && [info exists FMT_ITEM($state(selection))]} {
+        set iid $FMT_ITEM($state(selection))
+        .main.side.lb selection set $iid
+        .main.side.lb see $iid
     }
+
+    # Sync rounding combo label. Must happen even when no format was given:
+    # `crackNum --gui -rRTZ` sets state(rounding) but leaves no selection.
+    .main.side.rm.cb set [rmCode2Label $state(rounding)]
 }
 
 # ---------------------------------------------------------------------------
