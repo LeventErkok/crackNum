@@ -134,8 +134,6 @@ $ cd GUI/swiftGUI
 $ make install      # builds CrackNum.app and copies it into /Applications
 ```
 
-See [`GUI/swiftGUI/README.md`](GUI/swiftGUI/README.md) for macOS build details and other build targets.
-
 **Linux** — a Tcl/Tk script (`GUI/tclGUI/crackNum.tcl`). The script ships with the
 package and is installed alongside the binary, so there is nothing to build; you
 only need `wish` (Tk 8.6+):
@@ -146,8 +144,7 @@ $ nix profile install nixpkgs#tk   # or: sudo apt install tk / sudo dnf install 
 
 Then `crackNum --gui` just works. If you want to run a modified copy of the
 script, either put it on your PATH as `crackNum.tcl`, or point at it directly
-with `CRACKNUM_TCL=/path/to/crackNum.tcl`. See
-[`GUI/tclGUI/README.md`](GUI/tclGUI/README.md) for details.
+with `CRACKNUM_TCL=/path/to/crackNum.tcl`.
 
 On both platforms, launch the GUI from the command line via the `--gui` option,
 which forwards any format/rounding flags and value to the app:
