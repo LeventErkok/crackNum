@@ -173,7 +173,7 @@ func precisionFlag(for kind: Format.Kind, bitWidth: Int, expWidth: Int) -> FlagR
 }
 
 /// Run crackNum, returning combined stdout+stderr text (mirrors the Tcl's 2>@1).
-func runCrackNum(flag: String, rounding: String, lanes: Int, value: String) -> String {
+func runCrackNum(flag: String, rounding: String, value: String) -> String {
     guard let crackNum = Tools.crackNum else {
         return "crackNum: Cannot locate the 'crackNum' binary on your PATH.\n\n"
              + "Make sure it is installed and reachable (e.g. `which crackNum` works in your terminal)."
@@ -184,10 +184,9 @@ func runCrackNum(flag: String, rounding: String, lanes: Int, value: String) -> S
     }
 
     let rmParam = "-r\(rounding)"
-    // Only pass -l when it's actually multi-lane: giving -l1 explicitly would
-    // suppress crackNum's lane inference for Verilog (N'h) input.
-    let laneArgs = lanes > 1 ? ["-l\(lanes)"] : []
-    let args = [flag, rmParam] + laneArgs + ["--", value]
+    // We never pass -l: crackNum infers the lane count from Verilog (N'h) input,
+    // and everything else is a single lane.
+    let args = [flag, rmParam, "--", value]
 
     let proc = Process()
     proc.executableURL = URL(fileURLWithPath: crackNum)
@@ -230,15 +229,14 @@ struct ParsedArgs {
     var bitWidth: Int?
     var expWidth: Int?
     var rounding: String?
-    var lanes: Int?
 }
 
 extension Model {
     /// Parse the crackNum flags forwarded by `crackNum --gui …`: -f<fmt>, -w<N>,
-    /// -i<N>, -r<mode>, -l<N> in their attached form (-fsp, -w32, -rRTZ, -l4),
-    /// plus `--` to introduce a value that begins with '-'. crackNum's Haskell
-    /// front-end has already parsed and validated these, so we only handle the
-    /// canonical attached forms; any other flag (-d, -v, …) is ignored.
+    /// -i<N>, -r<mode> in their attached form (-fsp, -w32, -rRTZ), plus `--` to
+    /// introduce a value that begins with '-'. crackNum's Haskell front-end has
+    /// already parsed and validated these, so we only handle the canonical
+    /// attached forms; any other flag (-l lanes, -d, -v, …) is ignored.
     static func parseArgs(_ args: [String]) -> ParsedArgs {
         var p = ParsedArgs()
         var values: [String] = []
@@ -259,10 +257,8 @@ extension Model {
             } else if a.hasPrefix("-r") {
                 let rm = String(a.dropFirst(2)).uppercased()
                 if roundingModes.contains(rm) { p.rounding = rm }
-            } else if a.hasPrefix("-l") {
-                if let n = Int(String(a.dropFirst(2))), n > 0 { p.lanes = n }
             } else if a.hasPrefix("-") && a != "-" {
-                // Some other flag (-d, --debug, -v, …): ignore.
+                // Some other flag (-l lanes, -d, --debug, -v, …): ignore.
             } else {
                 values.append(a)
             }
@@ -308,7 +304,6 @@ final class Model: ObservableObject {
     @Published var selection: Format.Id? = nil
     @Published var rounding = "RNE"
     @Published var value = ""
-    @Published var lanes = "1"
     @Published var bitWidth = "64"
     @Published var expWidth = "11"
     @Published var output = Model.welcome
@@ -321,7 +316,6 @@ final class Model: ObservableObject {
         if let bw = parsed.bitWidth { bitWidth = String(bw) }
         if let ew = parsed.expWidth { expWidth = String(ew) }
         if let rm = parsed.rounding { rounding = rm }
-        if let l  = parsed.lanes    { lanes    = String(l) }
         selection = parsed.formatCode
         // If a format was supplied, crack immediately so the window opens with results.
         if parsed.formatCode != nil { run() }
@@ -360,7 +354,7 @@ final class Model: ObservableObject {
             output = msg
         case .flag(let flag):
             let val = value.isEmpty ? "0" : value
-            let text = runCrackNum(flag: flag, rounding: rounding, lanes: Int(lanes) ?? 1, value: val)
+            let text = runCrackNum(flag: flag, rounding: rounding, value: val)
             let kind: String
             if text.contains("ENCODED") { kind = "Encoding in format" }
             else if text.contains("DECODED") { kind = "Decoded using format" }
@@ -449,19 +443,6 @@ struct ContentView: View {
                 .labelsHidden()
                 .onChange(of: model.rounding) { _ in model.run() }
             }
-
-            // Lanes (decoding only; crackNum rejects -l when encoding)
-            HStack {
-                Text("Lanes:")
-                Spacer()
-                TextField("", text: $model.lanes)
-                    .frame(width: 70)
-                    .multilineTextAlignment(.trailing)
-                    .onSubmit { model.run() }
-            }
-            .font(.system(.body, design: .monospaced))
-            Text("(lanes apply to decoding only)")
-                .font(.caption2).foregroundStyle(.secondary)
 
             // Custom parameters
             GroupBox("Custom parameters") {

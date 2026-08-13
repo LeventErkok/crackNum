@@ -1,7 +1,18 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 3.18, 2026-08-13
+* Latest Hackage released version: 3.19, 2026-08-13
+
+### Version 3.19, 2026-08-13
+
+  * Fix decoding in the Tcl/Tk GUI: hex and binary input was silently converted
+    to decimal before being handed to `crackNum`, so entering `0xdeadbeef` encoded
+    the value 3735928559 instead of decoding the bit-pattern. Verilog (`N'h`) input
+    was unaffected.
+
+  * Drop the lane count from both GUIs. The number of lanes is inferred from
+    Verilog (`N'h`) input, and everything else is a single lane, so there was
+    nothing useful for the interface to set.
 
 ### Version 3.18, 2026-08-13
 
@@ -13,10 +24,6 @@
     with the binary: `cabal install crackNum` is enough for `crackNum --gui` to
     work on Linux, with no PATH setup. To run a different copy of the script,
     set `CRACKNUM_TCL`, or put it on your PATH as `crackNum.tcl`.
-
-  * Both GUIs now expose the number of lanes (`-l`), so multi-lane decoding is
-    reachable from the graphical interface, and `--gui -l4 ...` is honored
-    rather than silently dropped.
 
   * Both front-ends now live under `GUI/`: the macOS app moved from `gui/` to
     `GUI/swiftGUI/`, and the Tcl/Tk script to `GUI/tclGUI/`.
