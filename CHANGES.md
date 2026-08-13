@@ -1,13 +1,36 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 3.17, 2026-08-10
+* Latest Hackage released version: 3.18, 2026-08-13
 
-### Version 3.18, Not yet released
+### Version 3.18, 2026-08-13
 
-  * Add a Tcl/Tk GUI (`tclGUI/crackNum.tcl`) that works on Linux and macOS.
+  * Add a Tcl/Tk GUI (`GUI/tclGUI/crackNum.tcl`) that works on Linux and macOS.
     When `--gui` is used on Linux, `crackNum` now launches this interface
-    (requires `wish` and `crackNum.tcl` on the PATH) instead of erroring out.
+    (requires `wish`) instead of erroring out.
+
+  * The Tcl/Tk GUI script is now a cabal data-file, so it is installed along
+    with the binary: `cabal install crackNum` is enough for `crackNum --gui` to
+    work on Linux, with no PATH setup. To run a different copy of the script,
+    set `CRACKNUM_TCL`, or put it on your PATH as `crackNum.tcl`.
+
+  * Both GUIs now expose the number of lanes (`-l`), so multi-lane decoding is
+    reachable from the graphical interface, and `--gui -l4 ...` is honored
+    rather than silently dropped.
+
+  * Both front-ends now live under `GUI/`: the macOS app moved from `gui/` to
+    `GUI/swiftGUI/`, and the Tcl/Tk script to `GUI/tclGUI/`.
+
+  * Encoding a NaN now always displays the canonical quiet-NaN pattern (sign 0,
+    all-ones exponent, leading significand bit set; `0x7FC00000` for a single).
+    SMTLib's floating-point sort has a single NaN value, so the solver returns an
+    abstract NaN and the concrete bit-pattern shown was whatever the model
+    materialized -- which could differ between solver/library versions. The
+    E4M3 path already pinned its NaN this way; the rest now do too.
+
+  * Exponent/significand sizes of 1 bit are accepted by `-f`, but the solver
+    requires at least 2 of each. This now produces a regular error message
+    instead of an uncaught exception with a backtrace.
 
 ### Version 3.17, 2026-08-10
 

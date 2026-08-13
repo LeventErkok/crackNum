@@ -157,5 +157,9 @@ tests = testGroup "CrackNum" [
           , testGroup "Bad" [
                gold "badInvocation0" "-f3+4 0b01"
             ,  gold "badInvocation1" "-f3+4 0xFFFF"
+            -- We accept 1-bit exponents/significands, but the solver needs 2 of
+            -- each; make sure that surfaces as an error, not a raw exception.
+            ,  gold "badInvocation2" "-f3+1 0.5"
+            ,  gold "badInvocation3" "-f1+3 0b0000"
             ]
         ]

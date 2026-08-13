@@ -13,7 +13,12 @@ Maintainer         : erkokl@gmail.com
 Copyright          : Levent Erkok
 Category           : Tools
 Build-type         : Simple
-Extra-Source-Files : README.md, COPYRIGHT, CHANGES.md
+Extra-Source-Files : README.md, COPYRIGHT, CHANGES.md, GUI/tclGUI/README.md
+
+-- The Tcl/Tk GUI is a data-file (not merely an extra-source-file) so that it is
+-- actually installed alongside the binary, and can be found at run time via
+-- Paths_crackNum.getDataFileName. See 'locateTcl' in Main.hs.
+Data-files         : GUI/tclGUI/crackNum.tcl
 
 source-repository head
     type:       git

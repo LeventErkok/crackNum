@@ -9,5 +9,5 @@ Golds/*.*_temp
 .ghcid-output
 
 # Swift GUI build artifacts
-gui/.build/
-gui/CrackNum.app/
+GUI/swiftGUI/.build/
+GUI/swiftGUI/CrackNum.app/

@@ -34,7 +34,7 @@ import System.Environment    (getArgs, getProgName, withArgs, lookupEnv)
 import System.Console.GetOpt (ArgOrder(Permute), getOpt, ArgDescr(..), OptDescr(..), usageInfo)
 import System.Exit           (exitFailure, ExitCode(..))
 import System.IO             (hPutStr, stderr)
-import System.Directory      (findExecutable)
+import System.Directory      (findExecutable, doesFileExist)
 import System.Process        (rawSystem)
 import qualified System.Info as Info
 
@@ -49,7 +49,7 @@ import Data.SBV.Internals hiding (free, satCmd)
 import qualified Data.SBV as SBV
 
 import Data.Version    (showVersion)
-import Paths_crackNum  (version)
+import Paths_crackNum  (version, getDataFileName)
 
 import CrackNum.TestSuite
 
@@ -286,6 +286,56 @@ die :: [String] -> IO a
 die xs = do hPutStr stderr $ unlines $ "ERROR:" : map ("  " ++) xs
             exitFailure
 
+-- | Where the Tcl/Tk GUI script lives relative to the package root; also its
+-- location within the installed data-directory. (See Data-files in the cabal file.)
+tclRelPath :: FilePath
+tclRelPath = "GUI/tclGUI/crackNum.tcl"
+
+-- | Locate the Tcl/Tk GUI script. Normally it is installed together with the
+-- binary, so this just works; we look in three places, in order:
+--
+--   1. $CRACKNUM_TCL, if set: an explicit override, mirroring $CRACKNUM_GUI on macOS.
+--   2. The PATH, so a source checkout can shadow the installed copy while hacking.
+--   3. The copy cabal installed in our data-directory.
+locateTcl :: IO FilePath
+locateTcl = do mbEnv <- lookupEnv "CRACKNUM_TCL"
+               case mbEnv of
+                 Just p  -> do ok <- doesFileExist p
+                               if ok
+                                  then pure p
+                                  else die [ "The CRACKNUM_TCL environment variable is set, but does not name a file:"
+                                           , ""
+                                           , "    " ++ p
+                                           ]
+                 Nothing -> do mbPath <- findExecutable "crackNum.tcl"
+                               case mbPath of
+                                 Just p  -> pure p
+                                 Nothing -> do installed <- getDataFileName tclRelPath
+                                               ok        <- doesFileExist installed
+                                               if ok
+                                                  then pure installed
+                                                  else die (noTcl installed)
+  where noTcl installed =
+             [ "Cannot find the CrackNum GUI script (crackNum.tcl)."
+             , ""
+             , "Looked in:"
+             , "  $CRACKNUM_TCL                 (not set)"
+             , "  crackNum.tcl on your PATH     (not found)"
+             , "  " ++ installed
+             , ""
+             , "This script is normally installed along with crackNum, so seeing this"
+             , "means the installed copy is missing or the binary has been moved."
+             , ""
+             , "If you have a source checkout, point at it directly:"
+             , ""
+             , "    export CRACKNUM_TCL=/path/to/crackNum/" ++ tclRelPath
+             , ""
+             , "Otherwise, get a copy of the sources with either of:"
+             , ""
+             , "    cabal get crackNum"
+             , "    git clone http://github.com/LeventErkok/crackNum.git"
+             ]
+
 -- | Launch the graphical interface, forwarding all remaining arguments
 -- (format flags, rounding mode, and/or the value to crack) so the GUI can preselect
 -- them. The GUI itself calls back into this executable to do the actual cracking.
@@ -309,7 +359,7 @@ launchGUI vals
                               , "get the crackNum sources and build the GUI (macOS 13+, Swift toolchain):"
                               , ""
                               , "    git clone http://github.com/LeventErkok/crackNum.git"
-                              , "    cd crackNum/gui"
+                              , "    cd crackNum/GUI/swiftGUI"
                               , "    make install       # builds and copies CrackNum.app into /Applications"
                               , ""
                               , "Then re-run: crackNum --gui" ++ (if null vals then "" else ' ' : unwords vals)
@@ -325,15 +375,8 @@ launchGUI vals
                                   , "    sudo apt install tk       # Debian/Ubuntu"
                                   , "    sudo dnf install tk       # RHEL/Fedora"
                                   ]
-       mbTcl  <- findExecutable "crackNum.tcl"
-       tcl    <- case mbTcl of
-                   Just p  -> pure p
-                   Nothing -> die [ "Cannot find 'crackNum.tcl' on your PATH."
-                                  , "Add the tclGUI directory to your PATH, e.g.:"
-                                  , ""
-                                  , "    export PATH=/path/to/crackNum/tclGUI:$PATH"
-                                  ]
-       ec <- rawSystem wish (tcl : vals)
+       tcl    <- locateTcl
+       ec     <- rawSystem wish (tcl : vals)
        case ec of
          ExitSuccess   -> pure ()
          ExitFailure _ -> die [ "Unable to launch the CrackNum GUI."
@@ -398,9 +441,25 @@ crack pn argv = case getOpt Permute pgmOptions argv of
                                                     | tryInfer = fromMaybe lanesGiven lanesInferred
                                                     | True     = lanesGiven
 
-                                              if decode
-                                                 then decodeAllLanes isVerilog debug lanes kind    arg
-                                                 else encodeLane               debug lanes kind rm arg
+                                              let act | decode = decodeAllLanes isVerilog debug lanes kind    arg
+                                                      | True   = encodeLane               debug lanes kind rm arg
+
+                                              act `C.catch` solverLimitation kind
+
+-- | We accept exponent/significand sizes down to 1 bit, but SMTLib's FloatingPoint
+-- sort (and hence z3) requires at least 2 of each. Rather than letting such a format
+-- surface as a raw solver exception with a backtrace, report it as a plain error.
+-- Anything else is re-thrown untouched.
+solverLimitation :: NKind -> SBVException -> IO a
+solverLimitation kind e = case kind of
+                            SFloat (FP eb sb) | eb < 2 || sb < 2 -> die [ "The solver does not support this format:"
+                                                                        , "  " ++ plural eb "exponent bit" ++ ", " ++ plural sb "significand bit"
+                                                                        , "z3 requires at least 2 of each."
+                                                                        ]
+                            _                                    -> C.throwIO e
+  where plural :: Int -> String -> String
+        plural 1 what = "1 " ++ what
+        plural n what = show n ++ " " ++ what ++ "s"
 
 decodeAllLanes :: Bool -> Bool -> Int -> NKind -> String -> IO ()
 decodeAllLanes isVerilog debug lanes kind arg = do
@@ -643,6 +702,12 @@ modOut debug sign val fmt ieeeResult = do
         mapM_ (putStrLn . fixVal) $ takeWhile (not . isClassification) (lines (show ieeeResult))
         mapM_ putStrLn            $ dropWhile (not . isClassification) (lines modifiedResult)
 
+-- | The canonical quiet-NaN pattern for a float with @eb@ exponent bits and @sb@
+-- significand bits (including the implicit one): sign 0, all-ones exponent, and only
+-- the leading stored significand bit set. For single-precision this is 0x7FC00000.
+canonicalNaN :: Int -> Int -> Integer
+canonicalNaN eb sb = (2 ^ eb - 1) * 2 ^ (sb - 1) + 2 ^ (sb - 2)
+
 -- | Encoding
 encodeLane :: Bool -> Int -> NKind -> RM -> String -> IO ()
 encodeLane debug lanes num rm inp
@@ -655,7 +720,16 @@ encodeLane debug lanes num rm inp
       SInt   n -> print =<< ei True  n
       SWord  n -> print =<< ei False n
       SFloat s -> ef s (s == E5M2)
-  where satCmd = satWith z3{crackNum=True, verbose=debug, isNonModelVar = (/= "ENCODED")}
+  where cfg    = z3{crackNum=True, verbose=debug, isNonModelVar = (/= "ENCODED")}
+        satCmd = satWith cfg
+
+        -- SMTLib's FloatingPoint sort has exactly one NaN value: the solver answers
+        -- with the abstract (_ NaN eb sb), so the concrete bit-pattern we display is
+        -- picked when that abstract value is materialized, and is not stable across
+        -- solver/library upgrades. Pin it to the canonical quiet NaN, the same way
+        -- the E4M3 path does. (We still note that the representation isn't unique.)
+        satCmdNaN :: Int -> Int -> Predicate -> IO SatResult
+        satCmdNaN eb sb = satWith cfg{crackNumSurfaceVals = [("ENCODED", canonicalNaN eb sb)]}
 
         ei :: Bool -> Int -> IO SatResult
         ei sgn n = case reads inp of
@@ -684,20 +758,26 @@ encodeLane debug lanes num rm inp
 
         ef :: FP -> Bool -> IO ()
         ef SP _ = case reads (fixup True inp) of
-                    [(v :: Float, "")] -> do print =<< satCmd (p v)
+                    [(v :: Float, "")] -> do print =<< run v (p v)
                                              note $ snd $ convert 8 24
                     _                  -> ef (FP 8 24) False
          where p :: Float -> Predicate
                p f = do x <- sFloat "ENCODED"
                         pure $ x .=== literal f
 
+               run f | isNaN f = satCmdNaN 8 24
+                     | True    = satCmd
+
         ef DP _ = case reads (fixup True inp) of
-                    [(v :: Double, "")] -> do print =<< satCmd (p v)
+                    [(v :: Double, "")] -> do print =<< run v (p v)
                                               note $ snd $ convert 11 53
                     _                   -> ef (FP 11 53) False
          where p :: Double -> Predicate
                p d = do x <- sDouble "ENCODED"
                         pure $ x .=== literal d
+
+               run d | isNaN d = satCmdNaN 11 53
+                     | True    = satCmd
 
         ef (FP i j) wasE5M2 = do let (v, mbS) = convert i j
                                  if bfIsNaN v && fixup False inp /= "NaN"
@@ -707,7 +787,9 @@ encodeLane debug lanes num rm inp
                                             res <- satCmd (pRat hr)
                                             if wasE5M2 then fixE5M2Type res
                                                        else print res
-                                    else do res <- satCmd (p v)
+                                    else do let run | bfIsNaN v = satCmdNaN i j
+                                                    | True      = satCmd
+                                            res <- run (p v)
                                             if wasE5M2 then fixE5M2Type res
                                                        else print res
                                             note mbS

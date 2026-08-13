@@ -10,7 +10,7 @@ Satisfiable. Model:
        Precision: Single
             Sign: Positive
         Exponent: 128 (Stored: 255, Bias: 127)
-  Classification: FP_NAN
+  Classification: FP_NAN (Quiet)
            Value: NaN
             Note: Representation for NaN's is not unique
    Rounding mode: RNE: Round nearest ties to even.
