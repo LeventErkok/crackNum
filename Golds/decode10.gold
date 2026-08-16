@@ -1,0 +1,17 @@
+Arguments: -ftf32 0b0_10000000_0100000000
+Exit code: ExitSuccess
+Satisfiable. Model:
+  DECODED = 2.5 :: FloatingPoint 8 11
+                  1          0
+                  8 76543210 9876543210
+                  S ---E8--- ---S10----
+   Binary layout: 0 10000000 0100000000
+      Hex layout: 2 0100
+       Precision: 8 exponent bits, 10 significand bits
+            Sign: Positive
+        Exponent: 1 (Stored: 128, Bias: 127)
+  Classification: FP_NORMAL
+          Binary: 0b1.01p1
+           Octal: 0o2.4
+         Decimal: 2.5
+             Hex: 0x2.8

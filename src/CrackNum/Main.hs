@@ -163,6 +163,7 @@ getSize flg f n = case readMaybe n of
 getFP :: String -> Flag
 getFP "hp"   = Floating $ FP 5 11
 getFP "bp"   = Floating $ FP 8  8
+getFP "tf32" = Floating $ FP 8 11
 getFP "sp"   = Floating SP
 getFP "dp"   = Floating DP
 getFP "qp"   = Floating $ FP 15 113
@@ -178,8 +179,9 @@ getFP ab     = case span isDigit ab of
                                     , ""
                                     , "    hp: Half float             ( 5 +  11)"
                                     , "    bp: Brain float            ( 8 +   8)"
+                                    , "  tf32: TensorFloat-32         ( 8 +  11)"
                                     , "    sp: Single precision       ( 8 +  24)"
-                                    , "    dp: Single precision       (11 +  53)"
+                                    , "    dp: Double precision       (11 +  53)"
                                     , "    qp: Quad   precision       (15 + 113)"
                                     , "   a+b: Arbitrary IEEE-754     ( a +   b)"
                                     , "  e5m2: FP8 format (IEEE-754)  ( 5 +   3)"
@@ -246,6 +248,7 @@ usage pn = putStr $ unlines [ helpStr pn
                             , "   " ++ pn ++ " -f3+4  2.5                      -- encode as float with 3 bits exponent, 4 bits significand"
                             , "   " ++ pn ++ " -f3+4  2.5 -rRTZ                -- encode as above, but use RTZ rounding mode."
                             , "   " ++ pn ++ " -fbp   2.5                      -- encode as a brain-precision float"
+                            , "   " ++ pn ++ " -ftf32 2.5                      -- encode as a TensorFloat-32 float"
                             , "   " ++ pn ++ " -fdp   2.5                      -- encode as a double-precision float"
                             , "   " ++ pn ++ " -fe4m3 2.5                      -- encode as an E4M3 FP8 float"
                             , "   " ++ pn ++ " -fe5m2 2.5                      -- encode as an E5M2 FP8 float"
@@ -257,6 +260,7 @@ usage pn = putStr $ unlines [ helpStr pn
                             , "   " ++ pn ++ " -w4      0xE                   -- decode as 4-bit unsigned integer, from hex"
                             , "   " ++ pn ++ " -f3+4    0b0111001             -- decode as float with 3 bits exponent, 4 bits significand"
                             , "   " ++ pn ++ " -fbp     0x000F                -- decode as a brain-precision float"
+                            , "   " ++ pn ++ " -ftf32   19\\'h0000F            -- decode as a TensorFloat-32 float"
                             , "   " ++ pn ++ " -fdp     0x8000000000000000    -- decode as a double-precision float"
                             , "   " ++ pn ++ " -fhp     0x8000                -- decode as a half-precision float"
                             , "   " ++ pn ++ " -ffp4    0b0111                -- decode as an FP4 (E2M1) float"

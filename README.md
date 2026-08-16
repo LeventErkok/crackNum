@@ -175,6 +175,7 @@ Examples:
    crackNum -f3+4  2.5                      -- encode as float with 3 bits exponent, 4 bits significand
    crackNum -f3+4  2.5 -rRTZ                -- encode as above, but use RTZ rounding mode.
    crackNum -fbp   2.5                      -- encode as a brain-precision float
+   crackNum -ftf32 2.5                      -- encode as a TensorFloat-32 float
    crackNum -fdp   2.5                      -- encode as a double-precision float
    crackNum -fe4m3 2.5                      -- encode as an E4M3 FP8 float
    crackNum -fe5m2 2.5                      -- encode as an E5M2 FP8 float
@@ -186,6 +187,7 @@ Examples:
    crackNum -w4      0xE                   -- decode as 4-bit unsigned integer, from hex
    crackNum -f3+4    0b0111001             -- decode as float with 3 bits exponent, 4 bits significand
    crackNum -fbp     0x000F                -- decode as a brain-precision float
+   crackNum -ftf32   19\'h0000F            -- decode as a TensorFloat-32 float
    crackNum -fdp     0x8000000000000000    -- decode as a double-precision float
    crackNum -fhp     0x8000                -- decode as a half-precision float
    crackNum -ffp4    0b0111                -- decode as an FP4 (E2M1) float

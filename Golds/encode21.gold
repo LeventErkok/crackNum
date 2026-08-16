@@ -1,0 +1,16 @@
+Arguments: -ftf32 -- -inf
+Exit code: ExitSuccess
+Satisfiable. Model:
+  ENCODED = -Infinity :: FloatingPoint 8 11
+                  1          0
+                  8 76543210 9876543210
+                  S ---E8--- ---S10----
+   Binary layout: 1 11111111 0000000000
+      Hex layout: 7 FC00
+       Precision: 8 exponent bits, 10 significand bits
+            Sign: Negative
+        Exponent: 128 (Stored: 255, Bias: 127)
+  Classification: FP_INFINITE
+           Value: -Infinity
+   Rounding mode: RNE: Round nearest ties to even.
+            Note: Conversion from "-inf" was exact. No rounding happened.

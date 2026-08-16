@@ -38,6 +38,7 @@ set FORMAT_SECTIONS {
         {fe5m2 "FP8 (E5M2)"  fixed    e5m2}
         {fhp   "Half"        fixed    hp}
         {fbp   "Brain"       fixed    bp}
+        {ftf32 "TF32"        fixed    tf32}
         {fsp   "Single"      fixed    sp}
         {fdp   "Double"      fixed    dp}
         {fcs   "Custom"      customFloat {}}
@@ -453,6 +454,7 @@ proc parseArgs {argv} {
                 dp   { set state(selection) fdp }
                 hp   { set state(selection) fhp }
                 bp   { set state(selection) fbp }
+                tf32 { set state(selection) ftf32 }
                 e4m3 { set state(selection) fe4m3 }
                 e5m2 { set state(selection) fe5m2 }
                 fp4  { set state(selection) ffp4 }

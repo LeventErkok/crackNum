@@ -1,7 +1,15 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 3.20, 2026-08-13
+* Latest Hackage released version: 3.21, 2026-08-16
+
+### Version 3.21, 2026-08-16
+
+  * Add support for TF32 (TensorFloat-32), via `-ftf32`. This is the 19-bit format
+    with 8 exponent and 10 significand bits, i.e., the exponent range of single
+    precision with the significand of half precision. Note that we crack the 19
+    architectural bits; hardware typically carries these in a 32-bit container
+    with the remaining bits unused.
 
 ### Version 3.20, 2026-08-13
 

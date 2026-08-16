@@ -71,6 +71,9 @@ tests = testGroup "CrackNum" [
              , gold "encode17" "-fsp -- -0x2p3"
              , gold "encode18" "-fdp -- 0x1.3"
              , gold "encode19" "-fhp -- 0x1.3p4"
+             , gold "encode20" "-ftf32 2.5"
+             , gold "encode21" "-ftf32 -- -inf"
+             , gold "encode22" "-ftf32    nan"
             ]
           , testGroup "EncodeE4M3" [
                gold "encodeE4M3_nan"   "-fe4m3    nan"
@@ -128,6 +131,8 @@ tests = testGroup "CrackNum" [
             , gold "decode6" "-fhp  -l8 128'hffffffffffffffffbdffaaffdc71fc60"
             , gold "decode7" "-fe5m2    0b01111011"
             , gold "decode8" "-w2 -rRNE 2\'h1"
+            , gold "decode9"  "-ftf32 19\'h0000F"
+            , gold "decode10" "-ftf32 0b0_10000000_0100000000"
             ]
           , testGroup "DecodeE4M3" [
                gold ("decodeE4M3_" ++ show (if sign then (-val :: Int) else val))
