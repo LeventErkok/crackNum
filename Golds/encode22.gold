@@ -1,0 +1,17 @@
+Arguments: -ftf32    nan
+Exit code: ExitSuccess
+Satisfiable. Model:
+  ENCODED = NaN :: FloatingPoint 8 11
+                  1          0
+                  8 76543210 9876543210
+                  S ---E8--- ---S10----
+   Binary layout: 0 11111111 1000000000
+      Hex layout: 3 FE00
+       Precision: 8 exponent bits, 10 significand bits
+            Sign: Positive
+        Exponent: 128 (Stored: 255, Bias: 127)
+  Classification: FP_NAN (Quiet)
+           Value: NaN
+            Note: Representation for NaN's is not unique
+   Rounding mode: RNE: Round nearest ties to even.
+            Note: Conversion from "nan" was exact. No rounding happened.

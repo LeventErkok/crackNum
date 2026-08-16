@@ -112,6 +112,7 @@ let formatSections: [FormatSection] = [
         Format(id: "fe5m2", label: "FP8 (E5M2)", kind: .fixedFloat("fe5m2")),
         Format(id: "fhp",   label: "Half",       kind: .fixedFloat("fhp")),
         Format(id: "fbp",   label: "Brain",      kind: .fixedFloat("fbp")),
+        Format(id: "ftf32", label: "TF32",       kind: .fixedFloat("ftf32")),
         Format(id: "fsp",   label: "Single",     kind: .fixedFloat("fsp")),
         Format(id: "fdp",   label: "Double",     kind: .fixedFloat("fdp")),
         Format(id: "fcs",   label: "Custom",     kind: .customFloat),
@@ -280,6 +281,7 @@ extension Model {
         case "dp":   p.formatCode = "fdp"
         case "hp":   p.formatCode = "fhp"
         case "bp":   p.formatCode = "fbp"
+        case "tf32": p.formatCode = "ftf32"
         case "e4m3": p.formatCode = "fe4m3"
         case "e5m2": p.formatCode = "fe5m2"
         case "fp4":  p.formatCode = "ffp4"
