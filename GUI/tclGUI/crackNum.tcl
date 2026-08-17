@@ -41,6 +41,7 @@ set FORMAT_SECTIONS {
         {ftf32 "TF32"        fixed    tf32}
         {fsp   "Single"      fixed    sp}
         {fdp   "Double"      fixed    dp}
+        {fqp   "Quad"        fixed    qp}
         {fcs   "Custom"      customFloat {}}
     }}
     {"Word (Unsigned)" {
@@ -470,6 +471,7 @@ proc parseArgs {argv} {
             switch $v {
                 sp   { set state(selection) fsp }
                 dp   { set state(selection) fdp }
+                qp   { set state(selection) fqp }
                 hp   { set state(selection) fhp }
                 bp   { set state(selection) fbp }
                 tf32 { set state(selection) ftf32 }

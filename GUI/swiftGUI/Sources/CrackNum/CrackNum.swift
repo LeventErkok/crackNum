@@ -115,6 +115,7 @@ let formatSections: [FormatSection] = [
         Format(id: "ftf32", label: "TF32",       kind: .fixedFloat("ftf32")),
         Format(id: "fsp",   label: "Single",     kind: .fixedFloat("fsp")),
         Format(id: "fdp",   label: "Double",     kind: .fixedFloat("fdp")),
+        Format(id: "fqp",   label: "Quad",       kind: .fixedFloat("fqp")),
         Format(id: "fcs",   label: "Custom",     kind: .customFloat),
     ]),
     FormatSection(title: "Word (Unsigned)", formats: [
@@ -279,6 +280,7 @@ extension Model {
         switch v {
         case "sp":   p.formatCode = "fsp"
         case "dp":   p.formatCode = "fdp"
+        case "qp":   p.formatCode = "fqp"
         case "hp":   p.formatCode = "fhp"
         case "bp":   p.formatCode = "fbp"
         case "tf32": p.formatCode = "ftf32"

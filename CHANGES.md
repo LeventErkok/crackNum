@@ -1,7 +1,17 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 3.22, 2026-08-17
+* Latest Hackage released version: 3.23, 2026-08-17
+
+### Version 3.23, 2026-08-17
+
+  * Do not ignore bad flags when `--gui` is given. A mistyped format, such as
+    `crackNum -ft32 4 --gui`, used to bring the GUI up with nothing selected,
+    silently swallowing the error the command line would have reported. We now
+    diagnose the flag first, and only launch the GUI if everything checks out.
+
+  * Add quad-precision (`-fqp`) to the format list in both GUIs. It was accepted
+    on the command line, but was missing from the interfaces.
 
 ### Version 3.22, 2026-08-17
 
