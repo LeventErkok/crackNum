@@ -326,6 +326,7 @@ Examples:
    crackNum -fbp   2.5                      -- encode as a brain-precision float
    crackNum -ftf32 2.5                      -- encode as a TensorFloat-32 float
    crackNum -fdp   2.5                      -- encode as a double-precision float
+   crackNum -fqp   2.5                      -- encode as a quad-precision float
    crackNum -fe4m3 2.5                      -- encode as an E4M3 FP8 float
    crackNum -fe5m2 2.5                      -- encode as an E5M2 FP8 float
    crackNum -ffp4  2.5                      -- encode as an FP4 (E2M1) float

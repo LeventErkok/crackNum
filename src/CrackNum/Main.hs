@@ -250,6 +250,7 @@ usage pn = putStr $ unlines [ helpStr pn
                             , "   " ++ pn ++ " -fbp   2.5                      -- encode as a brain-precision float"
                             , "   " ++ pn ++ " -ftf32 2.5                      -- encode as a TensorFloat-32 float"
                             , "   " ++ pn ++ " -fdp   2.5                      -- encode as a double-precision float"
+                            , "   " ++ pn ++ " -fqp   2.5                      -- encode as a quad-precision float"
                             , "   " ++ pn ++ " -fe4m3 2.5                      -- encode as an E4M3 FP8 float"
                             , "   " ++ pn ++ " -fe5m2 2.5                      -- encode as an E5M2 FP8 float"
                             , "   " ++ pn ++ " -ffp4  2.5                      -- encode as an FP4 (E2M1) float"
