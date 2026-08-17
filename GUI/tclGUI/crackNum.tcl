@@ -227,11 +227,29 @@ proc crack {} {
 }
 
 # ---------------------------------------------------------------------------
+# Font selection
+# ---------------------------------------------------------------------------
+# Pick a monospaced family with sane vertical metrics. Plain "Courier" is an
+# X11 alias that commonly resolves to Nimbus Mono PS, whose ascent/descent split
+# is badly lopsided (9/6 at size 11). Since an entry centers on the linespace,
+# that leaves the glyphs hugging the top of the box with a fat gap underneath.
+proc pickMonoFamily {} {
+    set installed {}
+    foreach f [font families] { lappend installed [string tolower $f] }
+    foreach want {"DejaVu Sans Mono" "Menlo" "Liberation Mono" "Consolas" "Courier New"} {
+        if {[lsearch -exact $installed [string tolower $want]] >= 0} { return $want }
+    }
+    return "Courier"
+}
+
+set MONO [pickMonoFamily]
+
+# ---------------------------------------------------------------------------
 # Font size helpers
 # ---------------------------------------------------------------------------
 proc applyFontSize {} {
-    global state
-    .output configure -font [list Courier $state(fontSize)]
+    global state MONO
+    .output configure -font [list $MONO $state(fontSize)]
 }
 
 proc zoomIn  {} { incr ::state(fontSize); applyFontSize }
@@ -314,7 +332,7 @@ foreach {fr txt fnt cmd} {
 button .top.help -text "?" -command { showOutput $::WELCOME }
 pack .top.help -side left -padx 2
 
-entry .top.val -textvariable state(value) -font {Courier 11} -width 28
+entry .top.val -textvariable state(value) -font [list $MONO 11] -width 28
 pack .top.val -side right -padx {0 4}
 bind .top.val <Return> crack
 
@@ -398,7 +416,7 @@ pack .main.side.custom.bw -fill x -pady 2
 label .main.side.custom.bw.l -text "Total width:"
 pack  .main.side.custom.bw.l -side left
 entry .main.side.custom.bw.e -textvariable state(bitWidth) -width 6 -justify right \
-    -font {Courier 11}
+    -font [list $MONO 11]
 pack  .main.side.custom.bw.e -side right
 bind  .main.side.custom.bw.e <Return> crack
 
@@ -407,7 +425,7 @@ pack .main.side.custom.ew -fill x -pady 2
 label .main.side.custom.ew.l -text "Exponent width:"
 pack  .main.side.custom.ew.l -side left
 entry .main.side.custom.ew.e -textvariable state(expWidth) -width 6 -justify right \
-    -font {Courier 11}
+    -font [list $MONO 11]
 pack  .main.side.custom.ew.e -side right
 bind  .main.side.custom.ew.e <Return> crack
 
@@ -421,7 +439,7 @@ frame .main.out
 pack .main.out -side left -fill both -expand yes
 
 text .output -state disabled -wrap none \
-    -font [list Courier $state(fontSize)] \
+    -font [list $MONO $state(fontSize)] \
     -padx 8 -pady 8 \
     -xscrollcommand {.main.out.sx set} \
     -yscrollcommand {.main.out.sy set}

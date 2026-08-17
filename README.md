@@ -1,4 +1,4 @@
-## Decode/Encode Integers, Words, and IEE754 Floats
+## Decode/Encode Integers, Words, and IEEE754 and other float formats
 
 On Hackage: http://hackage.haskell.org/package/crackNum
 
@@ -45,7 +45,7 @@ Satisfiable. Model:
 $ crackNum -fdp 0xfc00 abc1 7F80 0001
 ```
 
-### Example: Decode a custom (2+3) IEEE754 float from memory-layout
+### Example: Decode a custom (2+3) float from memory-layout
 ```
 $ crackNum -f2+3 0b10011
 Satisfiable. Model:
