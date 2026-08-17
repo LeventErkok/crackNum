@@ -1,7 +1,16 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 3.21, 2026-08-16
+* Latest Hackage released version: 3.22, 2026-08-17
+
+### Version 3.22, 2026-08-17
+
+  * Fix text alignment in the Tcl/Tk GUI's entry fields. We asked for the `Courier`
+    font, which on X11 is an alias that typically resolves to Nimbus Mono PS. Its
+    ascent/descent split is lopsided (9/6 at size 11), and since an entry centers
+    text on the linespace, the glyphs ended up hugging the top of the box with a
+    large gap underneath. We now pick the first monospaced family that is actually
+    installed, preferring ones with sane metrics.
 
 ### Version 3.21, 2026-08-16
 
