@@ -1,7 +1,19 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 3.23, 2026-08-17
+* Latest Hackage released version: 3.24, 2026-08-17
+
+### Version 3.24, 2026-08-17
+
+  * Add a quad-precision example to the help output. `-fqp` has always been
+    accepted, but `--help` never mentioned it, so the only way to find out it
+    existed was to trip over the error message for a bad `-f` argument.
+
+  * Bring the README up to date: document the installation steps (including the
+    z3 requirement), add a table of all supported formats, list the rounding
+    modes, and add worked examples for the FP8, FP4, TF32, and unsigned-word
+    formats. A couple of the existing sample outputs had drifted from what the
+    tool actually prints, and are now regenerated.
 
 ### Version 3.23, 2026-08-17
 
