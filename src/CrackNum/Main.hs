@@ -400,7 +400,11 @@ crack pn argv = case getOpt Permute pgmOptions argv of
                   (os, rs, [])
                     | Version `elem` os -> putStrLn $ pn ++ " v" ++ showVersion version ++ ", " ++ copyRight
                     | Help    `elem` os -> usage pn
-                    | GUI     `elem` os -> launchGUI (filter (/= "--gui") argv)
+                    -- NB. Check for bad flags before launching: otherwise a typo like
+                    -- "-ft32" would silently bring the GUI up with nothing selected.
+                    | GUI     `elem` os -> case [b | BadFlag b <- os] of
+                                             (e:_) -> die e
+                                             []    -> launchGUI (filter (/= "--gui") argv)
                     | True              -> do let rm = case reverse [r | RMode r <- os] of
                                                          (r:_) -> r
                                                          _     -> RNE

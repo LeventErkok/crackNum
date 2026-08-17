@@ -1,0 +1,92 @@
+diff --git a/CHANGES.md b/CHANGES.md
+index 9cfb07b..4e907c8 100644
+--- a/CHANGES.md
++++ b/CHANGES.md
+@@ -1,7 +1,17 @@
+ * Hackage: <http://hackage.haskell.org/package/crackNum>
+ * GitHub:  <http://github.com/LeventErkok/crackNum/>
+ 
+-* Latest Hackage released version: 3.22, 2026-08-17
++* Latest Hackage released version: 3.23, 2026-08-17
++
++### Version 3.23, 2026-08-17
++
++  * Do not ignore bad flags when `--gui` is given. A mistyped format, such as
++    `crackNum -ft32 4 --gui`, used to bring the GUI up with nothing selected,
++    silently swallowing the error the command line would have reported. We now
++    diagnose the flag first, and only launch the GUI if everything checks out.
++
++  * Add quad-precision (`-fqp`) to the format list in both GUIs. It was accepted
++    on the command line, but was missing from the interfaces.
+ 
+ ### Version 3.22, 2026-08-17
+ 
+diff --git a/GUI/swiftGUI/Sources/CrackNum/CrackNum.swift b/GUI/swiftGUI/Sources/CrackNum/CrackNum.swift
+index cad4e70..9938688 100644
+--- a/GUI/swiftGUI/Sources/CrackNum/CrackNum.swift
++++ b/GUI/swiftGUI/Sources/CrackNum/CrackNum.swift
+@@ -115,6 +115,7 @@ let formatSections: [FormatSection] = [
+         Format(id: "ftf32", label: "TF32",       kind: .fixedFloat("ftf32")),
+         Format(id: "fsp",   label: "Single",     kind: .fixedFloat("fsp")),
+         Format(id: "fdp",   label: "Double",     kind: .fixedFloat("fdp")),
++        Format(id: "fqp",   label: "Quad",       kind: .fixedFloat("fqp")),
+         Format(id: "fcs",   label: "Custom",     kind: .customFloat),
+     ]),
+     FormatSection(title: "Word (Unsigned)", formats: [
+@@ -279,6 +280,7 @@ extension Model {
+         switch v {
+         case "sp":   p.formatCode = "fsp"
+         case "dp":   p.formatCode = "fdp"
++        case "qp":   p.formatCode = "fqp"
+         case "hp":   p.formatCode = "fhp"
+         case "bp":   p.formatCode = "fbp"
+         case "tf32": p.formatCode = "ftf32"
+diff --git a/GUI/tclGUI/crackNum.tcl b/GUI/tclGUI/crackNum.tcl
+index 3cb743f..873dc6d 100755
+--- a/GUI/tclGUI/crackNum.tcl
++++ b/GUI/tclGUI/crackNum.tcl
+@@ -41,6 +41,7 @@ set FORMAT_SECTIONS {
+         {ftf32 "TF32"        fixed    tf32}
+         {fsp   "Single"      fixed    sp}
+         {fdp   "Double"      fixed    dp}
++        {fqp   "Quad"        fixed    qp}
+         {fcs   "Custom"      customFloat {}}
+     }}
+     {"Word (Unsigned)" {
+@@ -470,6 +471,7 @@ proc parseArgs {argv} {
+             switch $v {
+                 sp   { set state(selection) fsp }
+                 dp   { set state(selection) fdp }
++                qp   { set state(selection) fqp }
+                 hp   { set state(selection) fhp }
+                 bp   { set state(selection) fbp }
+                 tf32 { set state(selection) ftf32 }
+diff --git a/crackNum.cabal b/crackNum.cabal
+index bae9773..2ce2d55 100644
+--- a/crackNum.cabal
++++ b/crackNum.cabal
+@@ -1,6 +1,6 @@
+ Cabal-version      : 2.2
+ Name               : crackNum
+-Version            : 3.22
++Version            : 3.23
+ Synopsis           : Crack various integer and floating-point data formats
+ Description        : Crack IEEE-754 and other float formats and arbitrary sized words and integers, showing the layout.
+                      .
+diff --git a/src/CrackNum/Main.hs b/src/CrackNum/Main.hs
+index 8bb0015..59bccb9 100644
+--- a/src/CrackNum/Main.hs
++++ b/src/CrackNum/Main.hs
+@@ -400,7 +400,11 @@ crack pn argv = case getOpt Permute pgmOptions argv of
+                   (os, rs, [])
+                     | Version `elem` os -> putStrLn $ pn ++ " v" ++ showVersion version ++ ", " ++ copyRight
+                     | Help    `elem` os -> usage pn
+-                    | GUI     `elem` os -> launchGUI (filter (/= "--gui") argv)
++                    -- NB. Check for bad flags before launching: otherwise a typo like
++                    -- "-ft32" would silently bring the GUI up with nothing selected.
++                    | GUI     `elem` os -> case [b | BadFlag b <- os] of
++                                             (e:_) -> die e
++                                             []    -> launchGUI (filter (/= "--gui") argv)
+                     | True              -> do let rm = case reverse [r | RMode r <- os] of
+                                                          (r:_) -> r
+                                                          _     -> RNE
