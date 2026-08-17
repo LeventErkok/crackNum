@@ -2,6 +2,51 @@
 
 On Hackage: http://hackage.haskell.org/package/crackNum
 
+`crackNum` shows you exactly how a number is laid out in memory: the bit
+pattern, its fields, the classification, and the value in binary, octal,
+decimal, and hex. It works in both directions:
+
+  - **Encoding**: give it a value (`2.5`, `-2.3e6`, `NaN`, `0x3.2p5`), and it shows
+    the bit-pattern it turns into, together with the rounding that took place.
+  - **Decoding**: give it a bit-pattern (`0xdeadbeef`, `0b0110`, `32'hfdc71fc6`),
+    and it shows the value it stands for.
+
+### Installation
+
+```
+$ cabal install crackNum
+```
+
+`crackNum` uses [SBV](http://hackage.haskell.org/package/sbv) and delegates the
+actual floating-point reasoning to an SMT solver, so you also need
+[z3](https://github.com/Z3Prover/z3) on your `PATH`.
+
+### Supported formats
+
+| Flag      | Format                              | Exponent | Significand (incl. implicit bit) |
+|-----------|-------------------------------------|---------:|---------------------------------:|
+| `-fhp`    | Half precision (IEEE-754 binary16)  |        5 |                               11 |
+| `-fbp`    | Brain float (bfloat16)              |        8 |                                8 |
+| `-ftf32`  | TensorFloat-32                      |        8 |                               11 |
+| `-fsp`    | Single precision (binary32)         |        8 |                               24 |
+| `-fdp`    | Double precision (binary64)         |       11 |                               53 |
+| `-fqp`    | Quad precision (binary128)          |       15 |                              113 |
+| `-fe5m2`  | FP8, IEEE-754 style                 |        5 |                                3 |
+| `-fe4m3`  | FP8, alternate (no infinities)      |        4 |                                4 |
+| `-ffp4`   | FP4 (E2M1)                          |        2 |                                2 |
+| `-fa+b`   | Arbitrary IEEE-754 float            |        a |                                b |
+
+Integers come in two flavors: `-iN` for a signed `N`-bit 2's complement integer,
+and `-wN` for an unsigned `N`-bit word. Both `N` and the arbitrary float sizes
+can be as large as you like, within machine-word limits.
+
+Note that TF32 is cracked as its 19 architectural bits; hardware typically
+carries these in a 32-bit container with the remaining bits unused.
+
+Rounding mode is selected with `-r`, and defaults to `RNE` if not given:
+`RNE` (nearest, ties to even), `RNA` (nearest, ties away), `RTP` (towards
+positive infinity), `RTN` (towards negative infinity), and `RTZ` (towards zero).
+
 ### Example: Encode a decimal number as a single-precision IEEE754 number
 ```
 $ crackNum -fsp -- -2.3e6
@@ -24,6 +69,28 @@ Satisfiable. Model:
             Note: Conversion from "-2.3e6" was exact. No rounding happened.
 ```
 
+### Example: Encode with a different rounding mode
+```
+$ crackNum -fsp 1.3 -rRTZ
+Satisfiable. Model:
+  ENCODED = 1.3 :: Float
+                  3  2          1         0
+                  1 09876543 21098765432109876543210
+                  S ---E8--- ----------S23----------
+   Binary layout: 0 01111111 01001100110011001100110
+      Hex layout: 3FA6 6666
+       Precision: Single
+            Sign: Positive
+        Exponent: 0 (Stored: 127, Bias: 127)
+  Classification: FP_NORMAL
+          Binary: 0b1.0100110011001100110011
+           Octal: 0o1.23146314
+         Decimal: 1.3
+             Hex: 0x1.4ccccc
+   Rounding mode: RTZ: Round towards zero.
+            Note: Conversion from "1.3" was not faithful. Status: Inexact.
+```
+
 ### Example: Decode a single-precision IEEE754 number float from memory-layout
 ```
 $ crackNum -fsp  0xfc00 abc1
@@ -41,8 +108,67 @@ Satisfiable. Model:
           Binary: -0b1.00000001010101111000001p+121
            Octal: -0o2.00527404p+120
          Decimal: -2.6723903e36
-             Hex: -0x2.02AF04p+120
-$ crackNum -fdp 0xfc00 abc1 7F80 0001
+             Hex: -0x2.02af04p+120
+```
+
+### Example: Encode as an E4M3 FP8 float
+```
+$ crackNum -fe4m3 2.5
+Satisfiable. Model:
+  ENCODED = 2.5 :: E4M3
+                  7 6543 210
+                  S -E4- S3-
+   Binary layout: 0 1000 010
+      Hex layout: 42
+       Precision: 4 exponent bits, 3 significand bits
+            Sign: Positive
+        Exponent: 1 (Stored: 8, Bias: 7)
+  Classification: FP_NORMAL
+          Binary: 0b1.01p1
+           Octal: 0o2.4
+         Decimal: 2.5
+             Hex: 0x2.8
+```
+
+### Example: Decode an FP4 (E2M1) float
+```
+$ crackNum -ffp4 0b0111
+Satisfiable. Model:
+  DECODED = 6.0 :: FP4
+                  3 21 0
+                  S E2 S
+   Binary layout: 0 11 1
+      Hex layout: 7
+       Precision: 2 exponent bits, 1 significand bit
+            Sign: Positive
+        Exponent: 2 (Stored: 3, Bias: 1)
+  Classification: FP_NORMAL
+          Binary: 0b1.1p+2
+           Octal: 0o6
+         Decimal: 6.0
+             Hex: 0x6
+```
+
+### Example: Encode a TensorFloat-32 number
+```
+$ crackNum -ftf32 2.5
+Satisfiable. Model:
+  ENCODED = 2.5 :: FloatingPoint 8 11
+                  1          0
+                  8 76543210 9876543210
+                  S ---E8--- ---S10----
+   Binary layout: 0 10000000 0100000000
+      Hex layout: 2 0100
+       Precision: 8 exponent bits, 10 significand bits
+            Sign: Positive
+        Exponent: 1 (Stored: 128, Bias: 127)
+  Classification: FP_NORMAL
+          Binary: 0b1.01p1
+           Octal: 0o2.4
+         Decimal: 2.5
+             Hex: 0x2.8
+   Rounding mode: RNE: Round nearest ties to even.
+            Note: Conversion from "2.5" was exact. No rounding happened.
 ```
 
 ### Example: Decode a custom (2+3) float from memory-layout
@@ -80,6 +206,21 @@ Satisfiable. Model:
              Hex: 0xc
 ```
 
+### Example: Decode a 4-bit unsigned word
+```
+$ crackNum -w4 0xE
+Satisfiable. Model:
+  DECODED = 14 :: WordN 4
+                  3210
+   Binary layout: 1110
+      Hex layout: E
+            Type: Unsigned 4-bit word
+          Binary: 0b1110
+           Octal: 0o16
+         Decimal: 14
+             Hex: 0xe
+```
+
 ### Example: Decode two half-precision floats in two lanes
 ```
 $ crackNum -l2 -fhp 32\'hfdc71fc6
@@ -99,7 +240,7 @@ Satisfiable. Model:
             Note: Representation for NaN's is not unique
 == Lane 0 ============================================================
 Satisfiable. Model:
-  DECODED = 0.0075912 :: FloatingPoint 5 11
+  DECODED = 0.0075912476 :: FloatingPoint 5 11
                   1       0
                   5 43210 9876543210
                   S -E5-- ---S10----
@@ -111,9 +252,12 @@ Satisfiable. Model:
   Classification: FP_NORMAL
           Binary: 0b1.111100011p-8
            Octal: 0o3.706p-9
-         Decimal: 0.0075912
+         Decimal: 0.0075912476
              Hex: 0x1.f18p-8
 ```
+
+If you use the verilog notation (`N'h...`), the number of lanes is inferred from
+the width, so `-l` is optional in that case.
 
 ### Graphical interface (optional)
 
@@ -154,6 +298,9 @@ $ crackNum --gui                 -- open the graphical interface
 $ crackNum --gui -fsp 2.5        -- open it with single-precision selected, and 2.5 cracked
 $ crackNum --gui 0xdeadbeef      -- open it pre-filled with a value to decode
 ```
+
+Bad flags are diagnosed before the GUI comes up: `crackNum -ft32 4 --gui`
+reports the unknown format instead of opening an empty window.
 
 ### Usage info
 ```
