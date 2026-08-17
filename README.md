@@ -269,12 +269,14 @@ the same formats.
 
 ![crackNum GUI](https://raw.githubusercontent.com/LeventErkok/crackNum/master/crackNumGUI.png)
 
-**macOS** — a native Swift/AppKit app (`GUI/swiftGUI/`). Building requires the
-Swift compiler that comes with the Xcode Command Line Tools
+**macOS** — a native Swift/AppKit app (`GUI/swiftGUI/`). It is not part of the
+Hackage package, so you need a clone of the repository to build it. You also
+need the Swift compiler that comes with the Xcode Command Line Tools
 (`xcode-select --install`):
 
 ```
-$ cd GUI/swiftGUI
+$ git clone https://github.com/LeventErkok/crackNum.git
+$ cd crackNum/GUI/swiftGUI
 $ make install      # builds CrackNum.app and copies it into /Applications
 ```
 
