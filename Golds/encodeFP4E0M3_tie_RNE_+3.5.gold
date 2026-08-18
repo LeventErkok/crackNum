@@ -1,0 +1,16 @@
+Arguments: -ffp4e0m3 -rRNE --  3.5
+Exit code: ExitSuccess
+Satisfiable. Model:
+  ENCODED = 4 :: FP4E0M3
+                  3 210
+                  S -M-
+   Binary layout: 0 100
+      Hex layout: 4
+            Type: 4-bit sign-magnitude integer
+            Sign: Positive
+          Binary: 0b100
+           Octal: 0o4
+         Decimal: 4
+             Hex: 0x4
+   Rounding mode: RNE: Round nearest ties to even.
+            Note: Original value of 3.5 was rounded to 4.

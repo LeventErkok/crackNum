@@ -33,16 +33,17 @@ set Z3       [locate z3]
 
 set FORMAT_SECTIONS {
     {"Float" {
-        {ffp4  "FP4 (E2M1)"  fixed    fp4}
-        {fe4m3 "FP8 (E4M3)"  fixed    e4m3}
-        {fe5m2 "FP8 (E5M2)"  fixed    e5m2}
-        {fhp   "Half"        fixed    hp}
-        {fbp   "Brain"       fixed    bp}
-        {ftf32 "TF32"        fixed    tf32}
-        {fsp   "Single"      fixed    sp}
-        {fdp   "Double"      fixed    dp}
-        {fqp   "Quad"        fixed    qp}
-        {fcs   "Custom"      customFloat {}}
+        {ffp4     "FP4 (E2M1)"  fixed    fp4}
+        {ffp4e0m3 "FP4 (E0M3)"  fixed    fp4e0m3}
+        {fe4m3    "FP8 (E4M3)"  fixed    e4m3}
+        {fe5m2    "FP8 (E5M2)"  fixed    e5m2}
+        {fhp      "Half"        fixed    hp}
+        {fbp      "Brain"       fixed    bp}
+        {ftf32    "TF32"        fixed    tf32}
+        {fsp      "Single"      fixed    sp}
+        {fdp      "Double"      fixed    dp}
+        {fqp      "Quad"        fixed    qp}
+        {fcs      "Custom"      customFloat {}}
     }}
     {"Word (Unsigned)" {
         {w8   "8-bit"   word    8}
@@ -469,15 +470,16 @@ proc parseArgs {argv} {
         if {[string match "-f*" $a]} {
             set v [string tolower [string range $a 2 end]]
             switch $v {
-                sp   { set state(selection) fsp }
-                dp   { set state(selection) fdp }
-                qp   { set state(selection) fqp }
-                hp   { set state(selection) fhp }
-                bp   { set state(selection) fbp }
-                tf32 { set state(selection) ftf32 }
-                e4m3 { set state(selection) fe4m3 }
-                e5m2 { set state(selection) fe5m2 }
-                fp4  { set state(selection) ffp4 }
+                sp      { set state(selection) fsp }
+                dp      { set state(selection) fdp }
+                qp      { set state(selection) fqp }
+                hp      { set state(selection) fhp }
+                bp      { set state(selection) fbp }
+                tf32    { set state(selection) ftf32 }
+                e4m3    { set state(selection) fe4m3 }
+                e5m2    { set state(selection) fe5m2 }
+                fp4     { set state(selection) ffp4 }
+                fp4e0m3 { set state(selection) ffp4e0m3 }
                 default {
                     if {[regexp {^(\d+)\+(\d+)$} $v _ e s]} {
                         set state(selection) fcs

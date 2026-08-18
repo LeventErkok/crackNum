@@ -1,0 +1,16 @@
+Arguments: -ffp4e0m3 --  0
+Exit code: ExitSuccess
+Satisfiable. Model:
+  ENCODED = 0 :: FP4E0M3
+                  3 210
+                  S -M-
+   Binary layout: 0 000
+      Hex layout: 0
+            Type: 4-bit sign-magnitude integer
+            Sign: Positive
+          Binary: 0b0
+           Octal: 0o0
+         Decimal: 0
+             Hex: 0x0
+   Rounding mode: RNE: Round nearest ties to even.
+            Note: Conversion from "0" was exact. No rounding happened.

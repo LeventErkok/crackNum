@@ -1,0 +1,16 @@
+Arguments: -ffp4e0m3 -rRTP --  6.5
+Exit code: ExitSuccess
+Satisfiable. Model:
+  ENCODED = 7 :: FP4E0M3
+                  3 210
+                  S -M-
+   Binary layout: 0 111
+      Hex layout: 7
+            Type: 4-bit sign-magnitude integer
+            Sign: Positive
+          Binary: 0b111
+           Octal: 0o7
+         Decimal: 7
+             Hex: 0x7
+   Rounding mode: RTP: Round towards positive infinity.
+            Note: Original value of 6.5 was rounded to 7.

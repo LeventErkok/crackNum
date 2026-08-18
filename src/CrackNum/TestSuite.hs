@@ -121,6 +121,30 @@ tests = testGroup "CrackNum" [
             | rm           <- ["RNE", "RNA", "RTP", "RTN", "RTZ"]
             ,  i :: Double <- [0.25, 0.75, 1.25, 1.75, 2.5, 3.5, 5, 7]
             ]
+          , testGroup "EncodeFP4E0M3" [
+               gold "encodeFP4E0M3_nan"   "-ffp4e0m3    nan"
+             , gold "encodeFP4E0M3_+inf"  "-ffp4e0m3    inf"
+             , gold "encodeFP4E0M3_-inf"  "-ffp4e0m3 -- -inf"
+             , gold "encodeFP4E0M3_zero1" "-ffp4e0m3 --  0"
+             , gold "encodeFP4E0M3_zero2" "-ffp4e0m3 --  -0"
+             , gold "encodeFP4E0M3_exact" "-ffp4e0m3 --  5"
+             , gold "encodeFP4E0M3_max"   "-ffp4e0m3 --  7"
+             , gold "encodeFP4E0M3_min"   "-ffp4e0m3 -- -7"
+             , gold "encodeFP4E0M3_rnd1"  "-ffp4e0m3 --  0.4"     -- Rounds down to a zero
+             , gold "encodeFP4E0M3_rnd2"  "-ffp4e0m3 -- -0.4"     -- Rounds down to a negative zero
+             , gold "encodeFP4E0M3_oob1"  "-ffp4e0m3 --  100"     -- Saturates
+             , gold "encodeFP4E0M3_oob2"  "-ffp4e0m3 -- -100"
+             , gold "encodeFP4E0M3_hex"   "-ffp4e0m3 --  0x1.8p1"
+            ]
+          -- Every value that sits exactly half-way between two representable magnitudes,
+          -- plus one out-of-range value, over all rounding modes.
+          , testGroup "EncodeFP4E0M3Ties" $ concat [
+               [ gold ("encodeFP4E0M3_tie_" ++ rm ++ "_+" ++ show i) ("-ffp4e0m3 -r" ++ rm ++ " --  " ++ show i)
+               , gold ("encodeFP4E0M3_tie_" ++ rm ++ "_-" ++ show i) ("-ffp4e0m3 -r" ++ rm ++ " -- -" ++ show i)
+               ]
+            | rm           <- ["RNE", "RNA", "RTP", "RTN", "RTZ"]
+            ,  i :: Double <- [0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 8]
+            ]
           , testGroup "Decode" [
               gold "decode0" "-i4       0b0110"
             , gold "decode1" "-w4       0xE"
@@ -147,6 +171,18 @@ tests = testGroup "CrackNum" [
                              ]
             , sign      <- [False, True]
             ]
+          -- The patterns that are ordinary FP 4 4 values. These go through the look-alike
+          -- untouched, so they are the ones that used to leak its type name.
+          , testGroup "DecodeE4M3Regular" [
+               gold ("decodeE4M3_regular_" ++ bits) ("-fe4m3 0b" ++ bits)
+            | bits <- [ "00000000"     -- +0
+                      , "10000000"     -- -0
+                      , "00000001"     -- Smallest subnormal
+                      , "00111000"     -- 1
+                      , "10111100"     -- -1.5
+                      , "01110111"     -- 240, the largest non-deviating magnitude
+                      ]
+            ]
           , testGroup "DecodeE4M3_NaN" [
                gold "decodeE4M3_+NaN" "-fe4m3 0b_0111_1111"
             ,  gold "decodeE4M3_-NaN" "-fe4m3 0b_1111_1111"
@@ -158,6 +194,13 @@ tests = testGroup "CrackNum" [
             , e <- ["00", "01", "10", "11"]
             , m <- ["0", "1"]
             , let bits = s ++ e ++ m
+            ]
+          -- FP4E0M3 is small enough that we can simply decode every last one of its 16 patterns.
+          , testGroup "DecodeFP4E0M3" [
+               gold ("decodeFP4E0M3_" ++ bits) ("-ffp4e0m3 0b" ++ bits)
+            | s <- ["0", "1"]
+            , m <- ["000", "001", "010", "011", "100", "101", "110", "111"]
+            , let bits = s ++ m
             ]
           , testGroup "Bad" [
                gold "badInvocation0" "-f3+4 0b01"

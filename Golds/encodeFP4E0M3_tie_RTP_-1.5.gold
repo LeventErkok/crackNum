@@ -1,0 +1,16 @@
+Arguments: -ffp4e0m3 -rRTP -- -1.5
+Exit code: ExitSuccess
+Satisfiable. Model:
+  ENCODED = -1 :: FP4E0M3
+                  3 210
+                  S -M-
+   Binary layout: 1 001
+      Hex layout: 9
+            Type: 4-bit sign-magnitude integer
+            Sign: Negative
+          Binary: -0b1
+           Octal: -0o1
+         Decimal: -1
+             Hex: -0x1
+   Rounding mode: RTP: Round towards positive infinity.
+            Note: Original value of -1.5 was rounded to -1.

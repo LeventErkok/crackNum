@@ -1,0 +1,16 @@
+Arguments: -ffp4e0m3 -rRTZ --  3.5
+Exit code: ExitSuccess
+Satisfiable. Model:
+  ENCODED = 3 :: FP4E0M3
+                  3 210
+                  S -M-
+   Binary layout: 0 011
+      Hex layout: 3
+            Type: 4-bit sign-magnitude integer
+            Sign: Positive
+          Binary: 0b11
+           Octal: 0o3
+         Decimal: 3
+             Hex: 0x3
+   Rounding mode: RTZ: Round towards zero.
+            Note: Original value of 3.5 was rounded to 3.
