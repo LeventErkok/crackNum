@@ -1,0 +1,17 @@
+Arguments: -ffp4e0m3 -rRNA -- -8.0
+Exit code: ExitSuccess
+Satisfiable. Model:
+  ENCODED = -7 :: FP4E0M3
+                  3 210
+                  S -M-
+   Binary layout: 1 111
+      Hex layout: F
+            Type: 4-bit sign-magnitude integer
+            Sign: Negative
+          Binary: -0b111
+           Octal: -0o7
+         Decimal: -7
+             Hex: -0x7
+   Rounding mode: RNA: Round nearest ties to away.
+            Note: Original value of -8.0 is out of range, saturated to -7.
+                  The representable range is [-7, 7].

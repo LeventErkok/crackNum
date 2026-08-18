@@ -107,16 +107,17 @@ struct FormatSection: Identifiable {
 
 let formatSections: [FormatSection] = [
     FormatSection(title: "Float", formats: [
-        Format(id: "ffp4",  label: "FP4 (E2M1)", kind: .fixedFloat("ffp4")),
-        Format(id: "fe4m3", label: "FP8 (E4M3)", kind: .fixedFloat("fe4m3")),
-        Format(id: "fe5m2", label: "FP8 (E5M2)", kind: .fixedFloat("fe5m2")),
-        Format(id: "fhp",   label: "Half",       kind: .fixedFloat("fhp")),
-        Format(id: "fbp",   label: "Brain",      kind: .fixedFloat("fbp")),
-        Format(id: "ftf32", label: "TF32",       kind: .fixedFloat("ftf32")),
-        Format(id: "fsp",   label: "Single",     kind: .fixedFloat("fsp")),
-        Format(id: "fdp",   label: "Double",     kind: .fixedFloat("fdp")),
-        Format(id: "fqp",   label: "Quad",       kind: .fixedFloat("fqp")),
-        Format(id: "fcs",   label: "Custom",     kind: .customFloat),
+        Format(id: "ffp4",     label: "FP4 (E2M1)", kind: .fixedFloat("ffp4")),
+        Format(id: "ffp4e0m3", label: "FP4 (E0M3)", kind: .fixedFloat("ffp4e0m3")),
+        Format(id: "fe4m3",    label: "FP8 (E4M3)", kind: .fixedFloat("fe4m3")),
+        Format(id: "fe5m2",    label: "FP8 (E5M2)", kind: .fixedFloat("fe5m2")),
+        Format(id: "fhp",      label: "Half",       kind: .fixedFloat("fhp")),
+        Format(id: "fbp",      label: "Brain",      kind: .fixedFloat("fbp")),
+        Format(id: "ftf32",    label: "TF32",       kind: .fixedFloat("ftf32")),
+        Format(id: "fsp",      label: "Single",     kind: .fixedFloat("fsp")),
+        Format(id: "fdp",      label: "Double",     kind: .fixedFloat("fdp")),
+        Format(id: "fqp",      label: "Quad",       kind: .fixedFloat("fqp")),
+        Format(id: "fcs",      label: "Custom",     kind: .customFloat),
     ]),
     FormatSection(title: "Word (Unsigned)", formats: [
         Format(id: "w8",  label: "8-bit",  kind: .fixedWord(8)),
@@ -278,15 +279,16 @@ extension Model {
 
     private static func applyFloat(_ p: inout ParsedArgs, _ v: String) {
         switch v {
-        case "sp":   p.formatCode = "fsp"
-        case "dp":   p.formatCode = "fdp"
-        case "qp":   p.formatCode = "fqp"
-        case "hp":   p.formatCode = "fhp"
-        case "bp":   p.formatCode = "fbp"
-        case "tf32": p.formatCode = "ftf32"
-        case "e4m3": p.formatCode = "fe4m3"
-        case "e5m2": p.formatCode = "fe5m2"
-        case "fp4":  p.formatCode = "ffp4"
+        case "sp":      p.formatCode = "fsp"
+        case "dp":      p.formatCode = "fdp"
+        case "qp":      p.formatCode = "fqp"
+        case "hp":      p.formatCode = "fhp"
+        case "bp":      p.formatCode = "fbp"
+        case "tf32":    p.formatCode = "ftf32"
+        case "e4m3":    p.formatCode = "fe4m3"
+        case "e5m2":    p.formatCode = "fe5m2"
+        case "fp4":     p.formatCode = "ffp4"
+        case "fp4e0m3": p.formatCode = "ffp4e0m3"
         default:
             // Custom "E+S": E exponent bits, S significand bits (incl. implicit).
             let parts = v.split(separator: "+", maxSplits: 1)

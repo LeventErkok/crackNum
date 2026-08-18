@@ -1,0 +1,6 @@
+Arguments: -ffp4e0m3    nan
+Exit code: ExitFailure 1
+
+STDERR:
+ERROR:
+  FP4E0M3 has no representation for NaN.

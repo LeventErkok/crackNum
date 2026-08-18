@@ -1,0 +1,16 @@
+Arguments: -ffp4e0m3 -rRNA -- -1.5
+Exit code: ExitSuccess
+Satisfiable. Model:
+  ENCODED = -2 :: FP4E0M3
+                  3 210
+                  S -M-
+   Binary layout: 1 010
+      Hex layout: A
+            Type: 4-bit sign-magnitude integer
+            Sign: Negative
+          Binary: -0b10
+           Octal: -0o2
+         Decimal: -2
+             Hex: -0x2
+   Rounding mode: RNA: Round nearest ties to away.
+            Note: Original value of -1.5 was rounded to -2.

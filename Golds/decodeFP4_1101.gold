@@ -1,7 +1,7 @@
 Arguments: -ffp4 0b1101
 Exit code: ExitSuccess
 Satisfiable. Model:
-  DECODED = -3.0 :: FloatingPoint 2 2
+  DECODED = -3.0 :: FP4
                   3 21 0
                   S E2 S
    Binary layout: 1 10 1

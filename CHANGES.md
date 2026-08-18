@@ -3,6 +3,22 @@
 
 * Latest Hackage released version: 3.24, 2026-08-17
 
+### Version 3.25, 2026-08-18
+
+  * Add support for the FP4 (E0M3) format, via `-ffp4e0m3`. Unlike every other
+    format crackNum knows about, this one has no exponent bits at all, which makes
+    it a plain 4-bit sign-magnitude integer: a sign bit and a 3-bit magnitude,
+    covering -7 to 7, with both a positive and a negative zero. It has neither NaN
+    nor Inf, so those inputs are rejected; values outside [-7, 7] saturate to the
+    nearest end-point, and fractional inputs round according to `-r`.
+
+  * Report the format the user actually asked for when decoding E4M3 and FP4.
+    Both are modeled by an IEEE look-alike, and the patterns that need no special
+    handling were printed straight from it, so `crackNum -ffp4 0b0100` answered
+    `2.0 :: FloatingPoint 2 2` and `crackNum -fe4m3 0b00111000` answered
+    `1.0 :: FloatingPoint 4 4`. The values were right, only the type name leaked.
+    The patterns that do deviate, and E5M2 throughout, were already correct.
+
 ### Version 3.24, 2026-08-17
 
   * Add a quad-precision example to the help output. `-fqp` has always been

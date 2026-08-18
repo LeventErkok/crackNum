@@ -1,0 +1,7 @@
+Arguments: -ffp4e0m3    inf
+Exit code: ExitFailure 1
+
+STDERR:
+ERROR:
+  FP4E0M3 has no representation for infinity.
+  The representable range is [-7, 7].

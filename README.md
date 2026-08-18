@@ -23,18 +23,23 @@ actual floating-point reasoning to an SMT solver, so you also need
 
 ### Supported formats
 
-| Flag      | Format                              | Exponent | Significand (incl. implicit bit) |
-|-----------|-------------------------------------|---------:|---------------------------------:|
-| `-fhp`    | Half precision (IEEE-754 binary16)  |        5 |                               11 |
-| `-fbp`    | Brain float (bfloat16)              |        8 |                                8 |
-| `-ftf32`  | TensorFloat-32                      |        8 |                               11 |
-| `-fsp`    | Single precision (binary32)         |        8 |                               24 |
-| `-fdp`    | Double precision (binary64)         |       11 |                               53 |
-| `-fqp`    | Quad precision (binary128)          |       15 |                              113 |
-| `-fe5m2`  | FP8, IEEE-754 style                 |        5 |                                3 |
-| `-fe4m3`  | FP8, alternate (no infinities)      |        4 |                                4 |
-| `-ffp4`   | FP4 (E2M1)                          |        2 |                                2 |
-| `-fa+b`   | Arbitrary IEEE-754 float            |        a |                                b |
+| Flag        | Format                              | Exponent | Significand (incl. implicit bit) |
+|-------------|-------------------------------------|---------:|---------------------------------:|
+| `-fhp`      | Half precision (IEEE-754 binary16)  |        5 |                               11 |
+| `-fbp`      | Brain float (bfloat16)              |        8 |                                8 |
+| `-ftf32`    | TensorFloat-32                      |        8 |                               11 |
+| `-fsp`      | Single precision (binary32)         |        8 |                               24 |
+| `-fdp`      | Double precision (binary64)         |       11 |                               53 |
+| `-fqp`      | Quad precision (binary128)          |       15 |                              113 |
+| `-fe5m2`    | FP8, IEEE-754 style                 |        5 |                                3 |
+| `-fe4m3`    | FP8, alternate (no infinities)      |        4 |                                4 |
+| `-ffp4`     | FP4 (E2M1)                          |        2 |                                2 |
+| `-ffp4e0m3` | FP4 (E0M3), sign-magnitude          |        0 |                                3 |
+| `-fa+b`     | Arbitrary IEEE-754 float            |        a |                                b |
+
+FP4 (E0M3) is the odd one out: with no exponent bits at all it is really a 4-bit
+sign-magnitude *integer*, holding a sign and a 3-bit magnitude. It covers -7 to 7,
+with both a positive and a negative zero, and has neither NaN nor Inf.
 
 Integers come in two flavors: `-iN` for a signed `N`-bit 2's complement integer,
 and `-wN` for an unsigned `N`-bit word. Both `N` and the arbitrary float sizes
@@ -147,6 +152,42 @@ Satisfiable. Model:
            Octal: 0o6
          Decimal: 6.0
              Hex: 0x6
+```
+
+### Example: Decode an FP4 (E0M3) sign-magnitude integer
+```
+$ crackNum -ffp4e0m3 0b1101
+Satisfiable. Model:
+  DECODED = -5 :: FP4E0M3
+                  3 210
+                  S -M-
+   Binary layout: 1 101
+      Hex layout: D
+            Type: 4-bit sign-magnitude integer
+            Sign: Negative
+          Binary: -0b101
+           Octal: -0o5
+         Decimal: -5
+             Hex: -0x5
+```
+
+### Example: Encode an FP4 (E0M3) sign-magnitude integer
+```
+$ crackNum -ffp4e0m3 -- -5
+Satisfiable. Model:
+  ENCODED = -5 :: FP4E0M3
+                  3 210
+                  S -M-
+   Binary layout: 1 101
+      Hex layout: D
+            Type: 4-bit sign-magnitude integer
+            Sign: Negative
+          Binary: -0b101
+           Octal: -0o5
+         Decimal: -5
+             Hex: -0x5
+   Rounding mode: RNE: Round nearest ties to even.
+            Note: Conversion from "-5" was exact. No rounding happened.
 ```
 
 ### Example: Encode a TensorFloat-32 number
@@ -319,29 +360,31 @@ Usage: crackNum value OR binary/hex-pattern
 
 Examples:
  Encoding:
-   crackNum -i4    -- -2                    -- encode as 4-bit signed integer
-   crackNum -w4    2                        -- encode as 4-bit unsigned integer
-   crackNum -f3+4  2.5                      -- encode as float with 3 bits exponent, 4 bits significand
-   crackNum -f3+4  2.5 -rRTZ                -- encode as above, but use RTZ rounding mode.
-   crackNum -fbp   2.5                      -- encode as a brain-precision float
-   crackNum -ftf32 2.5                      -- encode as a TensorFloat-32 float
-   crackNum -fdp   2.5                      -- encode as a double-precision float
-   crackNum -fqp   2.5                      -- encode as a quad-precision float
-   crackNum -fe4m3 2.5                      -- encode as an E4M3 FP8 float
-   crackNum -fe5m2 2.5                      -- encode as an E5M2 FP8 float
-   crackNum -ffp4  2.5                      -- encode as an FP4 (E2M1) float
-   crackNum -fsp   0x3.2p5                  -- encode as single-precision from hex-float
+   crackNum -i4       -- -2                    -- encode as 4-bit signed integer
+   crackNum -w4       2                        -- encode as 4-bit unsigned integer
+   crackNum -f3+4     2.5                      -- encode as float with 3 bits exponent, 4 bits significand
+   crackNum -f3+4     2.5 -rRTZ                -- encode as above, but use RTZ rounding mode.
+   crackNum -fbp      2.5                      -- encode as a brain-precision float
+   crackNum -ftf32    2.5                      -- encode as a TensorFloat-32 float
+   crackNum -fdp      2.5                      -- encode as a double-precision float
+   crackNum -fqp      2.5                      -- encode as a quad-precision float
+   crackNum -fe4m3    2.5                      -- encode as an E4M3 FP8 float
+   crackNum -fe5m2    2.5                      -- encode as an E5M2 FP8 float
+   crackNum -ffp4     2.5                      -- encode as an FP4 (E2M1) float
+   crackNum -ffp4e0m3 3.5                      -- encode as an FP4 (E0M3) sign-magnitude integer
+   crackNum -fsp      0x3.2p5                  -- encode as single-precision from hex-float
 
  Decoding:
-   crackNum -i4      0b0110                -- decode as 4-bit signed integer, from binary
-   crackNum -w4      0xE                   -- decode as 4-bit unsigned integer, from hex
-   crackNum -f3+4    0b0111001             -- decode as float with 3 bits exponent, 4 bits significand
-   crackNum -fbp     0x000F                -- decode as a brain-precision float
-   crackNum -ftf32   19\'h0000F            -- decode as a TensorFloat-32 float
-   crackNum -fdp     0x8000000000000000    -- decode as a double-precision float
-   crackNum -fhp     0x8000                -- decode as a half-precision float
-   crackNum -ffp4    0b0111                -- decode as an FP4 (E2M1) float
-   crackNum -l4 -fhp 64\'hbdffaaffdc71fc60 -- decode as half-precision float over 4 lanes using verilog notation
+   crackNum -i4       0b0110                   -- decode as 4-bit signed integer, from binary
+   crackNum -w4       0xE                      -- decode as 4-bit unsigned integer, from hex
+   crackNum -f3+4     0b0111001                -- decode as float with 3 bits exponent, 4 bits significand
+   crackNum -fbp      0x000F                   -- decode as a brain-precision float
+   crackNum -ftf32    19\'h0000F               -- decode as a TensorFloat-32 float
+   crackNum -fdp      0x8000000000000000       -- decode as a double-precision float
+   crackNum -fhp      0x8000                   -- decode as a half-precision float
+   crackNum -ffp4     0b0111                   -- decode as an FP4 (E2M1) float
+   crackNum -ffp4e0m3 0b1101                   -- decode as an FP4 (E0M3) sign-magnitude integer
+   crackNum -l4 -fhp  64\'hbdffaaffdc71fc60    -- decode as half-precision float over 4 lanes using verilog notation
 
  GUI:
    crackNum --gui                     -- launch the graphical interface
@@ -354,6 +397,9 @@ Examples:
                      along with a decimal (2.3, -4.1e5) or hexadecimal float (0x2.4p3)
        - FP4 (E2M1) has neither NaN nor Inf, so those inputs are rejected. Finite
          values outside its range of [-6, 6] saturate to the nearest end-point.
+       - FP4 (E0M3) is a sign-magnitude integer: a sign bit and a 3-bit magnitude,
+         covering -7 to 7, with both a positive and a negative zero. It has no NaN
+         and no Inf either, and values outside [-7, 7] saturate to the end-point.
    - For decoding:
        - Use hexadecimal (0x) binary (0b), or N'h (verilog) notation as input.
          Input must have one of these prefixes.

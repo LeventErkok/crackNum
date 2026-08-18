@@ -1,0 +1,16 @@
+Arguments: -ffp4e0m3 -rRTN --  6.5
+Exit code: ExitSuccess
+Satisfiable. Model:
+  ENCODED = 6 :: FP4E0M3
+                  3 210
+                  S -M-
+   Binary layout: 0 110
+      Hex layout: 6
+            Type: 4-bit sign-magnitude integer
+            Sign: Positive
+          Binary: 0b110
+           Octal: 0o6
+         Decimal: 6
+             Hex: 0x6
+   Rounding mode: RTN: Round towards negative infinity.
+            Note: Original value of 6.5 was rounded to 6.

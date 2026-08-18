@@ -1,0 +1,14 @@
+Arguments: -ffp4e0m3 0b1110
+Exit code: ExitSuccess
+Satisfiable. Model:
+  DECODED = -6 :: FP4E0M3
+                  3 210
+                  S -M-
+   Binary layout: 1 110
+      Hex layout: E
+            Type: 4-bit sign-magnitude integer
+            Sign: Negative
+          Binary: -0b110
+           Octal: -0o6
+         Decimal: -6
+             Hex: -0x6

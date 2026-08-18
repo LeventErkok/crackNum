@@ -1,7 +1,7 @@
 Arguments: -fe4m3 0b_0111_1111
 Exit code: ExitSuccess
 Satisfiable. Model:
-  DECODED = NaN :: FloatingPoint 4 4
+  DECODED = NaN :: E4M3
                   7 6543 210
                   S -E4- S3-
    Binary layout: 0 1111 111
