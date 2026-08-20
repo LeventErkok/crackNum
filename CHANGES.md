@@ -1,7 +1,33 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 3.24, 2026-08-17
+* Latest Hackage released version: 3.26, 2026-08-19
+
+### Version 3.26, 2026-08-19
+
+  * New flag `--list-formats`, which prints the floating-point formats `-f` accepts,
+    one name per line. It is meant for editor integrations, which would otherwise have
+    to hardcode the list and let it go stale; the VIM plugin now asks rather than
+    guesses, and picks up any format added later for free.
+
+  * `--help` now also lists the supported floating-point formats. Both it and the
+    `-f` error message are generated from a single table, so they cannot disagree.
+
+  * Fix the VIM integration, which had been broken since version 3.0. The plugin
+    offered `i`, `w`, and `f` as the choices at its precision prompt, and passed
+    whichever you picked through as-is, so `:CrackNum` ran `crackNum i 0b0110`:
+    no leading dash, and no bit-width. Every invocation was rejected, and the
+    quickfix window filled up with crackNum's usage text instead of an answer.
+    The completion list now offers real flags (`-i8`, `-fhp`, ...), and anything
+    else crackNum accepts, such as `-f3+4` or `-l4 -fhp`, can be typed in directly.
+
+  * The VIM plugin also set `grepformat` to `VIM %m`, matching a `--vim` output
+    mode that was removed in 3.0. Nothing matched that format, so even a correct
+    invocation produced an empty quickfix window. Take crackNum's output as-is now.
+
+  * The VIM plugin now finds the bit-pattern under the cursor itself, instead of
+    relying on `<cword>`. Verilog notation stops at the quote (`64'hdeadbeef` came
+    out as just `64`), and the value is quoted before it reaches the shell.
 
 ### Version 3.25, 2026-08-18
 
