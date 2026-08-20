@@ -1,9 +1,9 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 3.26, 2026-08-19
+* Latest Hackage released version: 3.27, 2026-08-20
 
-### Version 3.27, Not yet released
+### Version 3.27, 2026-08-20
 
   * There is now a Linux binary distribution, alongside the macOS one: see the
     Releases page. It ships the `crackNum` executable, a copy of `z3` (which crackNum
