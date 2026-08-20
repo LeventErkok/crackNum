@@ -92,7 +92,14 @@ macdist:
 	@echo "*** Built $(BINDIST)/$(MACDIST).tar.gz"
 	@tar tzf $(BINDIST)/$(MACDIST).tar.gz | sed 's/^/      /'
 
+# NB. macdist is invoked from the recipe rather than added as a prerequisite,
+# so it is guaranteed to run after the tests rather than in some other order.
 release: clean install sdist hlint test checkLinks
+ifeq ($(OS), Darwin)
+	$(MAKE) macdist
+else
+	@echo "*** NB. Not on macOS: skipped macdist, so bin-dist/ still holds the previous macOS tarball."
+endif
 	@echo "*** crackNum is ready for release!"
 
 hlint: install
