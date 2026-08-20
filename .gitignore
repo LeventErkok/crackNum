@@ -7,7 +7,6 @@ cabal.project.local
 .*.swp
 Golds/*.*_temp
 .ghcid-output
-bin-dist
 
 # Swift GUI build artifacts
 GUI/swiftGUI/.build/
