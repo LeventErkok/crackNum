@@ -5,6 +5,13 @@
 
 ### Version 3.27, Not yet released
 
+  * There is now a Linux binary distribution, alongside the macOS one: see the
+    Releases page. It ships the `crackNum` executable, a copy of `z3` (which crackNum
+    shells out to for every operation), the Tcl/Tk GUI script, and a README. Both
+    binaries are statically linked, so there is no libc or distribution requirement:
+    they run as-is on any x86_64 Linux, old or new. The GUI additionally needs `wish`,
+    which does have to come from your system.
+
   * `--gui` now also looks for `crackNum.tcl` next to the crackNum executable itself,
     after `$CRACKNUM_TCL` and the PATH but before the cabal data-directory. A binary
     distribution carries the script alongside the binary, where the data-directory
