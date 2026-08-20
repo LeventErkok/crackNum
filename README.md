@@ -13,13 +13,47 @@ decimal, and hex. It works in both directions:
 
 ### Installation
 
+#### Prebuilt binaries (nothing to build, no Haskell toolchain)
+
+The easiest way to get crackNum is from the
+[Releases page](https://github.com/LeventErkok/crackNum/releases). Each bundle is
+self-contained: the `crackNum` executable, a copy of `z3`, the graphical interface,
+a LICENSE, and a README with the platform-specific details.
+
+| Platform | Asset | Notes |
+| --- | --- | --- |
+| Linux (x86_64) | `crackNum-<version>-linux-x86_64.tar.gz` | Statically linked, so there is no glibc or distribution requirement: it runs as-is on any x86_64 Linux, old or new. |
+| macOS (Apple Silicon) | `crackNum-<version>-macos-arm64.tar.gz` | Includes `CrackNum.app`. Ad-hoc signed rather than notarized, so clear the quarantine flag as the bundled README explains. |
+
+Unpack it and you can run straight out of the directory:
+
+```
+$ tar xzf crackNum-3.27-linux-x86_64.tar.gz
+$ cd crackNum-3.27-linux-x86_64
+$ ./crackNum -fsp 3.5
+```
+
+To use it from anywhere, put the files on your `PATH`. `z3` has to be there too,
+since crackNum shells out to it for every operation:
+
+```
+$ mkdir -p ~/bin && cp crackNum z3 ~/bin/       # on Linux, add crackNum.tcl for the GUI
+$ export PATH=$HOME/bin:$PATH                   # add to your shell rc to make it stick
+```
+
+Each bundle's own README covers the platform details — installing `CrackNum.app` on
+macOS, and `wish` for the Tcl/Tk GUI on Linux.
+
+#### From Hackage
+
 ```
 $ cabal install crackNum
 ```
 
 `crackNum` uses [SBV](http://hackage.haskell.org/package/sbv) and delegates the
-actual floating-point reasoning to an SMT solver, so you also need
-[z3](https://github.com/Z3Prover/z3) on your `PATH`.
+actual floating-point reasoning to an SMT solver, so installed this way you also
+need [z3](https://github.com/Z3Prover/z3) on your `PATH`. (The prebuilt bundles
+above carry their own copy, so there is nothing extra to install.)
 
 ### Supported formats
 
@@ -314,9 +348,13 @@ the same formats.
 
 ![crackNum GUI](https://raw.githubusercontent.com/LeventErkok/crackNum/master/crackNumGUI.png)
 
+If you installed from a [release bundle](#prebuilt-binaries-nothing-to-build-no-haskell-toolchain)
+the GUI is already in it, and there is nothing to build on either platform. The rest
+of this section is for installing from Hackage or from a source checkout.
+
 **macOS** — a native Swift/AppKit app (`GUI/swiftGUI/`). It is not part of the
-Hackage package, so you need a clone of the repository to build it. You also
-need the Swift compiler that comes with the Xcode Command Line Tools
+Hackage package, so building it yourself needs a clone of the repository and the
+Swift compiler that comes with the Xcode Command Line Tools
 (`xcode-select --install`):
 
 ```
