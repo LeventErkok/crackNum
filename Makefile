@@ -45,7 +45,7 @@ define mkTags
 	@find . -name \*.\*hs | xargs fast-tags
 endef
 
-.PHONY: all ghci ghcid install sdist release clean hlint test checkLinks ci tags macdist
+.PHONY: all ghci ghcid install sdist release clean hlint test checkLinks ci tags macdist uploadMac
 
 all: install
 
@@ -92,6 +92,21 @@ macdist:
 	@rm -rf $(MACSTAGE)/$(MACDIST)
 	@echo "*** Built $(BINDIST)/$(MACDIST).tar.gz"
 	@tar tzf $(BINDIST)/$(MACDIST).tar.gz | sed 's/^/      /'
+
+# Attach the macOS tarball to the GitHub release for this version, rebuilding it
+# first. Deliberately not part of `release`: cutting a release should never
+# publish to GitHub as a side effect. The Linux tarball needs no equivalent --
+# .github/workflows/linux-dist.yml attaches it when the v-tag is pushed.
+uploadMac: macdist
+	@command -v gh >/dev/null || { echo "uploadMac: needs the GitHub CLI; see https://cli.github.com"; exit 1; }
+	@gh auth status >/dev/null 2>&1 || { echo "uploadMac: gh is not logged in; run: gh auth login";    exit 1; }
+	@git rev-parse -q --verify refs/tags/v$(VERSION) >/dev/null \
+	   || { echo "uploadMac: no v$(VERSION) tag; tag and push the release first"; exit 1; }
+	@gh release view v$(VERSION) >/dev/null 2>&1 \
+	   || gh release create v$(VERSION) --title "crackNum $(VERSION)" --notes "See CHANGES.md for what changed."
+	gh release upload v$(VERSION) $(BINDIST)/$(MACDIST).tar.gz --clobber
+	@echo "*** Attached $(MACDIST).tar.gz to release v$(VERSION)"
+	@gh release view v$(VERSION) --json assets --jq '.assets[].name' | sed 's/^/      /'
 
 # NB. macdist is invoked from the recipe rather than added as a prerequisite,
 # so it is guaranteed to run after the tests rather than in some other order.
