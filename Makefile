@@ -107,6 +107,7 @@ uploadMac: macdist
 	gh release upload v$(VERSION) $(BINDIST)/$(MACDIST).tar.gz --clobber
 	@echo "*** Attached $(MACDIST).tar.gz to release v$(VERSION)"
 	@gh release view v$(VERSION) --json assets --jq '.assets[].name' | sed 's/^/      /'
+	@/bin/rm -rf $(BINDIST)
 
 # NB. macdist is invoked from the recipe rather than added as a prerequisite,
 # so it is guaranteed to run after the tests rather than in some other order.
