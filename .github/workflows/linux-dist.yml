@@ -1,0 +1,131 @@
+# Builds the Linux binary distribution: a statically linked crackNum, a
+# statically linked z3, the Tcl/Tk GUI script, and a README. The result is
+# uploaded as a workflow artifact, and attached to the release when the run is
+# triggered by a tag.
+#
+# Everything is built under Alpine/musl and fully static, so the bundle has no
+# libc dependency at all and runs on any x86_64 Linux -- old RHEL/Rocky just as
+# happily as current Ubuntu. Note the build runs via `docker run` rather than a
+# job-level `container:`: the Actions runner injects a glibc-linked Node for
+# actions/*, which cannot execute inside an Alpine container.
+name: Linux binary distribution
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      z3_tag:
+        description: 'z3 release tag to build and bundle'
+        required: false
+        default: 'z3-4.16.0'
+
+env:
+  ALPINE: 'alpine:3.21'
+  GHC_VERSION: '9.10.3'
+  Z3_TAG: ${{ github.event.inputs.z3_tag || 'z3-4.16.0' }}
+
+jobs:
+  dist:
+    runs-on: ubuntu-latest
+
+    # Needed by the release step; the default token is read-only in many repos.
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Cache GHC and the Cabal store
+        uses: actions/cache@v6
+        with:
+          path: |
+            .ghcup-base
+            .cabal-home
+            dist-newstyle
+          key: musl-hs-${{ env.ALPINE }}-${{ env.GHC_VERSION }}-${{ hashFiles('**/*.cabal') }}
+          restore-keys: |
+            musl-hs-${{ env.ALPINE }}-${{ env.GHC_VERSION }}-
+
+      # Keyed only on the z3 tag: a static z3 takes a while to compile and has
+      # nothing to do with the Haskell side, so it should survive cabal changes.
+      - name: Cache the static z3
+        uses: actions/cache@v6
+        with:
+          path: z3-out
+          key: musl-z3-${{ env.ALPINE }}-${{ env.Z3_TAG }}
+
+      - name: Build crackNum and z3 under musl
+        run: |
+          mkdir -p out
+          docker run --rm \
+            -v "$PWD":/work -w /work \
+            -e GHC_VERSION="$GHC_VERSION" \
+            -e Z3_TAG="$Z3_TAG" \
+            -e HOST_UID="$(id -u)" \
+            -e HOST_GID="$(id -g)" \
+            "$ALPINE" \
+            /work/.github/linux-dist/build-static.sh
+
+      - name: Work out the version
+        id: vsn
+        run: |
+          vsn=$(sed -n 's/^Version *: *//p' crackNum.cabal | tr -d '[:space:]')
+          test -n "$vsn"
+          echo "version=$vsn"                    >> "$GITHUB_OUTPUT"
+          echo "dist=crackNum-$vsn-linux-x86_64" >> "$GITHUB_OUTPUT"
+
+      - name: Check that both binaries really are static
+        run: |
+          set -euo pipefail
+          for b in out/crackNum out/z3; do
+            echo "--- $b"
+            file "$b"
+            # The whole point of the exercise: no interpreter, no NEEDED libs.
+            if file "$b" | grep -q 'dynamically linked'; then
+              echo "ERROR: $b is dynamically linked" >&2
+              exit 1
+            fi
+            ldd "$b" 2>&1 | grep -qE 'not a dynamic executable|statically linked' \
+              || { echo "ERROR: $b has dynamic dependencies" >&2; ldd "$b"; exit 1; }
+          done
+
+      - name: Assemble the distribution
+        run: |
+          set -euo pipefail
+          dist='${{ steps.vsn.outputs.dist }}'
+          mkdir -p "$dist"
+          cp out/crackNum            "$dist/crackNum"
+          cp out/z3                  "$dist/z3"
+          cp GUI/tclGUI/crackNum.tcl "$dist/crackNum.tcl"
+          cp LICENSE                 "$dist/LICENSE"
+          sed 's/@VERSION@/${{ steps.vsn.outputs.version }}/' .github/linux-dist/README.txt > "$dist/README.txt"
+
+      # Runs the bundle the way a user would, on glibc Ubuntu -- which a musl
+      # static build is expected to handle, and is itself a portability check.
+      - name: Smoke test
+        run: |
+          set -euo pipefail
+          export PATH="$PWD/${{ steps.vsn.outputs.dist }}:$PATH"
+          crackNum --version
+          crackNum --list-formats
+          crackNum -f sp 3.5
+          crackNum --runTests -- -j2 --no-create --hide-successes
+
+      - name: Create the tarball
+        run: tar czf '${{ steps.vsn.outputs.dist }}.tar.gz' '${{ steps.vsn.outputs.dist }}'
+
+      - name: Upload as a workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.vsn.outputs.dist }}
+          path: ${{ steps.vsn.outputs.dist }}.tar.gz
+          if-no-files-found: error
+
+      - name: Attach to the release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.vsn.outputs.dist }}.tar.gz
