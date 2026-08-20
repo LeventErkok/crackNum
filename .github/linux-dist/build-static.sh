@@ -57,7 +57,9 @@ if [ ! -x /work/z3-out/z3 ]; then
         -DZ3_BUILD_DOTNET_BINDINGS=OFF \
         -DZ3_BUILD_TEST_EXECUTABLES=OFF \
         -DCMAKE_EXE_LINKER_FLAGS="-static"
-    cmake --build /tmp/z3/build --target z3 -j "$(nproc)"
+    # NB. The CMake target is "shell"; it is the OUTPUT_NAME that is "z3".
+    cmake --build /tmp/z3/build --target shell -j "$(nproc)"
+    test -x /tmp/z3/build/z3
     mkdir -p /work/z3-out
     cp /tmp/z3/build/z3 /work/z3-out/z3
     strip /work/z3-out/z3
