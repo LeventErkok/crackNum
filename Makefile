@@ -12,6 +12,9 @@ TIME      = /usr/bin/time
 VERSION  := $(shell sed -n 's/^Version *: *//p' crackNum.cabal | tr -d '[:space:]')
 BINDIST   = bin-dist
 MACDIST   = crackNum-$(VERSION)-macos-arm64
+# Staged under dist-newstyle so a failed run leaves nothing behind in the work
+# tree, and so `make clean` sweeps it up.
+MACSTAGE  = dist-newstyle/bindist
 
 OS := $(shell uname)
 
@@ -42,7 +45,7 @@ define mkTags
 	@find . -name \*.\*hs | xargs fast-tags
 endef
 
-.PHONY: all ghcid install sdist clean docs hlint tags macdist
+.PHONY: all ghci ghcid install sdist release clean hlint test checkLinks ci tags macdist
 
 all: install
 
@@ -54,8 +57,6 @@ ghcid:
 
 install:
 	cabal new-install --overwrite-policy=always
-
-release: clean
 
 sdist: install
 	cabal new-sdist
@@ -74,21 +75,21 @@ macdist:
 	@command -v z3 >/dev/null   || { echo "macdist: no z3 on the PATH; it gets bundled";             exit 1; }
 	$(CABAL) build exe:crackNum
 	$(MAKE) -C GUI/swiftGUI app
-	@rm -rf $(MACDIST)
-	@mkdir -p $(MACDIST) $(BINDIST)
-	@cp "`$(CABAL) list-bin exe:crackNum`" $(MACDIST)/crackNum
-	@cp "`command -v z3`"                  $(MACDIST)/z3
-	@cp -R GUI/swiftGUI/CrackNum.app       $(MACDIST)/CrackNum.app
-	@cp LICENSE                            $(MACDIST)/LICENSE
-	@sed 's/@VERSION@/$(VERSION)/' packaging/macos/README.txt > $(MACDIST)/README.txt
-	@chmod +x $(MACDIST)/crackNum $(MACDIST)/z3
-	@xattr -cr $(MACDIST)
-	@codesign --force --sign - $(MACDIST)/crackNum $(MACDIST)/z3
-	@codesign --force --deep --sign - $(MACDIST)/CrackNum.app
-	@codesign --verify $(MACDIST)/crackNum $(MACDIST)/z3 $(MACDIST)/CrackNum.app
+	@rm -rf $(MACSTAGE)/$(MACDIST)
+	@mkdir -p $(MACSTAGE)/$(MACDIST) $(BINDIST)
+	@cp "`$(CABAL) list-bin exe:crackNum`" $(MACSTAGE)/$(MACDIST)/crackNum
+	@cp "`command -v z3`"                  $(MACSTAGE)/$(MACDIST)/z3
+	@cp -R GUI/swiftGUI/CrackNum.app       $(MACSTAGE)/$(MACDIST)/CrackNum.app
+	@cp LICENSE                            $(MACSTAGE)/$(MACDIST)/LICENSE
+	@sed 's/@VERSION@/$(VERSION)/' packaging/macos/README.txt > $(MACSTAGE)/$(MACDIST)/README.txt
+	@chmod +x $(MACSTAGE)/$(MACDIST)/crackNum $(MACSTAGE)/$(MACDIST)/z3
+	@xattr -cr $(MACSTAGE)/$(MACDIST)
+	@codesign --force --sign - $(MACSTAGE)/$(MACDIST)/crackNum $(MACSTAGE)/$(MACDIST)/z3
+	@codesign --force --deep --sign - $(MACSTAGE)/$(MACDIST)/CrackNum.app
+	@codesign --verify $(MACSTAGE)/$(MACDIST)/crackNum $(MACSTAGE)/$(MACDIST)/z3 $(MACSTAGE)/$(MACDIST)/CrackNum.app
 	@rm -f $(BINDIST)/$(MACDIST).tar.gz
-	@COPYFILE_DISABLE=1 tar czf $(BINDIST)/$(MACDIST).tar.gz $(MACDIST)
-	@rm -rf $(MACDIST)
+	@COPYFILE_DISABLE=1 tar czf $(BINDIST)/$(MACDIST).tar.gz -C $(MACSTAGE) $(MACDIST)
+	@rm -rf $(MACSTAGE)/$(MACDIST)
 	@echo "*** Built $(BINDIST)/$(MACDIST).tar.gz"
 	@tar tzf $(BINDIST)/$(MACDIST).tar.gz | sed 's/^/      /'
 
