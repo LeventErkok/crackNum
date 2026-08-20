@@ -3,6 +3,15 @@
 
 * Latest Hackage released version: 3.26, 2026-08-19
 
+### Version 3.27, Not yet released
+
+  * `--gui` now also looks for `crackNum.tcl` next to the crackNum executable itself,
+    after `$CRACKNUM_TCL` and the PATH but before the cabal data-directory. A binary
+    distribution carries the script alongside the binary, where the data-directory
+    baked in at build time names a path from the build machine that does not exist
+    on the user's; the GUI now works in such a bundle however it is unpacked or
+    copied, rather than only when the script was also placed on the PATH.
+
 ### Version 3.26, 2026-08-19
 
   * New flag `--list-formats`, which prints the floating-point formats `-f` accepts,
