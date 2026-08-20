@@ -67,7 +67,7 @@ jobs:
             -e HOST_UID="$(id -u)" \
             -e HOST_GID="$(id -g)" \
             "$ALPINE" \
-            /work/.github/linux-dist/build-static.sh
+            /work/packaging/linux/build-static.sh
 
       - name: Work out the version
         id: vsn
@@ -106,7 +106,7 @@ jobs:
           cp out/z3                  "$dist/z3"
           cp GUI/tclGUI/crackNum.tcl "$dist/crackNum.tcl"
           cp LICENSE                 "$dist/LICENSE"
-          sed 's/@VERSION@/${{ steps.vsn.outputs.version }}/' .github/linux-dist/README.txt > "$dist/README.txt"
+          sed 's/@VERSION@/${{ steps.vsn.outputs.version }}/' packaging/linux/README.txt > "$dist/README.txt"
 
       # Runs the bundle the way a user would, on glibc Ubuntu -- which a musl
       # static build is expected to handle, and is itself a portability check.
