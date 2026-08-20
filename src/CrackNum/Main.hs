@@ -124,6 +124,7 @@ data Flag = Signed   Int       -- ^ Crack as a signed    word with the given num
           | Version            -- ^ Version
           | Debug              -- ^ Run in debug mode. Debugging only.
           | GUI                -- ^ Launch the graphical interface
+          | Formats            -- ^ List the floating-point formats we support
           | Help               -- ^ Show help
           deriving (Show, Eq)
 
@@ -161,6 +162,37 @@ getSize flg f n = case readMaybe n of
 #define FP_MAX_SB 1073741822
 #endif
 
+-- | The floating-point formats we support, in the order we present them: the name to
+-- pass to -f, what it is, and its (exponent + significand) sizes. The arbitrary format
+-- stands in for any a+b pair rather than naming a format of its own, which is what the
+-- final field records: only the named ones can be listed as choices.
+fpFormats :: [(String, String, String, Bool)]
+fpFormats = [ ("hp",      "Half float",             "( 5 +  11)", True )
+            , ("bp",      "Brain float",            "( 8 +   8)", True )
+            , ("tf32",    "TensorFloat-32",         "( 8 +  11)", True )
+            , ("sp",      "Single precision",       "( 8 +  24)", True )
+            , ("dp",      "Double precision",       "(11 +  53)", True )
+            , ("qp",      "Quad   precision",       "(15 + 113)", True )
+            , ("a+b",     "Arbitrary IEEE-754",     "( a +   b)", False)
+            , ("e5m2",    "FP8 format (IEEE-754)",  "( 5 +   3)", True )
+            , ("e4m3",    "FP8 format (Alternate)", "( 4 +   4)", True )
+            , ("fp4",     "FP4 format (E2M1)",      "( 2 +   2)", True )
+            , ("fp4e0m3", "FP4 format (E0M3)",      "( 0 +   3)", True )
+            ]
+
+-- | The formats that can actually be named, i.e., everything but the arbitrary a+b
+-- placeholder. This is what --list-formats prints, one per line.
+fpFormatNames :: [String]
+fpFormatNames = [n | (n, _, _, True) <- fpFormats]
+
+-- | Floating-point formats we support, as a table for use in help/error messages.
+fpFormatsHelp :: [String]
+fpFormatsHelp = [rjust n ++ ": " ++ ljust d ++ " " ++ sz | (n, d, sz, _) <- fpFormats]
+  where nw      = maximum [length n | (n, _, _, _) <- fpFormats]
+        dw      = maximum [length d | (_, d, _, _) <- fpFormats]
+        rjust x = replicate (nw - length x) ' ' ++ x
+        ljust x = x ++ replicate (dw - length x) ' '
+
 -- | Given a float flag value, turn it into a flag
 getFP :: String -> Flag
 getFP "hp"      = Floating $ FP 5 11
@@ -178,23 +210,14 @@ getFP ab        = case span isDigit ab of
                                         (sp@(_:_), "") -> mkEBSB (read eb) (read sp)
                                         _              -> bad
                   _                 -> bad
-                where bad = BadFlag [ "Option " ++ show "-f" ++ " requires one of:"
-                                    , ""
-                                    , "     hp: Half float             ( 5 +  11)"
-                                    , "     bp: Brain float            ( 8 +   8)"
-                                    , "   tf32: TensorFloat-32         ( 8 +  11)"
-                                    , "     sp: Single precision       ( 8 +  24)"
-                                    , "     dp: Double precision       (11 +  53)"
-                                    , "     qp: Quad   precision       (15 + 113)"
-                                    , "    a+b: Arbitrary IEEE-754     ( a +   b)"
-                                    , "   e5m2: FP8 format (IEEE-754)  ( 5 +   3)"
-                                    , "   e4m3: FP8 format (Alternate) ( 4 +   4)"
-                                    , "    fp4: FP4 format (E2M1)      ( 2 +   2)"
-                                    , "fp4e0m3: FP4 format (E0M3)      ( 0 +   3)"
-                                    , ""
-                                    , "In the arbitrary format, the first number is the number of bits in the exponent"
-                                    , "and the second number is the number of bits in the significand, including the implicit bit."
-                                    ]
+                where bad = BadFlag $ [ "Option " ++ show "-f" ++ " requires one of:"
+                                      , ""
+                                      ]
+                                   ++ fpFormatsHelp
+                                   ++ [ ""
+                                      , "In the arbitrary format, the first number is the number of bits in the exponent"
+                                      , "and the second number is the number of bits in the significand, including the implicit bit."
+                                      ]
                       mkEBSB :: Int -> Int -> Flag
                       mkEBSB eb sb
                        |    eb >= FP_MIN_EB && eb <= FP_MAX_EB
@@ -227,15 +250,16 @@ getRM m     = BadFlag $  [ "Invalid rounding mode."
 -- | Options we accept
 pgmOptions :: [OptDescr Flag]
 pgmOptions = [
-      Option "i"  []          (ReqArg (getSize "-i" Signed)   "N" )    "Signed   integer of N-bits"
-    , Option "w"  []          (ReqArg (getSize "-w" Unsigned) "N" )    "Unsigned integer of N-bits"
-    , Option "f"  []          (ReqArg getFP                   "fp")    "Floating point format fp"
-    , Option "r"  []          (ReqArg (getRM . map toLower)   "rm")    "Rounding mode to use. If not given, Nearest-ties-to-Even."
-    , Option "l"  []          (ReqArg (getSize "-l" Lanes)    "lanes") "Number of lanes to decode"
-    , Option "h?" ["help"]    (NoArg Help)                             "print help, with examples"
-    , Option "v"  ["version"] (NoArg Version)                          "print version info"
-    , Option "d"  ["debug"]   (NoArg Debug)                            "debug mode, developers only"
-    , Option ""   ["gui"]     (NoArg GUI)                              "launch the graphical interface"
+      Option "i"  []               (ReqArg (getSize "-i" Signed)   "N" )    "Signed   integer of N-bits"
+    , Option "w"  []               (ReqArg (getSize "-w" Unsigned) "N" )    "Unsigned integer of N-bits"
+    , Option "f"  []               (ReqArg getFP                   "fp")    "Floating point format fp"
+    , Option "r"  []               (ReqArg (getRM . map toLower)   "rm")    "Rounding mode to use. If not given, Nearest-ties-to-Even."
+    , Option "l"  []               (ReqArg (getSize "-l" Lanes)    "lanes") "Number of lanes to decode"
+    , Option "h?" ["help"]         (NoArg Help)                             "print help, with examples"
+    , Option "v"  ["version"]      (NoArg Version)                          "print version info"
+    , Option "d"  ["debug"]        (NoArg Debug)                            "debug mode, developers only"
+    , Option ""   ["gui"]          (NoArg GUI)                              "launch the graphical interface"
+    , Option ""   ["list-formats"] (NoArg Formats)                          "list the formats supported by -f, one per line"
     ]
 
 -- | Help info
@@ -244,56 +268,62 @@ helpStr pn = usageInfo ("Usage: " ++ pn ++ " value OR binary/hex-pattern") pgmOp
 
 -- | Print usage info and examples.
 usage :: String -> IO ()
-usage pn = putStr $ unlines [ helpStr pn
-                            , "Examples:"
-                            , " Encoding:"
-                            , "   " ++ pn ++ " -i4    -- -2                    -- encode as 4-bit signed integer"
-                            , "   " ++ pn ++ " -w4    2                        -- encode as 4-bit unsigned integer"
-                            , "   " ++ pn ++ " -f3+4  2.5                      -- encode as float with 3 bits exponent, 4 bits significand"
-                            , "   " ++ pn ++ " -f3+4  2.5 -rRTZ                -- encode as above, but use RTZ rounding mode."
-                            , "   " ++ pn ++ " -fbp   2.5                      -- encode as a brain-precision float"
-                            , "   " ++ pn ++ " -ftf32 2.5                      -- encode as a TensorFloat-32 float"
-                            , "   " ++ pn ++ " -fdp   2.5                      -- encode as a double-precision float"
-                            , "   " ++ pn ++ " -fqp   2.5                      -- encode as a quad-precision float"
-                            , "   " ++ pn ++ " -fe4m3 2.5                      -- encode as an E4M3 FP8 float"
-                            , "   " ++ pn ++ " -fe5m2 2.5                      -- encode as an E5M2 FP8 float"
-                            , "   " ++ pn ++ " -ffp4  2.5                      -- encode as an FP4 (E2M1) float"
-                            , "   " ++ pn ++ " -ffp4e0m3 3.5                   -- encode as an FP4 (E0M3) sign-magnitude integer"
-                            , "   " ++ pn ++ " -fsp   0x3.2p5                  -- encode as single-precision from hex-float"
-                            , ""
-                            , " Decoding:"
-                            , "   " ++ pn ++ " -i4      0b0110                -- decode as 4-bit signed integer, from binary"
-                            , "   " ++ pn ++ " -w4      0xE                   -- decode as 4-bit unsigned integer, from hex"
-                            , "   " ++ pn ++ " -f3+4    0b0111001             -- decode as float with 3 bits exponent, 4 bits significand"
-                            , "   " ++ pn ++ " -fbp     0x000F                -- decode as a brain-precision float"
-                            , "   " ++ pn ++ " -ftf32   19\\'h0000F            -- decode as a TensorFloat-32 float"
-                            , "   " ++ pn ++ " -fdp     0x8000000000000000    -- decode as a double-precision float"
-                            , "   " ++ pn ++ " -fhp     0x8000                -- decode as a half-precision float"
-                            , "   " ++ pn ++ " -ffp4    0b0111                -- decode as an FP4 (E2M1) float"
-                            , "   " ++ pn ++ " -ffp4e0m3 0b1101               -- decode as an FP4 (E0M3) sign-magnitude integer"
-                            , "   " ++ pn ++ " -l4 -fhp 64\\'hbdffaaffdc71fc60 -- decode as half-precision float over 4 lanes using verilog notation"
-                            , ""
-                            , " GUI:"
-                            , "   " ++ pn ++ " --gui                     -- launch the graphical interface"
-                            , "   " ++ pn ++ " --gui 0xdeadbeef          -- launch the GUI, pre-filled with the given value"
-                            , ""
-                            , " Notes:"
-                            , "   - For encoding:"
-                            , "       - Use -- to separate your argument if it's a negative number."
-                            , "       - For floats: You can pass in NaN, Inf, -0, -Inf etc as the argument"
-                            , "                     along with a decimal (2.3, -4.1e5) or hexadecimal float (0x2.4p3)"
-                            , "       - FP4 (E2M1) has neither NaN nor Inf, so those inputs are rejected. Finite"
-                            , "         values outside its range of [-6, 6] saturate to the nearest end-point."
-                            , "       - FP4 (E0M3) is a sign-magnitude integer: a sign bit and a 3-bit magnitude,"
-                            , "         covering -7 to 7, with both a positive and a negative zero. It has no NaN"
-                            , "         and no Inf either, and values outside [-7, 7] saturate to the end-point."
-                            , "   - For decoding:"
-                            , "       - Use hexadecimal (0x) binary (0b), or N'h (verilog) notation as input."
-                            , "         Input must have one of these prefixes."
-                            , "       - You can use _,- or space as a digit to improve readability for the pattern to be decoded"
-                            , "       - With -lN parameter, you can decode multiple lanes of data."
-                            , "       - If you use verilog input format, then we will infer the number of lanes unless you provide it."
-                            ]
+usage pn = putStr $ unlines $ [ helpStr pn
+                              , "Supported floating-point formats (for use with -f):"
+                              , ""
+                              ]
+                           ++ map ("  " ++) fpFormatsHelp
+                           ++ [ ""
+                              , "Examples:"
+                              , " Encoding:"
+                              , "   " ++ pn ++ " -i4       -- -2                   -- encode as 4-bit signed integer"
+                              , "   " ++ pn ++ " -w4       2                       -- encode as 4-bit unsigned integer"
+                              , "   " ++ pn ++ " -f3+4     2.5                     -- encode as float with 3 bits exponent, 4 bits significand"
+                              , "   " ++ pn ++ " -f3+4     2.5 -rRTZ               -- encode as above, but use RTZ rounding mode."
+                              , "   " ++ pn ++ " -fbp      2.5                     -- encode as a brain-precision float"
+                              , "   " ++ pn ++ " -ftf32    2.5                     -- encode as a TensorFloat-32 float"
+                              , "   " ++ pn ++ " -fdp      2.5                     -- encode as a double-precision float"
+                              , "   " ++ pn ++ " -fqp      2.5                     -- encode as a quad-precision float"
+                              , "   " ++ pn ++ " -fe4m3    2.5                     -- encode as an E4M3 FP8 float"
+                              , "   " ++ pn ++ " -fe5m2    2.5                     -- encode as an E5M2 FP8 float"
+                              , "   " ++ pn ++ " -ffp4     2.5                     -- encode as an FP4 (E2M1) float"
+                              , "   " ++ pn ++ " -ffp4e0m3 3.5                     -- encode as an FP4 (E0M3) sign-magnitude integer"
+                              , "   " ++ pn ++ " -fsp      0x3.2p5                 -- encode as single-precision from hex-float"
+                              , ""
+                              , " Decoding:"
+                              , "   " ++ pn ++ " -i4       0b0110                  -- decode as 4-bit signed integer, from binary"
+                              , "   " ++ pn ++ " -w4       0xE                     -- decode as 4-bit unsigned integer, from hex"
+                              , "   " ++ pn ++ " -f3+4     0b0111001               -- decode as float with 3 bits exponent, 4 bits significand"
+                              , "   " ++ pn ++ " -fbp      0x000F                  -- decode as a brain-precision float"
+                              , "   " ++ pn ++ " -ftf32    19\\'h0000F              -- decode as a TensorFloat-32 float"
+                              , "   " ++ pn ++ " -fdp      0x8000000000000000      -- decode as a double-precision float"
+                              , "   " ++ pn ++ " -fhp      0x8000                  -- decode as a half-precision float"
+                              , "   " ++ pn ++ " -ffp4     0b0111                  -- decode as an FP4 (E2M1) float"
+                              , "   " ++ pn ++ " -ffp4e0m3 0b1101                  -- decode as an FP4 (E0M3) sign-magnitude integer"
+                              , "   " ++ pn ++ " -l4 -fhp  64\\'hbdffaaffdc71fc60   -- decode as half-precision float over 4 lanes using verilog notation"
+                              , ""
+                              , " GUI:"
+                              , "   " ++ pn ++ " --gui                             -- launch the graphical interface"
+                              , "   " ++ pn ++ " --gui      0xdeadbeef             -- launch the GUI, pre-filled with the given value"
+                              , "   " ++ pn ++ " --gui -fsp 0xdeadbeef             -- launch the GUI, using the given format"
+                              , ""
+                              , " Notes:"
+                              , "   - For encoding:"
+                              , "       - Use -- to separate your argument if it's a negative number."
+                              , "       - For floats: You can pass in NaN, Inf, -0, -Inf etc as the argument"
+                              , "                     along with a decimal (2.3, -4.1e5) or hexadecimal float (0x2.4p3)"
+                              , "       - FP4 (E2M1) has neither NaN nor Inf, so those inputs are rejected. Finite"
+                              , "         values outside its range of [-6, 6] saturate to the nearest end-point."
+                              , "       - FP4 (E0M3) is a sign-magnitude integer: a sign bit and a 3-bit magnitude,"
+                              , "         covering -7 to 7, with both a positive and a negative zero. It has no NaN"
+                              , "         and no Inf either, and values outside [-7, 7] saturate to the end-point."
+                              , "   - For decoding:"
+                              , "       - Use hexadecimal (0x) binary (0b), or N'h (verilog) notation as input."
+                              , "         Input must have one of these prefixes."
+                              , "       - You can use _,- or space as a digit to improve readability for the pattern to be decoded"
+                              , "       - With -lN parameter, you can decode multiple lanes of data."
+                              , "       - If you use verilog input format, then we will infer the number of lanes unless you provide it."
+                              ]
 
 -- | Terminate early
 die :: [String] -> IO a
@@ -409,6 +439,9 @@ crack pn argv = case getOpt Permute pgmOptions argv of
                   (_,  _,  errs@(_:_)) -> die $ errs ++ lines (helpStr pn)
                   (os, rs, [])
                     | Version `elem` os -> putStrLn $ pn ++ " v" ++ showVersion version ++ ", " ++ copyRight
+                    -- NB. Machine readable, one name per line: this is what the editor
+                    -- integrations use so they need not hardcode the list of formats.
+                    | Formats `elem` os -> mapM_ putStrLn fpFormatNames
                     | Help    `elem` os -> usage pn
                     -- NB. Check for bad flags before launching: otherwise a typo like
                     -- "-ft32" would silently bring the GUI up with nothing selected.

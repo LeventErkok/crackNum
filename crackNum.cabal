@@ -1,6 +1,6 @@
 Cabal-version      : 2.2
 Name               : crackNum
-Version            : 3.25
+Version            : 3.26
 Synopsis           : Crack various integer and floating-point data formats
 Description        : Crack IEEE-754 and other float formats and arbitrary sized words and integers, showing the layout.
                      .
@@ -13,7 +13,8 @@ Maintainer         : erkokl@gmail.com
 Copyright          : Levent Erkok
 Category           : Tools
 Build-type         : Simple
-Extra-Source-Files : README.md, COPYRIGHT, CHANGES.md, GUI/tclGUI/README.md
+Extra-Source-Files : README.md, COPYRIGHT, crackNum.vim
+Extra-Doc-Files    : CHANGES.md
 
 -- The Tcl/Tk GUI is a data-file (not merely an extra-source-file) so that it is
 -- actually installed alongside the binary, and can be found at run time via
