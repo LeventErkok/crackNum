@@ -30,11 +30,12 @@ import GHC.Real       (Ratio((:%)))
 import qualified Control.Exception as C
 
 import Text.Read             (readMaybe)
-import System.Environment    (getArgs, getProgName, withArgs, lookupEnv)
+import System.Environment    (getArgs, getProgName, withArgs, lookupEnv, getExecutablePath)
 import System.Console.GetOpt (ArgOrder(Permute), getOpt, ArgDescr(..), OptDescr(..), usageInfo)
 import System.Exit           (exitFailure, ExitCode(..))
 import System.IO             (hPutStr, stderr)
 import System.Directory      (findExecutable, doesFileExist)
+import System.FilePath       (takeDirectory, (</>))
 import System.Process        (rawSystem)
 import qualified System.Info as Info
 
@@ -336,11 +337,14 @@ tclRelPath :: FilePath
 tclRelPath = "GUI/tclGUI/crackNum.tcl"
 
 -- | Locate the Tcl/Tk GUI script. Normally it is installed together with the
--- binary, so this just works; we look in three places, in order:
+-- binary, so this just works; we look in four places, in order:
 --
 --   1. $CRACKNUM_TCL, if set: an explicit override, mirroring $CRACKNUM_GUI on macOS.
 --   2. The PATH, so a source checkout can shadow the installed copy while hacking.
---   3. The copy cabal installed in our data-directory.
+--   3. Next to the executable itself. This is what makes a relocatable binary
+--      distribution work: in one the data-directory below was baked in on the
+--      build machine, and names a path that does not exist on the user's.
+--   4. The copy cabal installed in our data-directory.
 locateTcl :: IO FilePath
 locateTcl = do mbEnv <- lookupEnv "CRACKNUM_TCL"
                case mbEnv of
@@ -351,20 +355,28 @@ locateTcl = do mbEnv <- lookupEnv "CRACKNUM_TCL"
                                            , ""
                                            , "    " ++ p
                                            ]
-                 Nothing -> do mbPath <- findExecutable "crackNum.tcl"
+                 Nothing -> do beside    <- besideExe
+                               installed <- getDataFileName tclRelPath
+                               mbPath    <- findExecutable "crackNum.tcl"
                                case mbPath of
                                  Just p  -> pure p
-                                 Nothing -> do installed <- getDataFileName tclRelPath
-                                               ok        <- doesFileExist installed
-                                               if ok
-                                                  then pure installed
-                                                  else die (noTcl installed)
-  where noTcl installed =
+                                 Nothing -> search [beside, installed] (noTcl beside installed)
+  where -- NB. getExecutablePath resolves symlinks, so this finds the script even
+        -- when the binary is reached through a link from elsewhere on the PATH.
+        besideExe = do exe <- getExecutablePath
+                       pure (takeDirectory exe </> "crackNum.tcl")
+
+        search []     onFail = die onFail
+        search (c:cs) onFail = do ok <- doesFileExist c
+                                  if ok then pure c else search cs onFail
+
+        noTcl beside installed =
              [ "Cannot find the CrackNum GUI script (crackNum.tcl)."
              , ""
              , "Looked in:"
              , "  $CRACKNUM_TCL                 (not set)"
              , "  crackNum.tcl on your PATH     (not found)"
+             , "  " ++ beside
              , "  " ++ installed
              , ""
              , "This script is normally installed along with crackNum, so seeing this"
@@ -385,8 +397,8 @@ locateTcl = do mbEnv <- lookupEnv "CRACKNUM_TCL"
 -- them. The GUI itself calls back into this executable to do the actual cracking.
 --
 -- On macOS the GUI is a Swift/AppKit app; CRACKNUM_GUI can override the .app bundle
--- location. On Linux the GUI is a Tcl/Tk script; both 'wish' and 'crackNum.tcl' are
--- located via PATH.
+-- location. On Linux the GUI is a Tcl/Tk script; 'wish' is located via PATH, and
+-- 'crackNum.tcl' via 'locateTcl'.
 launchGUI :: [String] -> IO ()
 launchGUI vals
   | Info.os == "darwin"
