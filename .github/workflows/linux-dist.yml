@@ -80,16 +80,21 @@ jobs:
       - name: Check that both binaries really are static
         run: |
           set -euo pipefail
+          # NB. Deliberately no ldd: it exits 1 on a static binary, which under
+          # pipefail fails the step even when the binary is exactly what we want.
           for b in out/crackNum out/z3; do
-            echo "--- $b"
-            file "$b"
-            # The whole point of the exercise: no interpreter, no NEEDED libs.
-            if file "$b" | grep -q 'dynamically linked'; then
-              echo "ERROR: $b is dynamically linked" >&2
+            desc=$(file -b "$b")
+            echo "--- $b: $desc"
+            case "$desc" in
+              *"statically linked"*|*"static-pie linked"*) ;;
+              *) echo "ERROR: $b is not statically linked" >&2; exit 1 ;;
+            esac
+            # Belt and braces: a static binary has no NEEDED entries at all.
+            if readelf -d "$b" 2>/dev/null | grep -q NEEDED; then
+              echo "ERROR: $b has dynamic dependencies" >&2
+              readelf -d "$b" >&2
               exit 1
             fi
-            ldd "$b" 2>&1 | grep -qE 'not a dynamic executable|statically linked' \
-              || { echo "ERROR: $b has dynamic dependencies" >&2; ldd "$b"; exit 1; }
           done
 
       - name: Assemble the distribution
