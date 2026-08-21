@@ -3,6 +3,7 @@ dist
 tags
 TAGS
 dist-newstyle
+bin-dist
 cabal.project.local
 .*.swp
 Golds/*.*_temp
