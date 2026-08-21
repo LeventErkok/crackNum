@@ -37,6 +37,7 @@ set FORMAT_SECTIONS {
         {ffp4e0m3 "FP4 (E0M3)"  fixed    fp4e0m3}
         {fe4m3    "FP8 (E4M3)"  fixed    e4m3}
         {fe5m2    "FP8 (E5M2)"  fixed    e5m2}
+        {fe8m0    "FP8 (E8M0)"  fixed    e8m0}
         {fhp      "Half"        fixed    hp}
         {fbp      "Brain"       fixed    bp}
         {ftf32    "TF32"        fixed    tf32}
@@ -480,6 +481,7 @@ proc parseArgs {argv} {
                 e5m2    { set state(selection) fe5m2 }
                 fp4     { set state(selection) ffp4 }
                 fp4e0m3 { set state(selection) ffp4e0m3 }
+                e8m0    { set state(selection) fe8m0 }
                 default {
                     if {[regexp {^(\d+)\+(\d+)$} $v _ e s]} {
                         set state(selection) fcs

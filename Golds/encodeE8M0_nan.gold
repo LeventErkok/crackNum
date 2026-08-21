@@ -1,0 +1,15 @@
+Arguments: -fe8m0    nan
+Exit code: ExitSuccess
+Satisfiable. Model:
+  ENCODED = NaN :: E8M0
+                  76543210
+                  ---E8---
+   Binary layout: 11111111
+      Hex layout: FF
+       Precision: 8 exponent bits, no significand
+            Sign: Positive (always)
+        Exponent: 128 (Stored: 255, Bias: 127)
+  Classification: FP_NAN
+           Value: NaN
+   Rounding mode: RNE: Round nearest ties to even.
+            Note: Conversion from "nan" was exact. No rounding happened.

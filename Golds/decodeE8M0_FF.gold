@@ -1,0 +1,13 @@
+Arguments: -fe8m0 0xFF
+Exit code: ExitSuccess
+Satisfiable. Model:
+  DECODED = NaN :: E8M0
+                  76543210
+                  ---E8---
+   Binary layout: 11111111
+      Hex layout: FF
+       Precision: 8 exponent bits, no significand
+            Sign: Positive (always)
+        Exponent: 128 (Stored: 255, Bias: 127)
+  Classification: FP_NAN
+           Value: NaN

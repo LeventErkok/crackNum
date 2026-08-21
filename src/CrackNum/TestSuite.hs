@@ -145,6 +145,31 @@ tests = testGroup "CrackNum" [
             | rm           <- ["RNE", "RNA", "RTP", "RTN", "RTZ"]
             ,  i :: Double <- [0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 8]
             ]
+          , testGroup "EncodeE8M0" [
+               gold "encodeE8M0_nan"   "-fe8m0    nan"     -- Representable, and uniquely so
+             , gold "encodeE8M0_+inf"  "-fe8m0    inf"     -- The limiting overflow; saturates
+             , gold "encodeE8M0_-inf"  "-fe8m0 -- -inf"    -- Negative: rejected, not saturated
+             , gold "encodeE8M0_neg"   "-fe8m0 -- -5"
+             , gold "encodeE8M0_zero1" "-fe8m0 --  0"      -- No zero in the format; saturates up to 2^-127
+             , gold "encodeE8M0_zero2" "-fe8m0 --  -0"     -- But a negative zero is still negative
+             , gold "encodeE8M0_one"   "-fe8m0 --  1"
+             , gold "encodeE8M0_exact" "-fe8m0 --  0.25"
+             , gold "encodeE8M0_min"   "-fe8m0 --  0x1p-127"
+             , gold "encodeE8M0_max"   "-fe8m0 --  0x1p+127"
+             , gold "encodeE8M0_oob1"  "-fe8m0 --  1e40"   -- Saturates
+             , gold "encodeE8M0_oob2"  "-fe8m0 --  1e-40"
+             , gold "encodeE8M0_hex"   "-fe8m0 --  0x1.8p1"
+            ]
+          -- Every value that sits exactly half-way between two representable powers of
+          -- two, over all rounding modes. Note that 1.5 and 3 are what pin the RNE tie
+          -- rule down: they straddle stored exponents of opposite parity, so reading
+          -- "ties to even" as the unbiased exponent rather than the stored one would
+          -- send them the other way. All values are positive; negatives are rejected.
+          , testGroup "EncodeE8M0Ties" [
+               gold ("encodeE8M0_tie_" ++ rm ++ "_+" ++ show i) ("-fe8m0 -r" ++ rm ++ " --  " ++ show i)
+            | rm           <- ["RNE", "RNA", "RTP", "RTN", "RTZ"]
+            ,  i :: Double <- [0.75, 1.5, 3, 6]
+            ]
           , testGroup "Decode" [
               gold "decode0" "-i4       0b0110"
             , gold "decode1" "-w4       0xE"
@@ -201,6 +226,19 @@ tests = testGroup "CrackNum" [
             | s <- ["0", "1"]
             , m <- ["000", "001", "010", "011", "100", "101", "110", "111"]
             , let bits = s ++ m
+            ]
+          -- E8M0 is all exponent, so decoding is a table lookup; a spread of patterns
+          -- covering both ends, the unit value, and the sole NaN is enough.
+          , testGroup "DecodeE8M0" [
+               gold ("decodeE8M0_" ++ bits) ("-fe8m0 0x" ++ bits)
+            | bits <- [ "00"     -- Smallest: 2^-127. Not zero: the format has none
+                      , "01"
+                      , "7F"     -- 1.0
+                      , "80"
+                      , "FD"
+                      , "FE"     -- Largest: 2^127
+                      , "FF"     -- NaN, and the only one
+                      ]
             ]
           , testGroup "Bad" [
                gold "badInvocation0" "-f3+4 0b01"

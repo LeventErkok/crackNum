@@ -1,0 +1,18 @@
+Arguments: -fe8m0 --  0.25
+Exit code: ExitSuccess
+Satisfiable. Model:
+  ENCODED = 0.25 :: E8M0
+                  76543210
+                  ---E8---
+   Binary layout: 01111101
+      Hex layout: 7D
+       Precision: 8 exponent bits, no significand
+            Sign: Positive (always)
+        Exponent: -2 (Stored: 125, Bias: 127)
+  Classification: FP_NORMAL
+          Binary: 0b1p-2
+           Octal: 0o2p-3
+         Decimal: 0.25
+             Hex: 0x4p-4
+   Rounding mode: RNE: Round nearest ties to even.
+            Note: Conversion from "0.25" was exact. No rounding happened.
