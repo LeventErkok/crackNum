@@ -62,7 +62,7 @@ sdist: install
 	cabal new-sdist
 
 clean:
-	@rm -rf dist-newstyle
+	@rm -rf dist-newstyle $(BINDIST)
 
 # Build the macOS binary distribution and drop it in bin-dist/, replacing any
 # previous tarball for this version. Ships the CLI, a copy of whichever z3 is on

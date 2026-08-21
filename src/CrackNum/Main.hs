@@ -66,6 +66,7 @@ data FP = SP          -- Single precision
         | E4M3        -- Custom FP8 format with no infinities and limited NaNs
         | FP4         -- NVIDIA FP4 (E2M1) format with no infinities and no NaNs
         | FP4E0M3     -- 4-bit sign-magnitude integer format; no exponent at all
+        | E8M0        -- OCP MX scale format; no sign and no significand at all
         deriving (Show, Eq)
 
 -- | How many bits does this float occupy
@@ -77,6 +78,7 @@ fpSize E5M2     = 8
 fpSize E4M3     = 8
 fpSize FP4      = 4
 fpSize FP4E0M3  = 4
+fpSize E8M0     = 8
 
 kSize :: NKind -> Int
 kSize (SInt  i)  = i
@@ -179,6 +181,7 @@ fpFormats = [ ("hp",      "Half float",             "( 5 +  11)", True )
             , ("e4m3",    "FP8 format (Alternate)", "( 4 +   4)", True )
             , ("fp4",     "FP4 format (E2M1)",      "( 2 +   2)", True )
             , ("fp4e0m3", "FP4 format (E0M3)",      "( 0 +   3)", True )
+            , ("e8m0",    "FP8 format (MX scale)",  "( 8 +   0)", True )
             ]
 
 -- | The formats that can actually be named, i.e., everything but the arbitrary a+b
@@ -206,6 +209,7 @@ getFP "e5m2"    = Floating E5M2
 getFP "e4m3"    = Floating E4M3
 getFP "fp4"     = Floating FP4
 getFP "fp4e0m3" = Floating FP4E0M3
+getFP "e8m0"    = Floating E8M0
 getFP ab        = case span isDigit ab of
                   (eb@(_:_), '+':r) -> case span isDigit r of
                                         (sp@(_:_), "") -> mkEBSB (read eb) (read sp)
@@ -289,6 +293,7 @@ usage pn = putStr $ unlines $ [ helpStr pn
                               , "   " ++ pn ++ " -fe5m2    2.5                     -- encode as an E5M2 FP8 float"
                               , "   " ++ pn ++ " -ffp4     2.5                     -- encode as an FP4 (E2M1) float"
                               , "   " ++ pn ++ " -ffp4e0m3 3.5                     -- encode as an FP4 (E0M3) sign-magnitude integer"
+                              , "   " ++ pn ++ " -fe8m0    2.5                     -- encode as an E8M0 MX scale (power of two)"
                               , "   " ++ pn ++ " -fsp      0x3.2p5                 -- encode as single-precision from hex-float"
                               , ""
                               , " Decoding:"
@@ -301,6 +306,7 @@ usage pn = putStr $ unlines $ [ helpStr pn
                               , "   " ++ pn ++ " -fhp      0x8000                  -- decode as a half-precision float"
                               , "   " ++ pn ++ " -ffp4     0b0111                  -- decode as an FP4 (E2M1) float"
                               , "   " ++ pn ++ " -ffp4e0m3 0b1101                  -- decode as an FP4 (E0M3) sign-magnitude integer"
+                              , "   " ++ pn ++ " -fe8m0    0x7F                    -- decode as an E8M0 MX scale (power of two)"
                               , "   " ++ pn ++ " -l4 -fhp  64\\'hbdffaaffdc71fc60   -- decode as half-precision float over 4 lanes using verilog notation"
                               , ""
                               , " GUI:"
@@ -318,6 +324,10 @@ usage pn = putStr $ unlines $ [ helpStr pn
                               , "       - FP4 (E0M3) is a sign-magnitude integer: a sign bit and a 3-bit magnitude,"
                               , "         covering -7 to 7, with both a positive and a negative zero. It has no NaN"
                               , "         and no Inf either, and values outside [-7, 7] saturate to the end-point."
+                              , "       - E8M0 (MX scale) is all exponent: no sign bit and no significand at all,"
+                              , "         so every value is a power of two, from 2^-127 to 2^127. It has no zero"
+                              , "         and no Inf, and 0xFF is its only NaN. Negative inputs are rejected;"
+                              , "         values outside the range saturate to the nearest end-point."
                               , "   - For decoding:"
                               , "       - Use hexadecimal (0x) binary (0b), or N'h (verilog) notation as input."
                               , "         Input must have one of these prefixes."
@@ -673,6 +683,7 @@ decodeLane debug mbLane inputBits kind = case kind of
                      E4M3    -> de4m3 config allBits
                      FP4     -> dFP4  config allBits
                      FP4E0M3 -> decodeFP4E0M3 allBits
+                     E8M0    -> decodeE8M0 debug allBits
 
         dFloat :: [SBool] -> ConstraintSet
         dFloat  bs = do x <- sFloat "DECODED"
@@ -757,8 +768,6 @@ modOut debug sign val fmt ieeeResult = do
 
             modifiedResult = SBV.crack debug (literal sval :: SDouble)
 
-            isClassification = ("Classification:" `isInfixOf`)
-
             fixVal l = case [tag | tag <- ["ENCODED", "DECODED"], tag `isInfixOf` l] of
                          tag : _ -> "  " ++ tag ++ " = " ++ show sval ++ " :: " ++ show fmt
                          []      -> l
@@ -766,6 +775,19 @@ modOut debug sign val fmt ieeeResult = do
         -- Print from the original result upto Classification, rest from the modified result
         mapM_ (putStrLn . fixVal) $ takeWhile (not . isClassification) (lines (show ieeeResult))
         mapM_ putStrLn            $ dropWhile (not . isClassification) (lines modifiedResult)
+
+-- | The line SBV's cracker prints the classification on. Everything from here down
+-- describes the value itself rather than its layout, which is the split the formats
+-- that deviate from IEEE need: they take the layout from the look-alike (or lay it
+-- out by hand) and the rest from the value they actually mean.
+isClassification :: String -> Bool
+isClassification = ("Classification:" `isInfixOf`)
+
+-- | SBV notes that a NaN's representation is not unique. That holds for IEEE formats,
+-- but not for the ones here that have exactly one NaN pattern (E4M3 and E8M0), so drop
+-- the note for those rather than claim an ambiguity the format does not have.
+dropNaNUniquenessNote :: [String] -> [String]
+dropNaNUniquenessNote = filter (not . ("Representation for NaN's is not unique" `isInfixOf`))
 
 -- | The canonical quiet-NaN pattern for a float with @eb@ exponent bits and @sb@
 -- significand bits (including the implicit one): sign 0, all-ones exponent, and only
@@ -885,6 +907,8 @@ encodeLane debug lanes num rm inp
 
         ef FP4E0M3 _ = encodeFP4E0M3 rm inp
 
+        ef E8M0    _ = encodeE8M0 debug rm inp
+
 -- | Convert certain strings to more understandable format by read
 -- If first argument is True, then we're reading using reads, i.e., haskell syntax
 -- If first argument is False, then we're using big-float library, which has a different notion for infinity and nans
@@ -959,12 +983,9 @@ encodeE4M3 debug rm inp = case reads (fixup True inp) of
        fixEncoded :: SatResult -> String
        fixEncoded = retype E4M3
 
-       onEach f = intercalate "\n" . concatMap f . lines
-
        -- nan representation is unique for E4M3
-       fixNaN :: String -> [String]
-       fixNaN s | "Representation for NaN's is not unique" `isInfixOf` s = []
-                | True                                                   = [s]
+       fixNaN :: String -> String
+       fixNaN = intercalate "\n" . dropNaNUniquenessNote . lines
 
        getNaN = satWith config{crackNumSurfaceVals = [("ENCODED", 0x7F)]} $
                               do x :: SFloatingPoint 4 4 <- sFloatingPoint "ENCODED"
@@ -974,9 +995,9 @@ encodeE4M3 debug rm inp = case reads (fixup True inp) of
        analyze v
          -- NaN has two representations, with surface value S.1111.111; we use 0x7F for simplicity
          | isNaN v
-         = getNaN >>= putStrLn . onEach fixNaN . fixEncoded
+         = getNaN >>= putStrLn . fixNaN . fixEncoded
          | isInfinite v
-         = do getNaN >>= putStrLn . onEach fixNaN . fixEncoded
+         = do getNaN >>= putStrLn . fixNaN . fixEncoded
               putStrLn "            Note: The input value was infinite, which is not representable in E4M3."
          | True
          = range v
@@ -1023,7 +1044,7 @@ encodeE4M3 debug rm inp = case reads (fixup True inp) of
 
        range v
          | v < -448 || v > 448   -- Out-of-bounds becomes NaN
-         = do getNaN >>= putStrLn . onEach fixNaN . fixEncoded
+         = do getNaN >>= putStrLn . fixNaN . fixEncoded
               putStrLn $ "            Note: The input value " ++ show v ++ " is out of bounds, and hence becomes NaN"
               putStrLn   "                  The representable range is [-448, 448]"
 
@@ -1272,3 +1293,139 @@ encodeFP4E0M3 rm inp = case reads (fixup True inp) of
                  = putStrLn $ "            Note: Conversion from " ++ show inp ++ " was exact. No rounding happened."
                  | True
                  = putStrLn $ "            Note: Original value of " ++ show v ++ " was rounded to " ++ t ++ "."
+
+-- | E8M0 is the OCP Microscaling (MX) scale format: the value that scales a block of
+-- MXFP8/MXFP6/MXFP4 elements. All 8 bits are exponent -- there is no sign bit and no
+-- significand at all -- so every value is the power of two 2^(E-127), and 0xFF is its
+-- one and only NaN. Having no significand, it has no zero and no subnormals either:
+-- with nothing for the E=0 encoding to mean, it simply denotes 2^-127.
+e8m0Bias :: Int
+e8m0Bias = 127
+
+-- | The value a stored E8M0 exponent denotes. All 254 finite values are exactly
+-- representable as a Double, since 2^(+/-127) is nowhere near its range limits; note
+-- that 'encodeFloat' builds them exactly, which @2 **@ would not be guaranteed to do.
+e8m0Value :: Int -> Double
+e8m0Value 255 = 0/0
+e8m0Value e   = encodeFloat 1 (e - e8m0Bias)
+
+-- | Lay out an E8M0 value. With no sign and no significand there is no IEEE look-alike
+-- to lean on, so the layout is built by hand, following the shape crackNum prints for
+-- the other formats. Everything from the classification down describes the value rather
+-- than its layout, so that part comes from cracking the equivalent Double -- the same
+-- division of labor 'modOut' uses for the E4M3 and FP4 deviations.
+e8m0Layout :: Bool -> String -> Int -> [String]
+e8m0Layout debug tag stored =
+     [ "Satisfiable. Model:"
+     , "  " ++ tag ++ " = " ++ show v ++ " :: " ++ show E8M0
+     , "                  76543210"
+     , "                  ---E8---"
+     , "   Binary layout: " ++ pad 8 (inBase 2 stored)
+     , "      Hex layout: " ++ map toUpper (pad 2 (inBase 16 stored))
+     , "       Precision: 8 exponent bits, no significand"
+     -- NB. There is no sign bit: bit 7 is the exponent's MSB. We print the line anyway,
+     -- so the block keeps the same shape as every other format, but say outright that
+     -- it can never read anything else.
+     , "            Sign: Positive (always)"
+     , "        Exponent: " ++ show (stored - e8m0Bias) ++ " (Stored: " ++ show stored ++ ", Bias: " ++ show e8m0Bias ++ ")"
+     ]
+  ++ dropNaNUniquenessNote (dropWhile (not . isClassification) (lines (SBV.crack debug (literal v :: SDouble))))
+  where v = e8m0Value stored
+
+        inBase b x = showIntAtBase b intToDigit x ""
+
+        pad n x = replicate (n - length x) '0' ++ x
+
+-- | Decoding E8M0: the entire byte is the stored exponent.
+decodeE8M0 :: Bool -> [Bool] -> IO ()
+decodeE8M0 debug bs@[_, _, _, _, _, _, _, _] = putStr $ unlines $ e8m0Layout debug "DECODED" (foldl (\sofar b -> 2 * sofar + (if b then 1 else 0)) 0 bs)
+decodeE8M0 _     bs                          = error $ "decodeE8M0: Unexpected bits: " ++ show bs   -- Can't happen; the caller checks the width
+
+-- | Encoding E8M0. The representable values are the powers of two from 2^-127 to 2^127,
+-- plus NaN, so we round the exponent by hand. Rounding is always between two adjacent
+-- powers of two; we split them at the arithmetic midpoint (1.5 * 2^e, not the geometric
+-- one) and break RNE ties toward the even /stored/ exponent. Both follow 'encodeFP4',
+-- which ties on the parity of the encoding index rather than of the value's exponent.
+encodeE8M0 :: Bool -> RM -> String -> IO ()
+encodeE8M0 debug rm inp = case reads (fixup True inp) of
+                            [(v :: Double, "")] -> analyze v
+                            _                   -> -- maybe it's a hexfloat? As in encodeFP4, the catch must
+                                                   -- scope over the parse only: analyze can legitimately die,
+                                                   -- and die throws an exit-exception of its own.
+                                                   do let hr = readHexRational inp
+                                                      ok <- (rnf hr `seq` pure True)
+                                                              `C.catch` (\(_ :: C.SomeException) -> pure False)
+                                                      if ok then analyze (fromRational hr)
+                                                            else unrecognized inp
+ where smallest, largest :: Double
+       smallest = e8m0Value 0
+       largest  = e8m0Value 254
+
+       analyze :: Double -> IO ()
+       analyze v
+         -- NaN is representable, and uniquely so.
+         | isNaN v
+         = out 255
+         -- A negative is not an out-of-range magnitude: with no sign bit there is no
+         -- direction to saturate towards, and clamping would quietly make it positive.
+         | v < 0 || isNegativeZero v
+         = die [ "E8M0 has no representation for negative values."
+               , "The representable range is [2^-127, 2^127], plus NaN."
+               ]
+         -- Infinity is the limiting overflow, so it saturates along with anything else
+         -- that is too large.
+         | isInfinite v || v > largest
+         = out 254
+         -- The bottom of the range is a hard cliff: there is no zero and no subnormal
+         -- below 2^-127, so zero and everything under it saturates up to it.
+         | v < smallest
+         = out 0
+         | True
+         = out (e8m0Bias + roundExp v)
+        where out stored = do putStr $ unlines $ e8m0Layout debug "ENCODED" stored
+                              trailer v stored
+
+       -- The exponent we land on, for a v already known to be in range. 'exponent'
+       -- returns the e with v = m * 2^e and 0.5 <= m < 1, so lo is the exponent whose
+       -- power of two sits at or just below v.
+       roundExp :: Double -> Int
+       roundExp v
+         | v == twoTo lo    -- Exactly representable
+         = lo
+         | True
+         = case rm of
+             RTZ -> lo      -- Every value is positive, so RTZ and RTN necessarily agree
+             RTN -> lo
+             RTP -> hi
+             RNE -> nearest (if even (lo + e8m0Bias) then lo else hi)
+             RNA -> nearest hi
+        where lo = exponent v - 1
+              hi = lo + 1
+
+              twoTo :: Int -> Double
+              twoTo = encodeFloat 1
+
+              -- Ties are broken by the given choice; note that comparing against the sum
+              -- avoids any rounding of its own, since 2*v and 3*2^lo are both exact here.
+              nearest tie = case compare (2 * v) (twoTo lo + twoTo hi) of
+                              LT -> lo
+                              GT -> hi
+                              EQ -> tie
+
+       trailer :: Double -> Int -> IO ()
+       trailer v stored = do putStrLn $ "   Rounding mode: " ++ show rm
+                             note
+         where t = e8m0Value stored
+
+               note
+                 | isNaN v
+                 = exact
+                 | isInfinite v || v > largest || v < smallest
+                 = do putStrLn $ "            Note: Original value of " ++ show v ++ " is out of range, saturated to " ++ show t ++ "."
+                      putStrLn   "                  The representable range is [2^-127, 2^127]."
+                 | v == t
+                 = exact
+                 | True
+                 = putStrLn $ "            Note: Original value of " ++ show v ++ " was rounded to " ++ show t ++ "."
+
+               exact = putStrLn $ "            Note: Conversion from " ++ show inp ++ " was exact. No rounding happened."

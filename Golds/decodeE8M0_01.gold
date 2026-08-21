@@ -1,0 +1,16 @@
+Arguments: -fe8m0 0x01
+Exit code: ExitSuccess
+Satisfiable. Model:
+  DECODED = 1.1754943508222875e-38 :: E8M0
+                  76543210
+                  ---E8---
+   Binary layout: 00000001
+      Hex layout: 01
+       Precision: 8 exponent bits, no significand
+            Sign: Positive (always)
+        Exponent: -126 (Stored: 1, Bias: 127)
+  Classification: FP_NORMAL
+          Binary: 0b1p-126
+           Octal: 0o1p-126
+         Decimal: 1.1754943508222875e-38
+             Hex: 0x4p-128

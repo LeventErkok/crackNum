@@ -70,6 +70,7 @@ Flag        Format                               Exponent   Significand
 -fe4m3      FP8, alternate (no infinities)              4             4
 -ffp4       FP4 (E2M1)                                  2             2
 -ffp4e0m3   FP4 (E0M3), sign-magnitude                  0             3
+-fe8m0      E8M0 (MX scale), exponent-only              8             0
 -fa+b       Arbitrary IEEE-754 float                    a             b
 ```
 
@@ -78,6 +79,13 @@ Significand sizes include the implicit bit.
 FP4 (E0M3) is the odd one out: with no exponent bits at all it is really a 4-bit
 sign-magnitude *integer*, holding a sign and a 3-bit magnitude. It covers -7 to 7,
 with both a positive and a negative zero, and has neither NaN nor Inf.
+
+E8M0 is the odd one out in the other direction: it is the shared scale of the OCP
+Microscaling (MX) formats, and is *all* exponent. With no sign bit and no
+significand, every value it holds is a power of two, from 2^-127 to 2^127. It has
+no zero and no subnormals -- an all-zero encoding means 2^-127, not zero -- and no
+infinities; `0xFF` is its one and only NaN. Negative inputs are rejected, and
+values outside its range saturate to the nearest end-point.
 
 Integers come in two flavors: `-iN` for a signed `N`-bit 2's complement integer,
 and `-wN` for an unsigned `N`-bit word. Both `N` and the arbitrary float sizes
@@ -226,6 +234,47 @@ Satisfiable. Model:
              Hex: -0x5
    Rounding mode: RNE: Round nearest ties to even.
             Note: Conversion from "-5" was exact. No rounding happened.
+```
+
+### Example: Decode an E8M0 MX scale
+```
+$ crackNum -fe8m0 0xFE
+Satisfiable. Model:
+  DECODED = 1.7014118346046923e38 :: E8M0
+                  76543210
+                  ---E8---
+   Binary layout: 11111110
+      Hex layout: FE
+       Precision: 8 exponent bits, no significand
+            Sign: Positive (always)
+        Exponent: 127 (Stored: 254, Bias: 127)
+  Classification: FP_NORMAL
+          Binary: 0b1p+127
+           Octal: 0o2p+126
+         Decimal: 1.7014118346046923e38
+             Hex: 0x8p+124
+```
+
+### Example: Encode an E8M0 MX scale
+Only powers of two are representable, so everything else rounds according to `-r`:
+```
+$ crackNum -fe8m0 -- 10
+Satisfiable. Model:
+  ENCODED = 8.0 :: E8M0
+                  76543210
+                  ---E8---
+   Binary layout: 10000010
+      Hex layout: 82
+       Precision: 8 exponent bits, no significand
+            Sign: Positive (always)
+        Exponent: 3 (Stored: 130, Bias: 127)
+  Classification: FP_NORMAL
+          Binary: 0b1p+3
+           Octal: 0o1p+3
+         Decimal: 8.0
+             Hex: 0x8
+   Rounding mode: RNE: Round nearest ties to even.
+            Note: Original value of 10.0 was rounded to 8.0.
 ```
 
 ### Example: Encode a TensorFloat-32 number
@@ -414,6 +463,7 @@ Supported floating-point formats (for use with -f):
      e4m3: FP8 format (Alternate) ( 4 +   4)
       fp4: FP4 format (E2M1)      ( 2 +   2)
   fp4e0m3: FP4 format (E0M3)      ( 0 +   3)
+     e8m0: FP8 format (MX scale)  ( 8 +   0)
 
 Examples:
  Encoding:
@@ -429,6 +479,7 @@ Examples:
    crackNum -fe5m2    2.5                     -- encode as an E5M2 FP8 float
    crackNum -ffp4     2.5                     -- encode as an FP4 (E2M1) float
    crackNum -ffp4e0m3 3.5                     -- encode as an FP4 (E0M3) sign-magnitude integer
+   crackNum -fe8m0    2.5                     -- encode as an E8M0 MX scale (power of two)
    crackNum -fsp      0x3.2p5                 -- encode as single-precision from hex-float
 
  Decoding:
@@ -441,6 +492,7 @@ Examples:
    crackNum -fhp      0x8000                  -- decode as a half-precision float
    crackNum -ffp4     0b0111                  -- decode as an FP4 (E2M1) float
    crackNum -ffp4e0m3 0b1101                  -- decode as an FP4 (E0M3) sign-magnitude integer
+   crackNum -fe8m0    0x7F                    -- decode as an E8M0 MX scale (power of two)
    crackNum -l4 -fhp  64\'hbdffaaffdc71fc60   -- decode as half-precision float over 4 lanes using verilog notation
 
  GUI:
@@ -458,6 +510,10 @@ Examples:
        - FP4 (E0M3) is a sign-magnitude integer: a sign bit and a 3-bit magnitude,
          covering -7 to 7, with both a positive and a negative zero. It has no NaN
          and no Inf either, and values outside [-7, 7] saturate to the end-point.
+       - E8M0 (MX scale) is all exponent: no sign bit and no significand at all,
+         so every value is a power of two, from 2^-127 to 2^127. It has no zero
+         and no Inf, and 0xFF is its only NaN. Negative inputs are rejected;
+         values outside the range saturate to the nearest end-point.
    - For decoding:
        - Use hexadecimal (0x) binary (0b), or N'h (verilog) notation as input.
          Input must have one of these prefixes.

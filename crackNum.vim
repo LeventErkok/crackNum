@@ -39,7 +39,7 @@ let s:crackNumLaneFlags = ["-l2", "-l4", "-l8"]
 " Used only when crackNum is too old to know --list-formats, or is not on the PATH.
 " Anything crackNum has learned since is picked up from the executable, not from here.
 let s:crackNumFallbackFormats = [ "hp", "bp", "tf32", "sp", "dp", "qp"
-                              \ , "e5m2", "e4m3", "fp4", "fp4e0m3"
+                              \ , "e5m2", "e4m3", "fp4", "fp4e0m3", "e8m0"
                               \ ]
 
 " The formats the executable reports, as -f flags. Asking it keeps this list from

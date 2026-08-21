@@ -1,0 +1,7 @@
+Arguments: -fe8m0 --  -0
+Exit code: ExitFailure 1
+
+STDERR:
+ERROR:
+  E8M0 has no representation for negative values.
+  The representable range is [2^-127, 2^127], plus NaN.

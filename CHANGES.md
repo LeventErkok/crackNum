@@ -1,7 +1,24 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 3.27, 2026-08-20
+* Latest Hackage released version: 3.28, 2026-08-21
+
+### Version 3.28, 2026-08-21
+
+  * Add support for the E8M0 format, via `-fe8m0`. This is the shared scale of the OCP
+    Microscaling (MX) formats: the value that scales a block of MXFP8/MXFP6/MXFP4
+    elements, all of which crackNum already knew about. It is the mirror image of
+    FP4 (E0M3): where that format is all significand and no exponent, E8M0 is all
+    exponent and no significand, with no sign bit either. Every value it holds is
+    therefore a power of two, from 2^-127 to 2^127.
+
+    Note that it has no zero and no subnormals -- with nothing for the all-zero
+    encoding to mean, it simply denotes 2^-127 -- and no infinities. `0xFF` is its
+    one and only NaN. Negative inputs are rejected rather than saturated: with no
+    sign bit there is no direction to saturate towards, and clamping would quietly
+    turn a negative into a positive. Values outside the range, infinity included,
+    saturate to the nearest end-point, and anything that is not a power of two
+    rounds according to `-r`.
 
 ### Version 3.27, 2026-08-20
 
