@@ -1,9 +1,9 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 3.28, 2026-08-21
+* Latest Hackage released version: 3.29, 2026-08-21
 
-### Version 3.29, Not yet released
+### Version 3.29, 2026-08-21
 
   * `crackNum.vim`'s TAB completion no longer offers a hardcoded set of `-lN` lane
     counts, since `-lN` is never valid on its own and always needs pairing with a
