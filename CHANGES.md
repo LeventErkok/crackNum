@@ -3,6 +3,15 @@
 
 * Latest Hackage released version: 3.28, 2026-08-21
 
+### Version 3.29, Not yet released
+
+  * `crackNum.vim`'s TAB completion no longer offers a hardcoded set of `-lN` lane
+    counts, since `-lN` is never valid on its own and always needs pairing with a
+    `-f`/`-i`/`-w` flag; type it directly instead. `-i`/`-w` completion now offers
+    the bare flag and prompts for the bit-width separately, rather than baking in a
+    fixed set of widths -- crackNum accepts any `-iN`/`-wN`, so there was never a
+    complete list to offer.
+
 ### Version 3.28, 2026-08-21
 
   * Add support for the E8M0 format, via `-fe8m0`. This is the shared scale of the OCP
