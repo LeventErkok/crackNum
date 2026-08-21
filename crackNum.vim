@@ -31,10 +31,11 @@ if !exists("g:crackNumProgram")
     let g:crackNumProgram = "crackNum"
 endif
 
-" Integer widths and lane counts offered by TAB completion. These are only the common
-" cases: crackNum takes any -iN/-wN/-lN, and any such argument can be typed in directly.
-let s:crackNumIntFlags  = ["-i8", "-i16", "-i32", "-i64", "-w8", "-w16", "-w32", "-w64"]
-let s:crackNumLaneFlags = ["-l2", "-l4", "-l8"]
+" Bare -i/-w flags offered by TAB completion; picking one prompts for the bit-width
+" separately, since crackNum takes any -iN/-wN and there's no fixed list to offer.
+" Lane counts (-lN) are left out of completion entirely: they're not a format on
+" their own and always need to be paired with a -f/-i/-w flag, so type -lN directly.
+let s:crackNumIntFlags = ["-i", "-w"]
 
 " Used only when crackNum is too old to know --list-formats, or is not on the PATH.
 " Anything crackNum has learned since is picked up from the executable, not from here.
@@ -68,7 +69,7 @@ function! s:CrackNumChoices()
     if exists("g:crackNumPrecisions")
         return g:crackNumPrecisions
     endif
-    return s:crackNumIntFlags + s:CrackNumFormats() + s:crackNumLaneFlags
+    return s:crackNumIntFlags + s:CrackNumFormats()
 endfunction
 
 function! CrackNumComplete(A, L, P)
@@ -128,6 +129,19 @@ function! CrackNum(...)
         if empty(join(l:args, ''))
             echoerr "No format given; use e.g. -i4, -w8, or -fhp."
             return
+        endif
+        " -i/-w need a bit-width; ask for it separately rather than baking a fixed
+        " set of widths into TAB completion, since crackNum takes any -iN/-wN.
+        if l:args[0] ==# "-i" || l:args[0] ==# "-w"
+            call inputsave()
+            let l:width = input(l:args[0] . " width (bits)> ")
+            call inputrestore()
+            redraw
+            if empty(l:width)
+                echoerr "No width given; use e.g. " . l:args[0] . "4."
+                return
+            endif
+            let l:args = [l:args[0] . l:width]
         endif
     else
         echo "Cracking \""  . l:curWord . "\".."
