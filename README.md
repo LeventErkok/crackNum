@@ -18,31 +18,47 @@ decimal, and hex. It works in both directions:
 The easiest way to get crackNum is from the
 [Releases page](https://github.com/LeventErkok/crackNum/releases). Each bundle is
 self-contained: the `crackNum` executable, a copy of `z3`, the graphical interface,
-a LICENSE, and a README with the platform-specific details.
+a LICENSE, and a README repeating the steps below.
 
 | Platform | Asset | Notes |
 | --- | --- | --- |
 | Linux (x86_64) | `crackNum-<version>-linux-x86_64.tar.gz` | Statically linked, so there is no glibc or distribution requirement: it runs as-is on any x86_64 Linux, old or new. |
-| macOS (Apple Silicon) | `crackNum-<version>-macos-arm64.tar.gz` | Includes `CrackNum.app`. Ad-hoc signed rather than notarized, so clear the quarantine flag as the bundled README explains. |
+| macOS (Apple Silicon) | `crackNum-<version>-macos-arm64.tar.gz` | Includes `CrackNum.app`. Ad-hoc signed rather than notarized, so clear the quarantine flag as shown below. |
 
-Unpack it and you can run straight out of the directory:
+Unpack the bundle anywhere you like, then put the files somewhere on your `PATH`.
+`z3` has to go there too, since crackNum shells out to it for every operation.
 
-```
-$ tar xzf crackNum-3.27-linux-x86_64.tar.gz
-$ cd crackNum-3.27-linux-x86_64
-$ ./crackNum -fsp 3.5
-```
-
-To use it from anywhere, put the files on your `PATH`. `z3` has to be there too,
-since crackNum shells out to it for every operation:
+**Linux** — all three files, the GUI script included:
 
 ```
-$ mkdir -p ~/bin && cp crackNum z3 ~/bin/       # on Linux, add crackNum.tcl for the GUI
-$ export PATH=$HOME/bin:$PATH                   # add to your shell rc to make it stick
+$ tar xzf crackNum-<version>-linux-x86_64.tar.gz
+$ cd crackNum-<version>-linux-x86_64
+$ mkdir -p ~/bin && cp crackNum z3 crackNum.tcl ~/bin/
+$ export PATH=$HOME/bin:$PATH        # put this in your shell's startup file
 ```
 
-Each bundle's own README covers the platform details — installing `CrackNum.app` on
-macOS, and `wish` for the Tcl/Tk GUI on Linux.
+The GUI is a Tcl/Tk script, so unlike the two binaries it needs something from your
+system: `wish` on your `PATH`. Install it with `sudo apt install tk` (Debian/Ubuntu),
+`sudo dnf install tk` (RHEL/Fedora), or `nix profile install nixpkgs#tk`.
+
+**macOS** — clear the quarantine flag first, since these are ad-hoc signed rather
+than notarized and nothing will run before you do:
+
+```
+$ tar xzf crackNum-<version>-macos-arm64.tar.gz
+$ cd crackNum-<version>-macos-arm64
+$ xattr -dr com.apple.quarantine crackNum z3 CrackNum.app
+$ mkdir -p ~/bin && cp crackNum z3 ~/bin/
+$ cp -R CrackNum.app /Applications/
+$ export PATH=$HOME/bin:$PATH        # put this in your login shell's startup file
+```
+
+Either way, check with:
+
+```
+$ crackNum -fsp 3.5
+$ crackNum --gui
+```
 
 #### From Hackage
 
