@@ -26,6 +26,10 @@
     formats past the bottom were not merely off-screen but unreachable. (The macOS GUI
     needed no equivalent change; its list already scrolled.)
 
+  * Scrollbars in the Tcl/Tk GUI now appear only when there is something to scroll to,
+    rather than always taking up room. This covers the output pane's pair as well as the
+    new one on the format list.
+
   * Internally, `Main.hs` has been split into per-topic modules -- `CrackNum.Types`,
     `.Formats`, `.Options`, `.Utils`, `.Output`, `.GUI`, `.Decode`, and `.Encode` --
     leaving `Main` with just the argument dispatch. It had grown to some 1400 lines

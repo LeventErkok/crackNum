@@ -363,6 +363,23 @@ pack propagate .main.side 0
 ttk::style configure Treeview       -rowheight 22
 ttk::style configure Treeview.Item  -padding {4 0}
 
+# Tk has no auto-hiding scrollbar, so do it by hand: unpack it while the whole list
+# fits, and pack it back when it does not. -before keeps it to the right of the
+# treeview when it returns, matching how it was packed originally.
+#
+# NB. Safe against the oscillation that auto-hiding is prone to, because hiding a
+# *vertical* scrollbar only makes the treeview wider, which cannot change the vertical
+# fractions that decide whether it should be shown. That reasoning does not carry over
+# to a horizontal/vertical pair, where each one's visibility feeds the other's.
+proc autoScroll {sb tv first last} {
+    if {$first <= 0.0 && $last >= 1.0} {
+        if {[winfo manager $sb] ne ""} { pack forget $sb }
+    } elseif {[winfo manager $sb] eq ""} {
+        pack $sb -side right -fill y -before $tv
+    }
+    $sb set $first $last
+}
+
 # The format list is taller than the sidebar at the default window size, so it needs
 # a scrollbar: without one the rows past the bottom are not merely off-screen, they
 # are unreachable. Treeview and scrollbar live in their own frame so the widgets
@@ -372,7 +389,7 @@ frame .main.side.fmts
 pack .main.side.fmts -fill both -expand yes
 
 ttk::treeview .main.side.fmts.lb -selectmode browse -show tree -height 18 \
-    -yscrollcommand {.main.side.fmts.sy set}
+    -yscrollcommand {autoScroll .main.side.fmts.sy .main.side.fmts.lb}
 ttk::scrollbar .main.side.fmts.sy -orient vertical -command {.main.side.fmts.lb yview}
 pack .main.side.fmts.sy -side right -fill y
 pack .main.side.fmts.lb -side left -fill both -expand yes
@@ -461,11 +478,46 @@ bind  .main.side.custom.ew.e <Return> crack
 frame .main.out
 pack .main.out -side left -fill both -expand yes
 
+# Auto-hiding for the output pane's pair. Unlike the format list's lone vertical bar,
+# these two feed each other: dropping the horizontal bar makes the text taller, which
+# can change the vertical fractions, and dropping the vertical one makes it wider,
+# which can change the horizontal ones. A naive toggle can therefore oscillate when
+# the content sits right at the boundary. Three guards:
+#
+#   * track visibility ourselves rather than re-deriving it from the widget, so the
+#     decision does not depend on geometry that is still settling;
+#   * act only on an actual change of visibility;
+#   * defer the change to an idle callback, so a burst of scrollcommand calls during
+#     one geometry pass collapses into a single decision.
+#
+# 'grid remove' (rather than 'grid forget') keeps the row/column options, so restoring
+# it is a bare 'grid'.
+array set SB_VIS     {}   ;# scrollbar -> 1 when currently gridded
+array set SB_PENDING {}   ;# scrollbar -> 1 when an idle update is already queued
+
+proc autoScrollGrid {sb first last} {
+    global SB_VIS SB_PENDING
+    $sb set $first $last
+    if {![info exists SB_VIS($sb)]} { set SB_VIS($sb) 1 }
+    set want [expr {($first <= 0.0 && $last >= 1.0) ? 0 : 1}]
+    if {$want == $SB_VIS($sb) || [info exists SB_PENDING($sb)]} return
+    set SB_PENDING($sb) 1
+    after idle [list applyScrollVis $sb $want]
+}
+
+proc applyScrollVis {sb want} {
+    global SB_VIS SB_PENDING
+    unset -nocomplain SB_PENDING($sb)
+    if {$want == $SB_VIS($sb)} return
+    if {$want} { grid $sb } else { grid remove $sb }
+    set SB_VIS($sb) $want
+}
+
 text .output -state disabled -wrap none \
     -font [list $MONO $state(fontSize)] \
     -padx 8 -pady 8 \
-    -xscrollcommand {.main.out.sx set} \
-    -yscrollcommand {.main.out.sy set}
+    -xscrollcommand {autoScrollGrid .main.out.sx} \
+    -yscrollcommand {autoScrollGrid .main.out.sy}
 scrollbar .main.out.sy -orient vertical   -command {.output yview}
 scrollbar .main.out.sx -orient horizontal -command {.output xview}
 
