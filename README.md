@@ -66,10 +66,9 @@ $ crackNum --gui
 $ cabal install crackNum
 ```
 
-`crackNum` uses [SBV](http://hackage.haskell.org/package/sbv) and delegates the
-actual floating-point reasoning to an SMT solver, so installed this way you also
-need [z3](https://github.com/Z3Prover/z3) on your `PATH`. (The prebuilt bundles
-above carry their own copy, so there is nothing extra to install.)
+Installed this way you also need [z3](https://github.com/Z3Prover/z3) on your
+`PATH`: crackNum delegates the floating-point reasoning to it, via
+[SBV](http://hackage.haskell.org/package/sbv).
 
 ### Supported formats
 
