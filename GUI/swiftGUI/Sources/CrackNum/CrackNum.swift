@@ -105,27 +105,27 @@ struct FormatSection: Identifiable {
     let formats: [Format]
 }
 
+// The floats are grouped by provenance rather than by width: first the formats that
+// exist because of machine learning (the narrow FP4/FP8 ones, plus bfloat16 and TF32),
+// then the IEEE-754 ones. Order here is the order the sidebar shows. The ids are what
+// parseArgs maps -f/-w/-i onto, so they stay put even when a format moves from one
+// group to another.
 let formatSections: [FormatSection] = [
-    FormatSection(title: "Float", formats: [
+    FormatSection(title: "AI formats", formats: [
         Format(id: "ffp4",     label: "FP4 (E2M1)", kind: .fixedFloat("ffp4")),
         Format(id: "ffp4e0m3", label: "FP4 (E0M3)", kind: .fixedFloat("ffp4e0m3")),
         Format(id: "fe4m3",    label: "FP8 (E4M3)", kind: .fixedFloat("fe4m3")),
         Format(id: "fe5m2",    label: "FP8 (E5M2)", kind: .fixedFloat("fe5m2")),
         Format(id: "fe8m0",    label: "FP8 (E8M0)", kind: .fixedFloat("fe8m0")),
-        Format(id: "fhp",      label: "Half",       kind: .fixedFloat("fhp")),
         Format(id: "fbp",      label: "Brain",      kind: .fixedFloat("fbp")),
         Format(id: "ftf32",    label: "TF32",       kind: .fixedFloat("ftf32")),
+    ]),
+    FormatSection(title: "IEEE-754", formats: [
+        Format(id: "fhp",      label: "Half",       kind: .fixedFloat("fhp")),
         Format(id: "fsp",      label: "Single",     kind: .fixedFloat("fsp")),
         Format(id: "fdp",      label: "Double",     kind: .fixedFloat("fdp")),
         Format(id: "fqp",      label: "Quad",       kind: .fixedFloat("fqp")),
         Format(id: "fcs",      label: "Custom",     kind: .customFloat),
-    ]),
-    FormatSection(title: "Word (Unsigned)", formats: [
-        Format(id: "w8",  label: "8-bit",  kind: .fixedWord(8)),
-        Format(id: "w16", label: "16-bit", kind: .fixedWord(16)),
-        Format(id: "w32", label: "32-bit", kind: .fixedWord(32)),
-        Format(id: "w64", label: "64-bit", kind: .fixedWord(64)),
-        Format(id: "wcs", label: "Custom", kind: .customWord),
     ]),
     FormatSection(title: "Integer (Signed)", formats: [
         Format(id: "i8",  label: "8-bit",  kind: .fixedInt(8)),
@@ -133,6 +133,13 @@ let formatSections: [FormatSection] = [
         Format(id: "i32", label: "32-bit", kind: .fixedInt(32)),
         Format(id: "i64", label: "64-bit", kind: .fixedInt(64)),
         Format(id: "ics", label: "Custom", kind: .customInt),
+    ]),
+    FormatSection(title: "Word (Unsigned)", formats: [
+        Format(id: "w8",  label: "8-bit",  kind: .fixedWord(8)),
+        Format(id: "w16", label: "16-bit", kind: .fixedWord(16)),
+        Format(id: "w32", label: "32-bit", kind: .fixedWord(32)),
+        Format(id: "w64", label: "64-bit", kind: .fixedWord(64)),
+        Format(id: "wcs", label: "Custom", kind: .customWord),
     ]),
 ]
 
@@ -457,29 +464,33 @@ struct ContentView: View {
                 .onChange(of: model.rounding) { _ in model.run() }
             }
 
-            // Custom parameters
-            GroupBox("Custom parameters") {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Text("Total width:")
-                        Spacer()
-                        TextField("", text: $model.bitWidth)
-                            .frame(width: 70)
-                            .multilineTextAlignment(.trailing)
-                            .onSubmit { model.run() }
+            // Custom parameters. The heading sits above an unlabelled GroupBox rather
+            // than being the box's own title: that keeps the box's grey background while
+            // letting the heading line up flush left with "Rounding mode" above it,
+            // instead of being indented past it by the box's title inset.
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Custom IEEE-754 float:").font(.caption).foregroundStyle(.secondary)
+                GroupBox {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack {
+                            Text("Total width:")
+                            Spacer()
+                            TextField("", text: $model.bitWidth)
+                                .frame(width: 70)
+                                .multilineTextAlignment(.trailing)
+                                .onSubmit { model.run() }
+                        }
+                        HStack {
+                            Text("Exponent width:")
+                            Spacer()
+                            TextField("", text: $model.expWidth)
+                                .frame(width: 70)
+                                .multilineTextAlignment(.trailing)
+                                .onSubmit { model.run() }
+                        }
                     }
-                    HStack {
-                        Text("Exponent width:")
-                        Spacer()
-                        TextField("", text: $model.expWidth)
-                            .frame(width: 70)
-                            .multilineTextAlignment(.trailing)
-                            .onSubmit { model.run() }
-                    }
-                    Text("(exponent width applies to custom floats)")
-                        .font(.caption2).foregroundStyle(.secondary)
+                    .font(.system(.body, design: .monospaced))
                 }
-                .font(.system(.body, design: .monospaced))
             }
         }
     }

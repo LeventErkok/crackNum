@@ -1,6 +1,6 @@
 Cabal-version      : 2.2
 Name               : crackNum
-Version            : 3.29
+Version            : 3.30
 Synopsis           : Crack various integer and floating-point data formats
 Description        : Crack IEEE-754 and other float formats and arbitrary sized words and integers, showing the layout.
                      .
@@ -32,5 +32,14 @@ Executable crackNum
    ghc-options     : -Wall -Wunused-packages
    build-depends   : base >= 4.11 && < 5, libBF, ghc, sbv >= 11.0
                    , tasty, tasty-golden, filepath, directory, process, deepseq
-   other-modules   : Paths_crackNum, CrackNum.TestSuite
+   other-modules   : Paths_crackNum
+                   , CrackNum.Types
+                   , CrackNum.Formats
+                   , CrackNum.Options
+                   , CrackNum.Utils
+                   , CrackNum.Output
+                   , CrackNum.GUI
+                   , CrackNum.Decode
+                   , CrackNum.Encode
+                   , CrackNum.TestSuite
    autogen-modules : Paths_crackNum

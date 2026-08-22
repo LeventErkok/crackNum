@@ -30,28 +30,29 @@ set Z3       [locate z3]
 # Each entry: {id label flag_kind flag_arg}
 #   flag_kind = fixed | customFloat | word | customWord | int | customInt
 #   flag_arg  = the flag suffix for "fixed", or bit-count for "word"/"int"
+#
+# The floats are grouped by provenance rather than by width: first the formats that
+# exist because of machine learning (the narrow FP4/FP8 ones, plus bfloat16 and
+# TF32), then the IEEE-754 ones. Order here is the order the sidebar shows. The ids
+# are what parseArgs maps -f/-w/-i onto, so they stay put even when a format moves
+# from one group to another.
 
 set FORMAT_SECTIONS {
-    {"Float" {
+    {"AI formats" {
         {ffp4     "FP4 (E2M1)"  fixed    fp4}
         {ffp4e0m3 "FP4 (E0M3)"  fixed    fp4e0m3}
         {fe4m3    "FP8 (E4M3)"  fixed    e4m3}
         {fe5m2    "FP8 (E5M2)"  fixed    e5m2}
         {fe8m0    "FP8 (E8M0)"  fixed    e8m0}
-        {fhp      "Half"        fixed    hp}
         {fbp      "Brain"       fixed    bp}
         {ftf32    "TF32"        fixed    tf32}
+    }}
+    {"IEEE-754" {
+        {fhp      "Half"        fixed    hp}
         {fsp      "Single"      fixed    sp}
         {fdp      "Double"      fixed    dp}
         {fqp      "Quad"        fixed    qp}
         {fcs      "Custom"      customFloat {}}
-    }}
-    {"Word (Unsigned)" {
-        {w8   "8-bit"   word    8}
-        {w16  "16-bit"  word   16}
-        {w32  "32-bit"  word   32}
-        {w64  "64-bit"  word   64}
-        {wcs  "Custom"  customWord {}}
     }}
     {"Integer (Signed)" {
         {i8   "8-bit"   int    8}
@@ -59,6 +60,13 @@ set FORMAT_SECTIONS {
         {i32  "32-bit"  int   32}
         {i64  "64-bit"  int   64}
         {ics  "Custom"  customInt {}}
+    }}
+    {"Word (Unsigned)" {
+        {w8   "8-bit"   word    8}
+        {w16  "16-bit"  word   16}
+        {w32  "32-bit"  word   32}
+        {w64  "64-bit"  word   64}
+        {wcs  "Custom"  customWord {}}
     }}
 }
 
@@ -355,11 +363,22 @@ pack propagate .main.side 0
 ttk::style configure Treeview       -rowheight 22
 ttk::style configure Treeview.Item  -padding {4 0}
 
-ttk::treeview .main.side.lb -selectmode browse -show tree -height 18
-pack .main.side.lb -fill both -expand yes
+# The format list is taller than the sidebar at the default window size, so it needs
+# a scrollbar: without one the rows past the bottom are not merely off-screen, they
+# are unreachable. Treeview and scrollbar live in their own frame so the widgets
+# packed below (rounding, custom parameters) are unaffected by the side-by-side
+# packing used here.
+frame .main.side.fmts
+pack .main.side.fmts -fill both -expand yes
 
-.main.side.lb tag configure hdr  -font {TkDefaultFont 9 bold}
-.main.side.lb tag configure item -font {TkDefaultFont 9}
+ttk::treeview .main.side.fmts.lb -selectmode browse -show tree -height 18 \
+    -yscrollcommand {.main.side.fmts.sy set}
+ttk::scrollbar .main.side.fmts.sy -orient vertical -command {.main.side.fmts.lb yview}
+pack .main.side.fmts.sy -side right -fill y
+pack .main.side.fmts.lb -side left -fill both -expand yes
+
+.main.side.fmts.lb tag configure hdr  -font {TkDefaultFont 9 bold}
+.main.side.fmts.lb tag configure item -font {TkDefaultFont 9}
 
 # Populate treeview; build item-id <-> format-id mappings
 array set ITEM_FMT {}   ;# treeview item id -> format id
@@ -367,22 +386,22 @@ array set FMT_ITEM {}   ;# format id -> treeview item id
 
 foreach section $FORMAT_SECTIONS {
     set title [lindex $section 0]
-    set sid [.main.side.lb insert {} end -text $title -open yes -tags hdr]
+    set sid [.main.side.fmts.lb insert {} end -text $title -open yes -tags hdr]
     foreach fmt [lindex $section 1] {
         set fid  [lindex $fmt 0]
-        set iid  [.main.side.lb insert $sid end -text [lindex $fmt 1] -tags item]
+        set iid  [.main.side.fmts.lb insert $sid end -text [lindex $fmt 1] -tags item]
         set ITEM_FMT($iid) $fid
         set FMT_ITEM($fid) $iid
     }
 }
 
-bind .main.side.lb <<TreeviewSelect>> {
-    set sel [.main.side.lb selection]
+bind .main.side.fmts.lb <<TreeviewSelect>> {
+    set sel [.main.side.fmts.lb selection]
     if {$sel ne "" && [info exists ITEM_FMT($sel)]} {
         set state(selection) $ITEM_FMT($sel)
         crack
     } else {
-        .main.side.lb selection remove $sel
+        .main.side.fmts.lb selection remove $sel
     }
 }
 
@@ -410,9 +429,15 @@ bind .main.side.rm.cb <<ComboboxSelected>> {
     crack
 }
 
-# Custom parameters
-labelframe .main.side.custom -text "Custom parameters" -padx 4 -pady 4
-pack .main.side.custom -fill x -pady {8 0}
+# Custom parameters. The heading is a separate label above the box rather than the
+# labelframe's own -text: that keeps the framed/shaded container while letting the
+# heading line up flush left with "Rounding mode:" above it, instead of being
+# indented past it by the frame's title inset.
+label .main.side.customLbl -text "Custom IEEE-754 float:" -anchor w
+pack  .main.side.customLbl -fill x -pady {8 2}
+
+labelframe .main.side.custom -padx 4 -pady 4
+pack .main.side.custom -fill x
 
 frame .main.side.custom.bw
 pack .main.side.custom.bw -fill x -pady 2
@@ -431,11 +456,6 @@ entry .main.side.custom.ew.e -textvariable state(expWidth) -width 6 -justify rig
     -font [list $MONO 11]
 pack  .main.side.custom.ew.e -side right
 bind  .main.side.custom.ew.e <Return> crack
-
-label .main.side.custom.note \
-    -text "(exponent width applies to custom floats)" \
-    -font {TkDefaultFont 8} -foreground gray -wraplength 200 -justify left
-pack .main.side.custom.note -fill x -pady {4 0}
 
 # Output pane
 frame .main.out
@@ -517,8 +537,8 @@ proc parseArgs {argv} {
     # Sync treeview selection highlight
     if {$state(selection) ne "" && [info exists FMT_ITEM($state(selection))]} {
         set iid $FMT_ITEM($state(selection))
-        .main.side.lb selection set $iid
-        .main.side.lb see $iid
+        .main.side.fmts.lb selection set $iid
+        .main.side.fmts.lb see $iid
     }
 
     # Sync rounding combo label. Must happen even when no format was given:
