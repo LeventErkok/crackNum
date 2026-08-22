@@ -1,9 +1,9 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 3.30, 2026-08-21
+* Latest Hackage released version: 3.31, 2026-08-22
 
-### Version 3.31, Not yet released
+### Version 3.31, 2026-08-22
 
   * The Hackage description now shows a screenshot of the GUI, and points at the
     releases page for the prebuilt Mac and Linux bundles. The screenshot was dropped
