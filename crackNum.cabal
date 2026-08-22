@@ -1,10 +1,15 @@
 Cabal-version      : 2.2
 Name               : crackNum
-Version            : 3.30
+Version            : 3.31
 Synopsis           : Crack various integer and floating-point data formats
 Description        : Crack IEEE-754 and other float formats and arbitrary sized words and integers, showing the layout.
+                     Along with a command-line interface on any platform, native MacOS and Tcl-based Linux GUIs are available as well:
                      .
-                     For details, please see: <http://github.com/LeventErkok/crackNum/>
+                     <<https://raw.githubusercontent.com/LeventErkok/crackNum/master/crackNumGUI.png>>
+                     .
+                     For details, please see: <http://github.com/LeventErkok/crackNum/>. See the
+                     <https://github.com/LeventErkok/crackNum/releases releases page>
+                     for binary releases for Mac and Linux.
 License            : BSD-3-Clause
 License-file       : LICENSE
 Author             : Levent Erkok

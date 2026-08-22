@@ -3,6 +3,18 @@
 
 * Latest Hackage released version: 3.30, 2026-08-21
 
+### Version 3.31, Not yet released
+
+  * The Hackage description now shows a screenshot of the GUI, and points at the
+    releases page for the prebuilt Mac and Linux bundles. The screenshot was dropped
+    from README.md in the same breath: Hackage renders the README below the description,
+    so keeping it in both would have shown the same image twice on one page.
+
+  * The READMEs shipped inside the binary bundles now walk through a single install
+    sequence -- unpack, place the files, set PATH, check -- instead of splitting the CLI
+    and the GUI into separately numbered steps that had to cross-reference each other.
+    The macOS one leads with the quarantine removal, since nothing runs before that.
+
 ### Version 3.30, 2026-08-21
 
   * The GUIs now group the floating-point formats by provenance instead of listing all

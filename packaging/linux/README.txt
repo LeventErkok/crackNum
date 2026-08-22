@@ -3,27 +3,26 @@ crackNum @VERSION@ -- Linux (x86_64)
 Contents:
   crackNum      the command-line tool
   z3            solver; crackNum shells out to it for EVERY operation
-  crackNum.tcl  the Tcl/Tk GUI script (optional)
+  crackNum.tcl  the Tcl/Tk GUI script
 
 Both binaries are statically linked, so there is nothing to install and no
 libc, distribution, or version requirement: they run as-is on any x86_64
 Linux, old or new.
 
 ------------------------------------------------------------------
-1. Command line
+Install
 ------------------------------------------------------------------
-Put ALL THREE files somewhere on your PATH, e.g.
+Unzip the bundle anywhere you like:
+
+    tar -xzvf crackNum-@VERSION@-linux-x86_64.tar.gz
+    cd crackNum-@VERSION@-linux-x86_64
+
+Now, put ALL THREE files in a place accessible to you. Below, we use
+"~/bin", but change it as needed:
 
     mkdir -p ~/bin && cp crackNum z3 crackNum.tcl ~/bin/
-    export PATH=$HOME/bin:$PATH      # add to ~/.bashrc to make it stick
+    export PATH=$HOME/bin:$PATH      # put this in your shell's startup file
 
-Check:
-
-    crackNum -f sp 3.5
-
-------------------------------------------------------------------
-2. GUI (optional)
-------------------------------------------------------------------
 The GUI is a Tcl/Tk script, so unlike the two binaries it does need
 something from your system: 'wish' on your PATH.
 
@@ -31,19 +30,17 @@ something from your system: 'wish' on your PATH.
     sudo dnf install tk           # RHEL/Fedora
     nix profile install nixpkgs#tk
 
-Then:
+Check:
 
+    crackNum -f sp 3.5
     crackNum --gui
     crackNum --gui -fsp 2.5
 
-crackNum finds the script by looking for crackNum.tcl on your PATH,
-which step 1 already took care of. If you keep it elsewhere, point at
-it directly instead:
+crackNum finds the GUI by looking for crackNum.tcl on your PATH, which
+the copy above took care of. If you keep it elsewhere, point at it
+directly instead:
 
     export CRACKNUM_TCL=/path/to/crackNum.tcl
-
-The GUI is only a front-end: it calls the crackNum binary, so step 1
-is required either way.
 
 ------------------------------------------------------------------
 Notes

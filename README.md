@@ -395,8 +395,6 @@ fully functional as a command-line tool without it. The GUI is just a thin
 front-end that calls the `crackNum` binary underneath, so it supports exactly
 the same formats.
 
-![crackNum GUI](https://raw.githubusercontent.com/LeventErkok/crackNum/master/crackNumGUI.png)
-
 If you installed from a [release bundle](#prebuilt-binaries-nothing-to-build-no-haskell-toolchain)
 the GUI is already in it, and there is nothing to build on either platform. The rest
 of this section is for installing from Hackage or from a source checkout.
