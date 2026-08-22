@@ -1,9 +1,9 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 3.29, 2026-08-21
+* Latest Hackage released version: 3.30, 2026-08-21
 
-### Version 3.30, Not yet released
+### Version 3.30, 2026-08-21
 
   * The GUIs now group the floating-point formats by provenance instead of listing all
     twelve of them in one flat "Float" section. The formats that exist because of machine
