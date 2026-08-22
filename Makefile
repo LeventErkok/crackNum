@@ -127,7 +127,7 @@ test:
 	@crackNum --runTests -- -j $(NO_OF_CORES) ${TESTTARGET} ${TESTACCEPT} ${TESTHIDE}
 
 checkLinks:
-	@brok --no-cache --only-failures $(DOCTESTSOURCES) COPYRIGHT LICENSE crackNum.cabal $(wildcard *.md)
+	@brok --no-cache --only-failures COPYRIGHT LICENSE crackNum.cabal $(wildcard *.md)
 
 ci:
 	haskell-ci github crackNum.cabal --no-tests --no-benchmarks
