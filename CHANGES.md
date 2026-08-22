@@ -3,6 +3,36 @@
 
 * Latest Hackage released version: 3.29, 2026-08-21
 
+### Version 3.30, Not yet released
+
+  * The GUIs now group the floating-point formats by provenance instead of listing all
+    twelve of them in one flat "Float" section. The formats that exist because of machine
+    learning -- FP4 (E2M1), FP4 (E0M3), FP8 (E4M3), FP8 (E5M2), FP8 (E8M0), Brain, and
+    TF32 -- come first under "AI formats", followed by the IEEE-754 ones (Half, Single,
+    Double, Quad, and Custom) under "IEEE-754". Integers now precede words, so the
+    sidebar reads AI formats, IEEE-754, Integer (Signed), Word (Unsigned). Both the
+    macOS (Swift) and the Tcl/Tk GUI are grouped identically. No format was added,
+    removed, or renamed, and the command line is unaffected.
+
+  * The "Custom parameters" box in the GUIs is now titled "Custom IEEE-754 float:", and
+    its heading lines up flush left with "Rounding mode" above it rather than being
+    indented past it. The "(exponent width applies to custom floats)" note is gone, the
+    new title having made it redundant. Note that the "Total width" field also applies
+    to the Custom entries under Integer (Signed) and Word (Unsigned), which take a width
+    but no exponent.
+
+  * The format list in the Tcl/Tk GUI now has a vertical scrollbar. With four sections
+    it is taller than the sidebar at the default window size, and without a scrollbar the
+    formats past the bottom were not merely off-screen but unreachable. (The macOS GUI
+    needed no equivalent change; its list already scrolled.)
+
+  * Internally, `Main.hs` has been split into per-topic modules -- `CrackNum.Types`,
+    `.Formats`, `.Options`, `.Utils`, `.Output`, `.GUI`, `.Decode`, and `.Encode` --
+    leaving `Main` with just the argument dispatch. It had grown to some 1400 lines
+    holding everything from option parsing to the hand-rolled layouts for the formats
+    that have no IEEE look-alike. This is purely a reorganization: every definition
+    moved verbatim, so there is no change in behavior or output.
+
 ### Version 3.29, 2026-08-21
 
   * `crackNum.vim`'s TAB completion no longer offers a hardcoded set of `-lN` lane
