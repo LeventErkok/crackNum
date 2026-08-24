@@ -58,14 +58,16 @@ $ export PATH=$HOME/bin:$PATH        # put this in your login shell's startup fi
 itself for the GUI and the solver before consulting your `PATH`:
 
 ```
-> tar xf crackNum-<version>-windows-x86_64.zip
+> Expand-Archive crackNum-<version>-windows-x86_64.zip -DestinationPath .
 > cd crackNum-<version>-windows-x86_64
-> mkdir %USERPROFILE%\bin && copy * %USERPROFILE%\bin
+> New-Item -ItemType Directory -Force $env:USERPROFILE\bin
+> Copy-Item * $env:USERPROFILE\bin
 ```
 
-Then add that folder to your `PATH` and open a new terminal. The binaries are not
-code-signed, so the first run may raise a SmartScreen prompt; choose "More info"
-then "Run anyway", or tick "Unblock" in the .zip's Properties before extracting.
+Then add that folder to your `PATH` and open a new terminal, since a `PATH` change
+does not reach terminals that are already running. The binaries are not code-signed,
+so the first run may raise a SmartScreen prompt; choose "More info" then "Run
+anyway", or tick "Unblock" in the .zip's Properties before extracting.
 
 Any of the three, check with:
 
@@ -425,7 +427,7 @@ front-end that calls the `crackNum` binary underneath, so it supports exactly
 the same formats.
 
 If you installed from a [release bundle](#prebuilt-binaries-nothing-to-build-no-haskell-toolchain)
-the GUI is already in it, and there is nothing to build on either platform. The rest
+the GUI is already in it, and there is nothing to build on any of the three. The rest
 of this section is for installing from Hackage or from a source checkout.
 
 **macOS** — a native Swift/AppKit app (`GUI/swiftGUI/`). It is not part of the

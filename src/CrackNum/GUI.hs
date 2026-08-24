@@ -139,7 +139,7 @@ locateWinGUI = do mbEnv <- lookupEnv "CRACKNUM_GUI"
              , ""
              , "Or point at a copy directly:"
              , ""
-             , "    set CRACKNUM_GUI=C:\\path\\to\\" ++ winGUIExe
+             , "    $env:CRACKNUM_GUI = \"C:\\path\\to\\" ++ winGUIExe ++ "\""
              ]
 
 -- | Launch the graphical interface, forwarding all remaining arguments

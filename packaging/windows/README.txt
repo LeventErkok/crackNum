@@ -15,13 +15,14 @@ Install
 ------------------------------------------------------------------
 Unzip the bundle anywhere you like, then keep ALL the files together in
 one folder -- crackNum.exe finds the GUI and the solver by looking beside
-itself first. Below we use "%USERPROFILE%\bin", but change it as needed:
+itself first. The commands below are PowerShell, and put things in
+"$env:USERPROFILE\bin"; change that path as needed:
 
-    mkdir "%USERPROFILE%\bin"
-    copy crackNum-@VERSION@-windows-x86_64\* "%USERPROFILE%\bin"
+    New-Item -ItemType Directory -Force $env:USERPROFILE\bin
+    Copy-Item crackNum-@VERSION@-windows-x86_64\* $env:USERPROFILE\bin
 
-Add that folder to your PATH so you can run it from anywhere. In
-PowerShell, to set it permanently for your account:
+Add that folder to your PATH so you can run it from anywhere. To set it
+permanently for your account:
 
     [Environment]::SetEnvironmentVariable(
         'PATH', "$env:USERPROFILE\bin;" + [Environment]::GetEnvironmentVariable('PATH','User'), 'User')
@@ -44,7 +45,7 @@ ticking "Unblock".
 If you keep the GUI somewhere other than beside crackNum.exe, point at it
 directly instead:
 
-    set CRACKNUM_GUI=C:\path\to\CrackNumGUI.exe
+    $env:CRACKNUM_GUI = "C:\path\to\CrackNumGUI.exe"
 
 ------------------------------------------------------------------
 Notes

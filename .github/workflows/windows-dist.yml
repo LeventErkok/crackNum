@@ -13,11 +13,6 @@ on:
   push:
     tags:
       - 'v*'
-    # TEMPORARY, remove before merging to master. workflow_dispatch only works for
-    # workflows already on the default branch, so this is the only way to exercise
-    # the packaging path before it is trusted with a real release.
-    branches:
-      - windows-port
   workflow_dispatch:
     inputs:
       z3_tag:
