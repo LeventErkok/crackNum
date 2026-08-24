@@ -1,7 +1,30 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 3.31, 2026-08-22
+* Latest Hackage released version: 3.32, 2026-08-24
+
+### Version 3.32, 2026-08-24
+
+  * Windows is now a supported platform, with a prebuilt bundle
+    (`crackNum-<version>-windows-x86_64.zip`) alongside the Mac and Linux ones. It
+    carries the CLI, a native GUI, and a copy of z3, and needs nothing installed:
+    the GUI targets .NET Framework 4.8, which ships with Windows 10 and 11, and z3
+    brings its own Microsoft C runtime. The binaries are not code-signed, so
+    SmartScreen warns on first run; the bundled README says how to get past it.
+
+  * The Windows GUI (`GUI/winGUI/`) is a native WinForms application rather than a
+    port of the Tcl/Tk script that serves Linux. Reusing the Tcl would have been a
+    far smaller change, but it would have required users to install a Tcl
+    distribution before `--gui` did anything, and a GUI behind a prerequisite that
+    most people will not clear is worth less than the code it saves.
+
+  * `--version` and the usage text no longer print the executable's `.exe`
+    extension on Windows, where `getProgName` keeps it.
+
+  * The golden test suite writes its temporary files with newline translation
+    turned off, so the golds stay LF everywhere. Previously, running the suite on
+    Windows compared CRLF output against LF golds, and `--accept` there would have
+    rewritten every gold in the process.
 
 ### Version 3.31, 2026-08-22
 
