@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Drawing;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
@@ -80,7 +82,38 @@ namespace CrackNumGUI
             CheckParse(failures, new[] { "-i16", "-rRTZ", "--", "-42" }, "i16", "-42", "RTZ");
             CheckParse(failures, new[] { "-f8+24", "--", "1.5" }, "fcs", "1.5", null);
 
-            // 4. The window must build. This is the one that catches layout mistakes,
+            // 4. The embedded icon must actually be there under the name MainForm
+            //    looks it up by. MainForm deliberately falls back to the stock icon
+            //    rather than throwing, so without this check a rename or a dropped
+            //    EmbeddedResource entry would ship the wrong icon with CI still green.
+            try
+            {
+                var iconName = typeof(MainForm).Namespace + ".CrackNum.ico";
+                using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(iconName))
+                {
+                    if (stream == null)
+                    {
+                        failures.Add("embedded icon not found: " + iconName + " (have: "
+                                   + string.Join(", ", Assembly.GetExecutingAssembly().GetManifestResourceNames()) + ")");
+                    }
+                    else
+                    {
+                        using (var icon = new Icon(stream))
+                        {
+                            if (icon.Width == 0)
+                            {
+                                failures.Add("embedded icon loaded but has zero width");
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                failures.Add("loading the embedded icon threw: " + ex.Message);
+            }
+
+            // 5. The window must build. This is the one that catches layout mistakes,
             //    so force handle creation rather than settling for the constructor.
             try
             {

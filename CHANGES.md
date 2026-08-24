@@ -1,7 +1,17 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 3.32, 2026-08-24
+* Latest Hackage released version: 4.0, 2026-08-24
+
+### Version 4.0, 2026-08-24
+
+  * The Windows GUI now carries the CrackNum icon instead of the stock WinForms
+    one. The artwork is rendered by the same generator that produces the macOS
+    AppIcon.icns, so the two platforms cannot drift apart.
+
+  * Note on numbering: 3.32 was tagged and published as a GitHub release, but never
+    uploaded to Hackage. So for anyone installing from Hackage, this is the first
+    version to support Windows -- see the 3.32 entry below for what that involves.
 
 ### Version 3.32, 2026-08-24
 
