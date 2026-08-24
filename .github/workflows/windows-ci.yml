@@ -1,0 +1,63 @@
+# Fast feedback for the Windows port: compiles the CLI and the WinForms GUI and
+# runs the GUI's headless self-test. No packaging, no z3 -- windows-dist.yml does
+# that. This job exists because there is no Windows machine in the loop and
+# nothing is installed locally, so a CI round trip is the only compile-check
+# available; keeping it small and cached is what makes iterating bearable.
+#
+# The first run of this workflow is also what answers the one question the whole
+# Windows port depends on: whether libBF (C bindings) builds under the MinGW
+# toolchain that GHC ships.
+name: Windows build
+
+on:
+  push:
+    branches:
+      - windows-port
+  pull_request:
+  workflow_dispatch:
+
+env:
+  GHC_VERSION: '9.10.3'
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up GHC and cabal
+        id: setup
+        uses: haskell-actions/setup@v2
+        with:
+          ghc-version: ${{ env.GHC_VERSION }}
+          cabal-version: 'latest'
+
+      - name: Cache the cabal store
+        uses: actions/cache@v6
+        with:
+          path: |
+            ${{ steps.setup.outputs.cabal-store }}
+            dist-newstyle
+          key: windows-hs-${{ env.GHC_VERSION }}-${{ hashFiles('**/*.cabal') }}
+          restore-keys: |
+            windows-hs-${{ env.GHC_VERSION }}-
+
+      - name: Build the CLI
+        run: |
+          cabal update
+          cabal build --allow-newer exe:crackNum
+
+      # Guarded so this workflow can be pushed (and start answering the libBF
+      # question) before GUI/winGUI exists.
+      - name: Build the GUI
+        if: ${{ hashFiles('GUI/winGUI/CrackNumGUI.csproj') != '' }}
+        run: dotnet build -c Release GUI/winGUI/CrackNumGUI.csproj
+
+      # Constructs the window and walks the format table without needing a
+      # desktop session; catches layout and binding errors that C#'s compiler
+      # cannot. See windows-dist.yml for the screenshot gate.
+      - name: GUI self-test
+        if: ${{ hashFiles('GUI/winGUI/CrackNumGUI.csproj') != '' }}
+        run: GUI\winGUI\bin\Release\net48\CrackNumGUI.exe --selftest
