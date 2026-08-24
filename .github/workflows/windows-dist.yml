@@ -101,11 +101,22 @@ jobs:
           Expand-Archive z3.zip -DestinationPath z3-unpacked
           $bin = (Get-ChildItem z3-unpacked -Directory | Select-Object -First 1).FullName + '\bin'
           Copy-Item "$bin\z3.exe" out\z3.exe
-          # The MSVC runtime that upstream ships alongside z3.exe, so users need no
-          # VC++ redistributable. libz3java/Microsoft.Z3 are the Java and .NET
-          # bindings; the command-line solver has no use for either.
+
+          # Does z3.exe actually need libz3.dll next to it? Upstream ships both, but
+          # the command-line solver is normally linked against the library statically,
+          # in which case the DLL is 18MB of dead weight -- most of the bundle. Test it
+          # rather than guess: nothing on the runner provides a libz3, so if z3.exe runs
+          # with no DLL beside it, it does not need one. (The MSVC runtime is a separate
+          # question and cannot be tested here, since the runner has it installed
+          # system-wide; those DLLs ship unconditionally, and they are small.)
+          & out\z3.exe --version | Out-Null
+          $needsLibz3 = $LASTEXITCODE -ne 0
+          Write-Host "z3.exe needs libz3.dll: $needsLibz3"
+
+          $skip = @('libz3java.dll', 'Microsoft.Z3.dll')
+          if (-not $needsLibz3) { $skip += 'libz3.dll' }
           Get-ChildItem "$bin\*.dll" |
-            Where-Object { $_.Name -notin @('libz3java.dll', 'Microsoft.Z3.dll') } |
+            Where-Object { $_.Name -notin $skip } |
             ForEach-Object { Copy-Item $_.FullName out\ }
           Write-Host "Bundled from z3:"
           Get-ChildItem out | ForEach-Object { "  {0,-28} {1,10:N0}" -f $_.Name, $_.Length }
