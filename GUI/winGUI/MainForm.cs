@@ -32,6 +32,10 @@ namespace CrackNumGUI
         private readonly TextBox _bitWidth = new TextBox();
         private readonly TextBox _expWidth = new TextBox();
 
+        // Held as a field on purpose: a ToolTip that nothing references gets collected,
+        // and the tips silently stop appearing.
+        private readonly ToolTip _tips = new ToolTip();
+
         private float _fontSize = 10f;
         private string _selection;
 
@@ -297,7 +301,7 @@ namespace CrackNumGUI
             box.KeyDown += OnEnterRun;
         }
 
-        private static Button MakeButton(string text, string tip, EventHandler onClick)
+        private Button MakeButton(string text, string tip, EventHandler onClick)
         {
             var b = new Button
             {
@@ -308,7 +312,7 @@ namespace CrackNumGUI
                 UseVisualStyleBackColor = true,
             };
             b.Click += onClick;
-            new ToolTip().SetToolTip(b, tip);
+            _tips.SetToolTip(b, tip);
             return b;
         }
 
@@ -446,7 +450,13 @@ namespace CrackNumGUI
             _output.Text = normalized;
             _output.SelectionStart = 0;
             _output.SelectionLength = 0;
-            _output.ScrollToCaret();
+
+            // Only once there is a window to scroll. The constructor sets the welcome
+            // text before the handle exists, and --selftest never creates one at all.
+            if (_output.IsHandleCreated)
+            {
+                _output.ScrollToCaret();
+            }
         }
     }
 }

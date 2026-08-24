@@ -16,6 +16,13 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Pushing a fix while the previous build is still running is the normal rhythm
+# here, and a Windows GHC build is slow enough that the stale runs would otherwise
+# pile up behind the one whose answer is actually wanted.
+concurrency:
+  group: windows-ci-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   GHC_VERSION: '9.10.3'
 
