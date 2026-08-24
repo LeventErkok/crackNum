@@ -19,7 +19,7 @@ import System.Directory   (findExecutable, doesFileExist)
 import System.Environment (lookupEnv, getExecutablePath)
 import System.Exit        (ExitCode(..))
 import System.FilePath    (takeDirectory, (</>))
-import System.Process     (rawSystem)
+import System.Process     (rawSystem, spawnProcess)
 import qualified System.Info as Info
 
 import Paths_crackNum (getDataFileName)
@@ -30,6 +30,26 @@ import CrackNum.Utils (die)
 -- location within the installed data-directory. (See Data-files in the cabal file.)
 tclRelPath :: FilePath
 tclRelPath = "GUI/tclGUI/crackNum.tcl"
+
+-- | The Windows GUI executable. Note the name: Windows file systems are
+-- case-insensitive, so calling it CrackNum.exe would make it the very same file as
+-- the crackNum.exe it drives, and the two cannot share a directory.
+winGUIExe :: FilePath
+winGUIExe = "CrackNumGUI.exe"
+
+-- | Where a file would sit if it were next to the running executable.
+--
+-- NB. getExecutablePath resolves symlinks, so this finds the file even when the
+-- binary is reached through a link from elsewhere on the PATH.
+besideExe :: FilePath -> IO FilePath
+besideExe f = do exe <- getExecutablePath
+                 pure (takeDirectory exe </> f)
+
+-- | The first candidate that exists; if none do, die with the given message.
+search :: [FilePath] -> [String] -> IO FilePath
+search []     onFail = die onFail
+search (c:cs) onFail = do ok <- doesFileExist c
+                          if ok then pure c else search cs onFail
 
 -- | Locate the Tcl/Tk GUI script. Normally it is installed together with the
 -- binary, so this just works; we look in four places, in order:
@@ -50,22 +70,13 @@ locateTcl = do mbEnv <- lookupEnv "CRACKNUM_TCL"
                                            , ""
                                            , "    " ++ p
                                            ]
-                 Nothing -> do beside    <- besideExe
+                 Nothing -> do beside    <- besideExe "crackNum.tcl"
                                installed <- getDataFileName tclRelPath
                                mbPath    <- findExecutable "crackNum.tcl"
                                case mbPath of
                                  Just p  -> pure p
                                  Nothing -> search [beside, installed] (noTcl beside installed)
-  where -- NB. getExecutablePath resolves symlinks, so this finds the script even
-        -- when the binary is reached through a link from elsewhere on the PATH.
-        besideExe = do exe <- getExecutablePath
-                       pure (takeDirectory exe </> "crackNum.tcl")
-
-        search []     onFail = die onFail
-        search (c:cs) onFail = do ok <- doesFileExist c
-                                  if ok then pure c else search cs onFail
-
-        noTcl beside installed =
+  where noTcl beside installed =
              [ "Cannot find the CrackNum GUI script (crackNum.tcl)."
              , ""
              , "Looked in:"
@@ -87,13 +98,58 @@ locateTcl = do mbEnv <- lookupEnv "CRACKNUM_TCL"
              , "    git clone http://github.com/LeventErkok/crackNum.git"
              ]
 
+-- | Locate the Windows GUI executable, mirroring 'locateTcl'. We look in three
+-- places, in order:
+--
+--   1. $CRACKNUM_GUI, if set: an explicit override, as on macOS.
+--   2. Next to the executable itself, which is how the binary zip is laid out.
+--   3. The PATH, for an installation that puts the two elsewhere.
+locateWinGUI :: IO FilePath
+locateWinGUI = do mbEnv <- lookupEnv "CRACKNUM_GUI"
+                  case mbEnv of
+                    Just p  -> do ok <- doesFileExist p
+                                  if ok
+                                     then pure p
+                                     else die [ "The CRACKNUM_GUI environment variable is set, but does not name a file:"
+                                              , ""
+                                              , "    " ++ p
+                                              ]
+                    Nothing -> do beside <- besideExe winGUIExe
+                                  ok     <- doesFileExist beside
+                                  if ok
+                                     then pure beside
+                                     else do mbPath <- findExecutable winGUIExe
+                                             case mbPath of
+                                               Just p  -> pure p
+                                               Nothing -> die (noGUI beside)
+  where noGUI beside =
+             [ "Cannot find the CrackNum GUI (" ++ winGUIExe ++ ")."
+             , ""
+             , "Looked in:"
+             , "  %CRACKNUM_GUI%                (not set)"
+             , "  " ++ beside
+             , "  " ++ winGUIExe ++ " on your PATH  (not found)"
+             , ""
+             , "The GUI ships in the same zip as crackNum.exe, so seeing this means the"
+             , "copy next to the binary is missing or the binary has been moved."
+             , ""
+             , "Get the Windows bundle from:"
+             , ""
+             , "    https://github.com/LeventErkok/crackNum/releases"
+             , ""
+             , "Or point at a copy directly:"
+             , ""
+             , "    set CRACKNUM_GUI=C:\\path\\to\\" ++ winGUIExe
+             ]
+
 -- | Launch the graphical interface, forwarding all remaining arguments
 -- (format flags, rounding mode, and/or the value to crack) so the GUI can preselect
 -- them. The GUI itself calls back into this executable to do the actual cracking.
 --
 -- On macOS the GUI is a Swift/AppKit app; CRACKNUM_GUI can override the .app bundle
 -- location. On Linux the GUI is a Tcl/Tk script; 'wish' is located via PATH, and
--- 'crackNum.tcl' via 'locateTcl'.
+-- 'crackNum.tcl' via 'locateTcl'. On Windows it is a WinForms app located by
+-- 'locateWinGUI', with CRACKNUM_GUI overriding as it does on macOS.
 launchGUI :: [String] -> IO ()
 launchGUI vals
   | Info.os == "darwin"
@@ -134,6 +190,13 @@ launchGUI vals
                               , ""
                               , "Tried: " ++ wish ++ " " ++ tcl
                               ]
+  | Info.os == "mingw32"
+  = do gui <- locateWinGUI
+       -- Spawned rather than run through rawSystem: the GUI outlives this process,
+       -- matching what 'open -n' gives us on macOS. Waiting would pin the console
+       -- for as long as the window stayed open.
+       _   <- spawnProcess gui vals
+       pure ()
   | True
   = die [ "The --gui option is not supported on this platform (" ++ Info.os ++ ")."
         , "Use crackNum directly from the command line."

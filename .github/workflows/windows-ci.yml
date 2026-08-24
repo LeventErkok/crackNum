@@ -58,6 +58,15 @@ jobs:
       # Constructs the window and walks the format table without needing a
       # desktop session; catches layout and binding errors that C#'s compiler
       # cannot. See windows-dist.yml for the screenshot gate.
+      # NB. Start-Process rather than invoking it directly: CrackNumGUI is a WinExe,
+      # and the shell does not wait for one of those -- a plain call would return
+      # instantly and the step would pass without the test having run.
       - name: GUI self-test
         if: ${{ hashFiles('GUI/winGUI/CrackNumGUI.csproj') != '' }}
-        run: GUI\winGUI\bin\Release\net48\CrackNumGUI.exe --selftest
+        shell: pwsh
+        run: |
+          $exe = 'GUI\winGUI\bin\Release\net48\CrackNumGUI.exe'
+          $p = Start-Process -FilePath $exe -ArgumentList '--selftest' -Wait -PassThru `
+                             -RedirectStandardOutput selftest.out -RedirectStandardError selftest.err -NoNewWindow
+          Get-Content selftest.out, selftest.err -ErrorAction SilentlyContinue
+          if ($p.ExitCode -ne 0) { throw "selftest failed with exit code $($p.ExitCode)" }

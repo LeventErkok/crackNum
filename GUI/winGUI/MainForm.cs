@@ -1,0 +1,452 @@
+using System;
+using System.Drawing;
+using System.Globalization;
+using System.Windows.Forms;
+
+namespace CrackNumGUI
+{
+    internal sealed class MainForm : Form
+    {
+        private const string Welcome =
+            "Enter a value above, then pick a format on the left to crack it.\n" +
+            "\n" +
+            "You can:\n" +
+            "  - ENCODE: from a mathematical value to its internal representation\n" +
+            "  - DECODE: from an internal representation to its mathematical value\n" +
+            "\n" +
+            "Encoding:\n" +
+            "  - Enter a decimal value (2.5, -4.1e5) or hex float (0x2.4p3).\n" +
+            "  - You can pass NaN, Inf, -0, -Inf for special values.\n" +
+            "  - For floats, pick a rounding mode.\n" +
+            "  - Input must NOT start with 0x, 0b, or N'h (else we decode instead).\n" +
+            "\n" +
+            "Decoding:\n" +
+            "  - Use hex (0x), binary (0b), or Verilog (N'h) notation.\n" +
+            "  - You may use _, - or space as separators for readability.\n" +
+            "  - Verilog input longer than the format is decoded as SIMD lanes.";
+
+        private readonly TreeView _formats = new TreeView();
+        private readonly TextBox _value = new TextBox();
+        private readonly TextBox _output = new TextBox();
+        private readonly ComboBox _rounding = new ComboBox();
+        private readonly TextBox _bitWidth = new TextBox();
+        private readonly TextBox _expWidth = new TextBox();
+
+        private float _fontSize = 10f;
+        private string _selection;
+
+        internal MainForm(ParsedArgs parsed)
+        {
+            Text = "CrackNum";
+            ClientSize = new Size(1040, 620);
+            MinimumSize = new Size(860, 600);
+            StartPosition = FormStartPosition.CenterScreen;
+
+            BuildUi();
+
+            if (parsed.Value != null)    { _value.Text = parsed.Value; }
+            if (parsed.BitWidth.HasValue) { _bitWidth.Text = parsed.BitWidth.Value.ToString(CultureInfo.InvariantCulture); }
+            if (parsed.ExpWidth.HasValue) { _expWidth.Text = parsed.ExpWidth.Value.ToString(CultureInfo.InvariantCulture); }
+            if (parsed.Rounding != null)  { _rounding.SelectedItem = parsed.Rounding; }
+
+            SetOutput(Welcome);
+
+            // If a format was supplied, select it and crack immediately, so the window
+            // opens showing results rather than the welcome text.
+            if (parsed.FormatCode != null)
+            {
+                SelectFormat(parsed.FormatCode);
+            }
+        }
+
+        private void BuildUi()
+        {
+            var root = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 2,
+                Padding = new Padding(8),
+            };
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            root.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+            Controls.Add(root);
+
+            root.Controls.Add(BuildTopBar(), 0, 0);
+            root.Controls.Add(BuildContent(), 0, 1);
+        }
+
+        private Control BuildTopBar()
+        {
+            var bar = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 4,
+                RowCount = 1,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                Margin = new Padding(0, 0, 0, 8),
+            };
+            bar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));           // buttons
+            bar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40f));       // spacer
+            bar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));           // "Value"
+            bar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60f));       // entry
+
+            var buttons = new FlowLayoutPanel { AutoSize = true, Margin = new Padding(0) };
+            buttons.Controls.Add(MakeButton("-", "Smaller output text", (s, e) => Zoom(-1)));
+            buttons.Controls.Add(MakeButton("+", "Larger output text", (s, e) => Zoom(+1)));
+            buttons.Controls.Add(MakeButton("?", "Show the usage summary", (s, e) => SetOutput(Welcome)));
+            bar.Controls.Add(buttons, 0, 0);
+
+            bar.Controls.Add(new Label(), 1, 0);
+
+            var lbl = new Label
+            {
+                Text = "Value",
+                AutoSize = true,
+                TextAlign = ContentAlignment.MiddleRight,
+                Anchor = AnchorStyles.Right,
+                Margin = new Padding(3, 8, 6, 3),
+            };
+            bar.Controls.Add(lbl, 2, 0);
+
+            _value.Dock = DockStyle.Fill;
+            _value.Font = new Font("Consolas", 11f);
+            _value.Margin = new Padding(0, 4, 0, 3);
+            // Enter cracks, rather than dinging the way an unhandled Enter does in a
+            // single-line TextBox.
+            _value.KeyDown += OnEnterRun;
+            bar.Controls.Add(_value, 3, 0);
+
+            return bar;
+        }
+
+        private Control BuildContent()
+        {
+            var content = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                RowCount = 1,
+            };
+            content.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 260f));
+            content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+
+            content.Controls.Add(BuildSidebar(), 0, 0);
+
+            _output.Dock = DockStyle.Fill;
+            _output.Multiline = true;
+            _output.ReadOnly = true;
+            _output.WordWrap = false;
+            _output.ScrollBars = ScrollBars.Both;
+            _output.BackColor = SystemColors.Window;
+            _output.Font = new Font("Consolas", _fontSize);
+            _output.Margin = new Padding(8, 0, 0, 0);
+            content.Controls.Add(_output, 1, 0);
+
+            return content;
+        }
+
+        private Control BuildSidebar()
+        {
+            var side = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 3,
+                Margin = new Padding(0),
+            };
+            side.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+            side.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            side.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+            // A TreeView rather than a ListBox: the sidebar is grouped, and a TreeView
+            // gives section headings for free. The lines and expanders are turned off
+            // and collapsing is refused, so it reads as a sectioned list rather than
+            // as a tree the user is meant to fold.
+            _formats.Dock = DockStyle.Fill;
+            _formats.ShowLines = false;
+            _formats.ShowPlusMinus = false;
+            _formats.ShowRootLines = false;
+            _formats.HideSelection = false;
+            _formats.FullRowSelect = true;
+            _formats.ItemHeight = 22;
+            _formats.BorderStyle = BorderStyle.FixedSingle;
+            _formats.BeforeCollapse += (s, e) => e.Cancel = true;
+            _formats.AfterSelect += OnFormatSelected;
+
+            foreach (var section in Formats.Sections)
+            {
+                var head = new TreeNode(section.Title)
+                {
+                    NodeFont = new Font(_formats.Font, FontStyle.Bold),
+                    ForeColor = SystemColors.GrayText,
+                };
+
+                foreach (var fmt in section.Formats)
+                {
+                    head.Nodes.Add(new TreeNode(fmt.Label) { Tag = fmt });
+                }
+
+                _formats.Nodes.Add(head);
+            }
+
+            _formats.ExpandAll();
+            side.Controls.Add(_formats, 0, 0);
+
+            // Rounding mode
+            var rounding = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 2,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                Margin = new Padding(0, 8, 0, 0),
+            };
+            rounding.Controls.Add(new Label
+            {
+                Text = "Rounding mode",
+                AutoSize = true,
+                ForeColor = SystemColors.GrayText,
+                Margin = new Padding(0, 0, 0, 2),
+            }, 0, 0);
+
+            _rounding.Dock = DockStyle.Fill;
+            _rounding.DropDownStyle = ComboBoxStyle.DropDownList;
+            _rounding.Margin = new Padding(0);
+            foreach (var rm in Formats.RoundingModes)
+            {
+                _rounding.Items.Add(rm);
+            }
+
+            // Show the descriptive label while keeping the plain code as the item value,
+            // so SelectedItem stays the thing we pass to crackNum.
+            _rounding.DrawMode = DrawMode.OwnerDrawFixed;
+            _rounding.DrawItem += OnDrawRounding;
+            _rounding.SelectedItem = "RNE";
+            _rounding.SelectedIndexChanged += (s, e) => RunCrack();
+            rounding.Controls.Add(_rounding, 0, 1);
+            side.Controls.Add(rounding, 0, 1);
+
+            // Custom parameters
+            var customWrap = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 1,
+                RowCount = 2,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                Margin = new Padding(0, 8, 0, 0),
+            };
+            customWrap.Controls.Add(new Label
+            {
+                Text = "Custom IEEE-754 float:",
+                AutoSize = true,
+                ForeColor = SystemColors.GrayText,
+                Margin = new Padding(0, 0, 0, 2),
+            }, 0, 0);
+
+            var box = new GroupBox { Dock = DockStyle.Fill, AutoSize = true, Text = string.Empty, Margin = new Padding(0) };
+            var grid = new TableLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 2,
+                RowCount = 2,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                Padding = new Padding(6),
+            };
+            grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+            grid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 80f));
+
+            grid.Controls.Add(MakeFieldLabel("Total width:"), 0, 0);
+            SetUpWidthField(_bitWidth, "64");
+            grid.Controls.Add(_bitWidth, 1, 0);
+
+            grid.Controls.Add(MakeFieldLabel("Exponent width:"), 0, 1);
+            SetUpWidthField(_expWidth, "11");
+            grid.Controls.Add(_expWidth, 1, 1);
+
+            box.Controls.Add(grid);
+            customWrap.Controls.Add(box, 0, 1);
+            side.Controls.Add(customWrap, 0, 2);
+
+            return side;
+        }
+
+        private static Label MakeFieldLabel(string text)
+        {
+            return new Label
+            {
+                Text = text,
+                AutoSize = true,
+                Font = new Font("Consolas", 10f),
+                TextAlign = ContentAlignment.MiddleLeft,
+                Anchor = AnchorStyles.Left,
+                Margin = new Padding(0, 6, 3, 3),
+            };
+        }
+
+        private void SetUpWidthField(TextBox box, string initial)
+        {
+            box.Text = initial;
+            box.Dock = DockStyle.Fill;
+            box.TextAlign = HorizontalAlignment.Right;
+            box.Font = new Font("Consolas", 10f);
+            box.KeyDown += OnEnterRun;
+        }
+
+        private static Button MakeButton(string text, string tip, EventHandler onClick)
+        {
+            var b = new Button
+            {
+                Text = text,
+                Width = 34,
+                Height = 26,
+                Margin = new Padding(0, 3, 4, 3),
+                UseVisualStyleBackColor = true,
+            };
+            b.Click += onClick;
+            new ToolTip().SetToolTip(b, tip);
+            return b;
+        }
+
+        private void OnDrawRounding(object sender, DrawItemEventArgs e)
+        {
+            e.DrawBackground();
+
+            if (e.Index >= 0)
+            {
+                var code = (string)_rounding.Items[e.Index];
+                string label;
+                if (!Formats.RoundingLabels.TryGetValue(code, out label))
+                {
+                    label = code;
+                }
+
+                TextRenderer.DrawText(e.Graphics, label, e.Font, e.Bounds, e.ForeColor, TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+            }
+
+            e.DrawFocusRectangle();
+        }
+
+        private void OnEnterRun(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                e.SuppressKeyPress = true;   // no ding
+                e.Handled = true;
+                RunCrack();
+            }
+        }
+
+        private void OnFormatSelected(object sender, TreeViewEventArgs e)
+        {
+            var fmt = e.Node?.Tag as Format;
+            if (fmt == null)
+            {
+                // A section heading. Leave the current selection alone rather than
+                // clearing the results the user is looking at.
+                return;
+            }
+
+            _selection = fmt.Id;
+            RunCrack();
+        }
+
+        private void SelectFormat(string id)
+        {
+            foreach (TreeNode head in _formats.Nodes)
+            {
+                foreach (TreeNode node in head.Nodes)
+                {
+                    var fmt = node.Tag as Format;
+                    if (fmt != null && fmt.Id == id)
+                    {
+                        _formats.SelectedNode = node;   // fires AfterSelect, which cracks
+                        return;
+                    }
+                }
+            }
+        }
+
+        private void Zoom(int delta)
+        {
+            _fontSize = Math.Max(6f, _fontSize + delta);
+            _output.Font = new Font("Consolas", _fontSize);
+        }
+
+        private void RunCrack()
+        {
+            var fmt = Formats.ById(_selection);
+            if (fmt == null)
+            {
+                return;
+            }
+
+            var bw = ParseWidth(_bitWidth.Text);
+            var ew = ParseWidth(_expWidth.Text);
+
+            var flag = FlagResult.For(fmt, bw, ew);
+            if (!flag.IsValid)
+            {
+                SetOutput(flag.Invalid);
+                return;
+            }
+
+            var value = _value.Text.Length == 0 ? "0" : _value.Text;
+
+            string text;
+            var saved = Cursor.Current;
+            Cursor.Current = Cursors.WaitCursor;
+            try
+            {
+                text = Runner.Run(flag.Flag, (string)_rounding.SelectedItem, value);
+            }
+            finally
+            {
+                Cursor.Current = saved;
+            }
+
+            string kind;
+            if (text.Contains("ENCODED"))
+            {
+                kind = "Encoding in format";
+            }
+            else if (text.Contains("DECODED"))
+            {
+                kind = "Decoded using format";
+            }
+            else
+            {
+                kind = "Format";
+            }
+
+            SetOutput("[" + kind + ": " + fmt.Label + "]\n\n" + text);
+        }
+
+        private static int ParseWidth(string s)
+        {
+            int n;
+            return int.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out n) ? n : 0;
+        }
+
+        /// <summary>
+        /// Put text in the output pane, normalizing line endings first.
+        /// </summary>
+        /// <remarks>
+        /// crackNum emits bare LF, and a Win32 multiline edit control does not treat
+        /// that as a line break -- the whole report would arrive as one long line
+        /// punctuated by boxes. Everything is normalized to CRLF on the way in.
+        /// </remarks>
+        private void SetOutput(string text)
+        {
+            var normalized = (text ?? string.Empty).Replace("\r\n", "\n").Replace("\r", "\n").Replace("\n", "\r\n");
+            _output.Text = normalized;
+            _output.SelectionStart = 0;
+            _output.SelectionLength = 0;
+            _output.ScrollToCaret();
+        }
+    }
+}

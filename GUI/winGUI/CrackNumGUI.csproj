@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Targets .NET Framework 4.8 deliberately: 4.8 is in-box on every Windows 10
+       and 11, so the shipped exe needs no runtime install of any kind. A .NET 8+
+       build would either be 60-150MB self-contained, or require users to fetch the
+       Desktop Runtime first - which is the very friction this GUI exists to avoid.
+
+       This is an SDK-style project rather than a legacy one so that it also builds
+       off-Windows (via Microsoft.NETFramework.ReferenceAssemblies), should a
+       compile-check ever be wanted somewhere other than the CI runner. Note that
+       UseWindowsForms is a .NET Core-and-later property, so the Windows Forms
+       assemblies are referenced by hand below. -->
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <AssemblyName>CrackNumGUI</AssemblyName>
+    <RootNamespace>CrackNumGUI</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- The bundle is not code-signed, so there is no point embedding version
+         resources that only Explorer would show; keep the assembly metadata minimal. -->
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <Company>Levent Erkok</Company>
+    <Product>CrackNum</Product>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>

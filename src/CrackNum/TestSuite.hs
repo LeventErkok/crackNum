@@ -22,6 +22,7 @@ import Test.Tasty.Golden (goldenVsFileDiff)
 import System.FilePath
 
 import System.Directory (removeFile)
+import System.IO (IOMode(WriteMode), hPutStr, hSetNewlineMode, noNewlineTranslation, withFile)
 import System.Process (readProcessWithExitCode)
 
 import Data.List (intercalate)
@@ -35,12 +36,17 @@ gold n as = goldenVsFileDiff n diff gf gfTmp (rm gfTmp >> run)
 
         args = words as
 
+        -- NB. Written with newline translation off, so the temp file uses LF on
+        -- every platform. The golds are LF; plain writeFile would emit CRLF on
+        -- Windows, and --accept there would rewrite every gold in the process.
+        write f s = withFile f WriteMode $ \h -> hSetNewlineMode h noNewlineTranslation >> hPutStr h s
+
         run = do (ec, so, se) <- readProcessWithExitCode "crackNum" args ""
-                 writeFile gfTmp $ intercalate "\n" $ [ "Arguments: " ++ as
-                                                      , "Exit code: " ++ show ec
-                                                      , so
-                                                      ]
-                                                      ++ concat [["STDERR:", se] | not (null se)]
+                 write gfTmp $ intercalate "\n" $ [ "Arguments: " ++ as
+                                                  , "Exit code: " ++ show ec
+                                                  , so
+                                                  ]
+                                                  ++ concat [["STDERR:", se] | not (null se)]
 
         diff ref new = ["diff", "-w", "-u", ref, new]
 

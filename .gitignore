@@ -8,7 +8,12 @@ cabal.project.local
 .*.swp
 Golds/*.*_temp
 .ghcid-output
+.ghcid-trigger
 
 # Swift GUI build artifacts
 GUI/swiftGUI/.build/
 GUI/swiftGUI/CrackNum.app/
+
+# Windows GUI build artifacts
+GUI/winGUI/bin/
+GUI/winGUI/obj/
