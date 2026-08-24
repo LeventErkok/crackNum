@@ -21,6 +21,7 @@ import Data.Maybe (fromMaybe)
 import qualified Control.Exception as C
 
 import System.Environment    (getArgs, getProgName, withArgs)
+import System.FilePath       (dropExtension)
 import System.Console.GetOpt (ArgOrder(Permute), getOpt)
 import System.Exit           (exitFailure)
 
@@ -42,7 +43,11 @@ import CrackNum.TestSuite
 -- | main entry point to crackNum
 main :: IO ()
 main = do argv <- getArgs
-          pn   <- getProgName
+
+          -- dropExtension: on Windows getProgName keeps the .exe, which would put
+          -- "crackNum.exe" in the --version banner and every usage message, where
+          -- the other platforms say "crackNum".
+          pn   <- dropExtension <$> getProgName
 
           let rt = "--runTests"
 

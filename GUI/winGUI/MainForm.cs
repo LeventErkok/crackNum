@@ -42,7 +42,7 @@ namespace CrackNumGUI
         internal MainForm(ParsedArgs parsed)
         {
             Text = "CrackNum";
-            ClientSize = new Size(1040, 620);
+            ClientSize = new Size(1000, 620);
             MinimumSize = new Size(860, 600);
             StartPosition = FormStartPosition.CenterScreen;
 
@@ -96,7 +96,18 @@ namespace CrackNumGUI
             bar.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));           // "Value"
             bar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60f));       // entry
 
-            var buttons = new FlowLayoutPanel { AutoSize = true, Margin = new Padding(0) };
+            // WrapContents off: with it on, the panel is free to satisfy an AutoSize
+            // width by folding the later buttons onto rows of their own, which then
+            // sit outside the row's height. The result is a toolbar showing only its
+            // first button.
+            var buttons = new FlowLayoutPanel
+            {
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                WrapContents = false,
+                FlowDirection = FlowDirection.LeftToRight,
+                Margin = new Padding(0),
+            };
             buttons.Controls.Add(MakeButton("-", "Smaller output text", (s, e) => Zoom(-1)));
             buttons.Controls.Add(MakeButton("+", "Larger output text", (s, e) => Zoom(+1)));
             buttons.Controls.Add(MakeButton("?", "Show the usage summary", (s, e) => SetOutput(Welcome)));
@@ -133,7 +144,7 @@ namespace CrackNumGUI
                 ColumnCount = 2,
                 RowCount = 1,
             };
-            content.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 260f));
+            content.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 280f));
             content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
 
             content.Controls.Add(BuildSidebar(), 0, 0);
@@ -174,8 +185,18 @@ namespace CrackNumGUI
             _formats.ShowRootLines = false;
             _formats.HideSelection = false;
             _formats.FullRowSelect = true;
-            _formats.ItemHeight = 22;
+            _formats.ItemHeight = 20;
+            _formats.Indent = 12;
             _formats.BorderStyle = BorderStyle.FixedSingle;
+
+            // A TreeView measures how wide a node needs to be using the CONTROL's font,
+            // never the per-node NodeFont. Giving the headings a bold NodeFont over a
+            // regular control font therefore clips them -- "AI formats" renders as
+            // "AI formal". Make the control's font the bold one, so measurement is
+            // generous, and put the regular font back on the leaves.
+            var regular = _formats.Font;
+            var bold = new Font(regular, FontStyle.Bold);
+            _formats.Font = bold;
             _formats.BeforeCollapse += (s, e) => e.Cancel = true;
             _formats.AfterSelect += OnFormatSelected;
 
@@ -183,13 +204,13 @@ namespace CrackNumGUI
             {
                 var head = new TreeNode(section.Title)
                 {
-                    NodeFont = new Font(_formats.Font, FontStyle.Bold),
+                    NodeFont = bold,
                     ForeColor = SystemColors.GrayText,
                 };
 
                 foreach (var fmt in section.Formats)
                 {
-                    head.Nodes.Add(new TreeNode(fmt.Label) { Tag = fmt });
+                    head.Nodes.Add(new TreeNode(fmt.Label) { Tag = fmt, NodeFont = regular });
                 }
 
                 _formats.Nodes.Add(head);

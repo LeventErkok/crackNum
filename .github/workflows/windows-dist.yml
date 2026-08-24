@@ -73,6 +73,24 @@ jobs:
           Copy-Item (cabal list-bin exe:crackNum).Trim() out\crackNum.exe
           Copy-Item GUI\winGUI\bin\Release\net48\CrackNumGUI.exe out\CrackNumGUI.exe
 
+          # Strip, as the Linux job does: a GHC-linked crackNum.exe carries tens of
+          # megabytes of symbols nobody downloading a binary bundle wants. strip comes
+          # from the MinGW toolchain GHC ships, so look for it there before giving up
+          # -- and only warn if it is missing, since a fat binary is still a working one.
+          $strip = Get-Command strip -ErrorAction SilentlyContinue
+          if (-not $strip) {
+            $strip = Get-ChildItem -Path C:\ghcup\ghc -Filter strip.exe -Recurse -ErrorAction SilentlyContinue |
+                     Select-Object -First 1
+          }
+          if ($strip) {
+            $before = (Get-Item out\crackNum.exe).Length
+            & $strip.Source out\crackNum.exe
+            $after = (Get-Item out\crackNum.exe).Length
+            Write-Host ("Stripped crackNum.exe: {0:N0} -> {1:N0} bytes" -f $before, $after)
+          } else {
+            Write-Host "::warning::no strip found; shipping an unstripped crackNum.exe"
+          }
+
       - name: Fetch z3
         shell: pwsh
         run: |
