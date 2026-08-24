@@ -1,6 +1,7 @@
 using System;
 using System.Drawing;
 using System.Globalization;
+using System.Reflection;
 using System.Windows.Forms;
 
 namespace CrackNumGUI
@@ -42,6 +43,7 @@ namespace CrackNumGUI
         internal MainForm(ParsedArgs parsed)
         {
             Text = "CrackNum";
+            LoadIcon();
             ClientSize = new Size(1000, 620);
             MinimumSize = new Size(860, 600);
             StartPosition = FormStartPosition.CenterScreen;
@@ -60,6 +62,31 @@ namespace CrackNumGUI
             if (parsed.FormatCode != null)
             {
                 SelectFormat(parsed.FormatCode);
+            }
+        }
+
+        /// <summary>Set the window icon from the copy embedded in this assembly.</summary>
+        /// <remarks>
+        /// Deliberately non-fatal. An icon is decoration, and --selftest builds this
+        /// form to check the layout; a missing or malformed resource should not be
+        /// the thing that fails a release build.
+        /// </remarks>
+        private void LoadIcon()
+        {
+            try
+            {
+                var name = typeof(MainForm).Namespace + ".CrackNum.ico";
+                using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(name))
+                {
+                    if (stream != null)
+                    {
+                        Icon = new Icon(stream);
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                // Keep the stock WinForms icon.
             }
         }
 

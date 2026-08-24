@@ -18,6 +18,9 @@
     <RootNamespace>CrackNumGUI</RootNamespace>
     <LangVersion>latest</LangVersion>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- The icon Explorer shows on the .exe. Generated from the same artwork as the
+         macOS AppIcon.icns; see make-ico.py. -->
+    <ApplicationIcon>CrackNum.ico</ApplicationIcon>
     <!-- The bundle is not code-signed, so there is no point embedding version
          resources that only Explorer would show; keep the assembly metadata minimal. -->
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
@@ -28,6 +31,12 @@
   <ItemGroup>
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- ApplicationIcon covers the file in Explorer, but the title bar and taskbar
+         read Form.Icon, which does not inherit it. Embed a copy for MainForm. -->
+    <EmbeddedResource Include="CrackNum.ico" />
   </ItemGroup>
 
   <ItemGroup>
