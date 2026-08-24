@@ -24,6 +24,7 @@ a LICENSE, and a README repeating the steps below.
 | --- | --- | --- |
 | Linux (x86_64) | `crackNum-<version>-linux-x86_64.tar.gz` | Statically linked, so there is no glibc or distribution requirement: it runs as-is on any x86_64 Linux, old or new. |
 | macOS (Apple Silicon) | `crackNum-<version>-macos-arm64.tar.gz` | Includes `CrackNum.app`. Ad-hoc signed rather than notarized, so clear the quarantine flag as shown below. |
+| Windows (x86_64) | `crackNum-<version>-windows-x86_64.zip` | Includes `CrackNumGUI.exe`. Unsigned, so SmartScreen warns on first run; see below. |
 
 Unpack the bundle anywhere you like, then put the files somewhere on your `PATH`.
 `z3` has to go there too, since crackNum shells out to it for every operation.
@@ -53,7 +54,20 @@ $ cp -R CrackNum.app /Applications/
 $ export PATH=$HOME/bin:$PATH        # put this in your login shell's startup file
 ```
 
-Either way, check with:
+**Windows** — keep the files together in one folder; `crackNum.exe` looks beside
+itself for the GUI and the solver before consulting your `PATH`:
+
+```
+> tar xf crackNum-<version>-windows-x86_64.zip
+> cd crackNum-<version>-windows-x86_64
+> mkdir %USERPROFILE%\bin && copy * %USERPROFILE%\bin
+```
+
+Then add that folder to your `PATH` and open a new terminal. The binaries are not
+code-signed, so the first run may raise a SmartScreen prompt; choose "More info"
+then "Run anyway", or tick "Unblock" in the .zip's Properties before extracting.
+
+Any of the three, check with:
 
 ```
 $ crackNum -fsp 3.5
@@ -437,7 +451,21 @@ Then `crackNum --gui` just works. If you want to run a modified copy of the
 script, either put it on your PATH as `crackNum.tcl`, or point at it directly
 with `CRACKNUM_TCL=/path/to/crackNum.tcl`.
 
-On both platforms, launch the GUI from the command line via the `--gui` option,
+**Windows** — a native WinForms app (`GUI/winGUI/`). It targets .NET Framework 4.8,
+which ships as part of Windows 10 and 11, so the built executable needs no runtime
+install. Like the macOS app it is not part of the Hackage package; building it
+needs a clone and the .NET SDK:
+
+```
+> git clone https://github.com/LeventErkok/crackNum.git
+> cd crackNum\GUI\winGUI
+> dotnet build -c Release
+```
+
+Put the resulting `CrackNumGUI.exe` next to `crackNum.exe`, or point at it with
+`CRACKNUM_GUI=C:\path\to\CrackNumGUI.exe`.
+
+On all three platforms, launch the GUI from the command line via the `--gui` option,
 which forwards any format/rounding flags and value to the app:
 
 ```

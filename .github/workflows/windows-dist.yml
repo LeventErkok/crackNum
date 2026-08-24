@@ -1,0 +1,194 @@
+# Builds the Windows binary distribution: crackNum.exe, the WinForms GUI, a
+# bundled z3, and a README, zipped up and attached to the release when the run is
+# triggered by a tag.
+#
+# Unlike the Linux job, z3 is taken from upstream's prebuilt Windows zip rather
+# than compiled here. The Linux job builds from source because upstream's Linux
+# tarballs are dynamically linked against glibc 2.39, which would not run on older
+# distributions; the Windows builds carry their own MSVC runtime DLLs, so that
+# concern does not arise and a from-source build would buy nothing.
+name: Windows binary distribution
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      z3_tag:
+        description: 'z3 release tag to bundle'
+        required: false
+        default: 'z3-5.1.0'
+
+env:
+  GHC_VERSION: '9.10.3'
+  Z3_TAG: ${{ github.event.inputs.z3_tag || 'z3-5.1.0' }}
+
+jobs:
+  dist:
+    runs-on: windows-latest
+
+    # Needed by the release step; the default token is read-only in many repos.
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up GHC and cabal
+        id: setup
+        uses: haskell-actions/setup@v2
+        with:
+          ghc-version: ${{ env.GHC_VERSION }}
+          cabal-version: 'latest'
+
+      - name: Cache the cabal store
+        uses: actions/cache@v6
+        with:
+          path: |
+            ${{ steps.setup.outputs.cabal-store }}
+            dist-newstyle
+          key: windows-hs-${{ env.GHC_VERSION }}-${{ hashFiles('**/*.cabal') }}
+          restore-keys: |
+            windows-hs-${{ env.GHC_VERSION }}-
+
+      - name: Build the CLI
+        run: |
+          cabal update
+          cabal build --allow-newer exe:crackNum
+
+      - name: Build the GUI
+        run: dotnet build -c Release GUI/winGUI/CrackNumGUI.csproj
+
+      - name: Collect the binaries
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path out | Out-Null
+          Copy-Item (cabal list-bin exe:crackNum).Trim() out\crackNum.exe
+          Copy-Item GUI\winGUI\bin\Release\net48\CrackNumGUI.exe out\CrackNumGUI.exe
+
+      - name: Fetch z3
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $url = "https://github.com/Z3Prover/z3/releases/download/$env:Z3_TAG/$env:Z3_TAG-x64-win.zip"
+          Write-Host "Downloading $url"
+          Invoke-WebRequest -Uri $url -OutFile z3.zip
+          Expand-Archive z3.zip -DestinationPath z3-unpacked
+          $bin = (Get-ChildItem z3-unpacked -Directory | Select-Object -First 1).FullName + '\bin'
+          Copy-Item "$bin\z3.exe" out\z3.exe
+          # The MSVC runtime that upstream ships alongside z3.exe, so users need no
+          # VC++ redistributable. libz3java/Microsoft.Z3 are the Java and .NET
+          # bindings; the command-line solver has no use for either.
+          Get-ChildItem "$bin\*.dll" |
+            Where-Object { $_.Name -notin @('libz3java.dll', 'Microsoft.Z3.dll') } |
+            ForEach-Object { Copy-Item $_.FullName out\ }
+          Write-Host "Bundled from z3:"
+          Get-ChildItem out | ForEach-Object { "  {0,-28} {1,10:N0}" -f $_.Name, $_.Length }
+
+      - name: Work out the version
+        id: vsn
+        shell: bash
+        run: |
+          vsn=$(sed -n 's/^Version *: *//p' crackNum.cabal | tr -d '[:space:]')
+          test -n "$vsn"
+          echo "version=$vsn"                      >> "$GITHUB_OUTPUT"
+          echo "dist=crackNum-$vsn-windows-x86_64" >> "$GITHUB_OUTPUT"
+
+      - name: Assemble the distribution
+        shell: bash
+        run: |
+          set -euo pipefail
+          dist='${{ steps.vsn.outputs.dist }}'
+          mkdir -p "$dist"
+          cp out/*.exe out/*.dll "$dist"/
+          cp LICENSE "$dist/LICENSE"
+          sed 's/@VERSION@/${{ steps.vsn.outputs.version }}/' packaging/windows/README.txt > "$dist/README.txt"
+
+      # Runs the bundle the way a user would. NB. Git for Windows' usr\bin is added
+      # to PATH for diff.exe: the golden suite shells out to diff, and while that
+      # directory ships on the runner it is not on PATH by default.
+      - name: Smoke test
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $dist = Join-Path $PWD '${{ steps.vsn.outputs.dist }}'
+          $env:PATH = "$dist;C:\Program Files\Git\usr\bin;$env:PATH"
+          crackNum --version
+          crackNum --list-formats
+          crackNum -f sp 3.5
+          crackNum -fe8m0 0xFE
+          crackNum --runTests -- -j2 --no-create --hide-successes
+
+      - name: GUI self-test
+        shell: pwsh
+        run: |
+          $dist = Join-Path $PWD '${{ steps.vsn.outputs.dist }}'
+          $p = Start-Process -FilePath "$dist\CrackNumGUI.exe" -ArgumentList '--selftest' -Wait -PassThru `
+                             -RedirectStandardOutput selftest.out -RedirectStandardError selftest.err -NoNewWindow
+          Get-Content selftest.out, selftest.err -ErrorAction SilentlyContinue
+          if ($p.ExitCode -ne 0) { throw "selftest failed with exit code $($p.ExitCode)" }
+
+      # The only way anyone gets to SEE this GUI without owning a Windows machine.
+      # Treat the result with suspicion: if the runner gives the process no visible
+      # desktop, the capture can come back blank or all-black and still "succeed".
+      # The step below checks the capture is not a single flat colour, which is the
+      # signature of exactly that failure -- but a non-blank screenshot is the proof,
+      # not a green step.
+      - name: Screenshot the GUI
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+          $dist = Join-Path $PWD '${{ steps.vsn.outputs.dist }}'
+          $env:PATH = "$dist;$env:PATH"
+          $p = Start-Process -FilePath "$dist\CrackNumGUI.exe" -ArgumentList '-ftf32','-rRNE','--','123.45' -PassThru
+          Start-Sleep -Seconds 20        # let it launch and crack the value
+          $bounds = [System.Windows.Forms.SystemInformation]::VirtualScreen
+          $bmp = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
+          $gfx = [System.Drawing.Graphics]::FromImage($bmp)
+          $gfx.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+          $bmp.Save("$PWD\gui-screenshot.png", [System.Drawing.Imaging.ImageFormat]::Png)
+          $gfx.Dispose()
+          if (-not $p.HasExited) { $p.Kill() }
+          # Sample a grid of pixels; more than one distinct colour means something
+          # actually rendered.
+          $colors = @{}
+          foreach ($x in 0..19) {
+            foreach ($y in 0..19) {
+              $c = $bmp.GetPixel([int]($bounds.Width * $x / 20), [int]($bounds.Height * $y / 20)).ToArgb()
+              $colors[$c] = $true
+            }
+          }
+          $bmp.Dispose()
+          Write-Host "Distinct sampled colours: $($colors.Count)"
+          if ($colors.Count -le 1) {
+            Write-Host "::warning::Screenshot is a single flat colour - the runner probably gave the app no visible desktop. Do NOT treat this as having seen the GUI."
+          }
+
+      - name: Upload the screenshot
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: gui-screenshot
+          path: gui-screenshot.png
+          if-no-files-found: warn
+
+      - name: Create the zip
+        shell: pwsh
+        run: Compress-Archive -Path '${{ steps.vsn.outputs.dist }}' -DestinationPath '${{ steps.vsn.outputs.dist }}.zip'
+
+      - name: Upload as a workflow artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.vsn.outputs.dist }}
+          path: ${{ steps.vsn.outputs.dist }}.zip
+          if-no-files-found: error
+
+      - name: Attach to the release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v3
+        with:
+          files: ${{ steps.vsn.outputs.dist }}.zip
