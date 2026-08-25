@@ -7,9 +7,9 @@ Description        : Crack IEEE-754 and other float formats and arbitrary sized 
                      .
                      <<https://raw.githubusercontent.com/LeventErkok/crackNum/master/crackNumGUI.png>>
                      .
-                     For details, please see: <http://github.com/LeventErkok/crackNum/>. See the
-                     <https://github.com/LeventErkok/crackNum/releases releases page>
-                     for binary releases for Mac, Linux, and Windows.
+                     For details, please see: <http://github.com/LeventErkok/crackNum/>.
+                     .
+                     See <https://github.com/LeventErkok/crackNum/releases releases> to download ready-to-use packages for Mac, Linux, and Windows.
 License            : BSD-3-Clause
 License-file       : LICENSE
 Author             : Levent Erkok
