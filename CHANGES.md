@@ -1,7 +1,42 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 4.0, 2026-08-24
+* Latest Hackage released version: 4.1, 2026-08-25
+
+### Version 4.1, 2026-08-25
+
+  * Documentation only; no functional changes.
+
+  * Substantially shortened the README. It had grown to fifteen worked examples,
+    all showing the same output fields with different numbers in them, plus a copy
+    of the per-platform install commands that already ship inside every release
+    bundle. The examples are down to four -- an encode with a non-default rounding
+    mode, a decode, an E8M0 encode, and a two-lane decode -- and the install
+    section now points at the `README.txt` in the bundle rather than repeating it,
+    so those steps have a single home and cannot drift.
+
+  * The "Supported formats" section is now just the flag table. The per-format
+    prose that followed it -- the FP4 (E0M3) and E8M0 explanations, the integer
+    flavors, the TF32 bit-count note -- is gone; the first three were already
+    stated in the `--help` output reproduced further down.
+
+  * Downloading a prebuilt binary is now the first thing the README talks about,
+    under its own heading, instead of being a sub-section whose point was hidden in
+    a parenthetical. Building from Hackage is presented as the alternative, and
+    each platform bullet links to the latest release.
+
+  * Replaced the README's markdown tables with lists. Hackage renders the README
+    outside the `#description` pane, and its stylesheet only borders tables inside
+    that pane, so a table there comes out unstyled and the columns run together.
+
+  * Dropped the per-platform GUI build instructions from the README; each GUI's
+    own directory documents itself. `GUI/winGUI/README.md` is new; `GUI/swiftGUI/`
+    and `GUI/tclGUI/` already had one. The note about needing `wish` on Linux went
+    with it -- when `wish` is missing, the binary already prints the `apt`/`dnf`/`nix`
+    command to install it.
+
+  * Reworded the cabal Description's pointer to the releases page: it now leads
+    with not needing a Haskell toolchain, rather than with the word "releases".
 
 ### Version 4.0, 2026-08-24
 
