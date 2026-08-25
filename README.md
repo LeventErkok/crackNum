@@ -11,26 +11,11 @@ decimal, and hex. It works in both directions:
 
 ### Download crackNum
 
-**→ [Ready-to-run bundles for Linux, macOS, and Windows](https://github.com/LeventErkok/crackNum/releases)**
+Ready-to-run bundles — nothing to build, no Haskell toolchain:
 
-Nothing to build, no Haskell toolchain. Each bundle carries the `crackNum`
-executable, a copy of `z3`, the GUI, a LICENSE, and a `README.txt` with the
-install steps for that platform.
-
-  - **Linux (x86_64)** — [`crackNum-<version>-linux-x86_64.tar.gz`](https://github.com/LeventErkok/crackNum/releases/latest).
-    Statically linked, so it runs as-is on any x86_64 Linux, old or new.
-  - **macOS (Apple Silicon)** — [`crackNum-<version>-macos-arm64.tar.gz`](https://github.com/LeventErkok/crackNum/releases/latest).
-    Includes `CrackNum.app`. Ad-hoc signed, so clear the quarantine flag first.
-  - **Windows (x86_64)** — [`crackNum-<version>-windows-x86_64.zip`](https://github.com/LeventErkok/crackNum/releases/latest).
-    Includes `CrackNumGUI.exe`. Unsigned, so SmartScreen warns on first run.
-
-Unpack it, put the files on your `PATH` — `z3` included, since crackNum shells
-out to it for every operation — and check with:
-
-```
-$ crackNum -fsp 3.5
-$ crackNum --gui
-```
+  - [**Linux** (x86_64)](https://github.com/LeventErkok/crackNum/releases/latest)
+  - [**macOS** (Apple Silicon)](https://github.com/LeventErkok/crackNum/releases/latest)
+  - [**Windows** (x86_64)](https://github.com/LeventErkok/crackNum/releases/latest)
 
 ### Building from source
 
@@ -40,9 +25,7 @@ crackNum is on [Hackage](http://hackage.haskell.org/package/crackNum):
 $ cabal install crackNum
 ```
 
-This way you also need [z3](https://github.com/Z3Prover/z3) on your `PATH`:
-crackNum delegates the floating-point reasoning to it, via
-[SBV](http://hackage.haskell.org/package/sbv).
+Note that you also need [z3](https://github.com/Z3Prover/z3) on your `PATH`.
 
 ### Supported formats
 

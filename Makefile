@@ -103,7 +103,7 @@ uploadMac: macdist
 	@git rev-parse -q --verify refs/tags/v$(VERSION) >/dev/null \
 	   || { echo "uploadMac: no v$(VERSION) tag; tag and push the release first"; exit 1; }
 	@gh release view v$(VERSION) >/dev/null 2>&1 \
-	   || gh release create v$(VERSION) --title "crackNum $(VERSION)" --notes "See CHANGES.md for what changed."
+	   || gh release create v$(VERSION) --title "crackNum $(VERSION)" --notes "See [CHANGES.md](https://github.com/LeventErkok/crackNum/blob/master/CHANGES.md) for what changed."
 	gh release upload v$(VERSION) $(BINDIST)/$(MACDIST).tar.gz --clobber
 	@echo "*** Attached $(MACDIST).tar.gz to release v$(VERSION)"
 	@gh release view v$(VERSION) --json assets --jq '.assets[].name' | sed 's/^/      /'

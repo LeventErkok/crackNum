@@ -1,7 +1,20 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 4.1, 2026-08-25
+* Latest Hackage released version: 4.2, 2026-08-25
+
+### Version 4.2, 2026-08-25
+
+  * Documentation only; no functional changes.
+
+  * Simplified the README's download section further. It is now just the three
+    platforms, each linking to the latest release. The per-platform notes (static
+    linking, the macOS quarantine flag, the Windows SmartScreen prompt) and the
+    unpack/PATH instructions are gone from here -- every bundle ships a `README.txt`
+    that covers them for that platform, and it is the first thing you see when you
+    unpack.
+
+  * Trimmed the note about needing z3 when installing from Hackage.
 
 ### Version 4.1, 2026-08-25
 
