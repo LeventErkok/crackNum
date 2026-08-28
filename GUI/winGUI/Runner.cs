@@ -4,6 +4,39 @@ using System.Text;
 
 namespace CrackNumGUI
 {
+    /// <summary>
+    /// What to make of whatever is sitting in the value box. An empty or whitespace-only
+    /// box is not a value: this used to be defaulted to "0", which cracked a number the
+    /// user had never typed and presented the result exactly like a real one, down to
+    /// reporting the conversion as exact. Kept out of MainForm so --selftest can assert
+    /// it headlessly; RunCrack itself is not reachable without a live form and Runner.
+    /// </summary>
+    internal sealed class ValueInput
+    {
+        /// <summary>Shown in place of a result when no value has been entered.</summary>
+        internal const string Prompt = "Enter a value above to crack it.";
+
+        internal bool HasValue { get; private set; }
+
+        /// <summary>The text to hand to crackNum, verbatim. Null when there is none.</summary>
+        internal string Value { get; private set; }
+
+        private ValueInput(bool hasValue, string value)
+        {
+            HasValue = hasValue;
+            Value = value;
+        }
+
+        internal static ValueInput For(string text)
+        {
+            // Passed through untouched when present: crackNum distinguishes 0xdeadbeef
+            // (decode) from 3735928559 (encode), so any normalizing here would change
+            // what the user asked for.
+            return string.IsNullOrWhiteSpace(text) ? new ValueInput(false, null)
+                                                   : new ValueInput(true, text);
+        }
+    }
+
     internal static class Runner
     {
         /// <summary>

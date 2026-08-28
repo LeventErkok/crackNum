@@ -357,12 +357,26 @@ final class Model: ObservableObject {
     Decoding:
       - Use hex (0x), binary (0b), or Verilog (N'h) notation.
       - You may use _, - or space as separators for readability.
-      - Verilog input longer than the format is decoded as SIMD lanes.
+      - Verilog N'h: N is the total width, split into N/format-size lanes.
     """
 
     var selectedFormat: Format? {
         guard let sel = selection else { return nil }
         return formatSections.flatMap(\.formats).first { $0.id == sel }
+    }
+
+    /// What the width box is currently driving. It is shared by all three "Custom"
+    /// entries -- IEEE-754 float, signed integer, and unsigned word -- but only the
+    /// float has an exponent, and with a fixed format selected nothing in the box
+    /// does anything at all. So both the heading and which rows stay live have to
+    /// follow the selection, rather than naming one of the three and hoping.
+    var customBox: (heading: String, widthApplies: Bool, exponentApplies: Bool) {
+        switch selectedFormat?.kind {
+        case .customFloat?: return ("Custom IEEE-754 float:", true,  true)
+        case .customInt?:   return ("Custom signed integer:", true,  false)
+        case .customWord?:  return ("Custom unsigned word:",  true,  false)
+        default:            return ("Custom format:",         false, false)
+        }
     }
 
     func run() {
@@ -373,8 +387,16 @@ final class Model: ObservableObject {
         case .invalid(let msg):
             output = msg
         case .flag(let flag):
-            let val = value.isEmpty ? "0" : value
-            let text = runCrackNum(flag: flag, rounding: rounding, value: val)
+            // An empty box is not a value. This used to default to "0", which cracked a
+            // number the user had never typed and presented the result exactly like a
+            // real one -- right down to "Conversion from \"0\" was exact". Say what is
+            // missing instead of inventing input.
+            let text: String
+            if value.trimmingCharacters(in: .whitespaces).isEmpty {
+                text = "Enter a value above to crack it."
+            } else {
+                text = runCrackNum(flag: flag, rounding: rounding, value: value)
+            }
             let kind: String
             if text.contains("ENCODED") { kind = "Encoding in format" }
             else if text.contains("DECODED") { kind = "Decoded using format" }
@@ -469,30 +491,32 @@ struct ContentView: View {
             // letting the heading line up flush left with "Rounding mode" above it,
             // instead of being indented past it by the box's title inset.
             VStack(alignment: .leading, spacing: 2) {
-                Text("Custom IEEE-754 float:").font(.caption).foregroundStyle(.secondary)
+                Text(model.customBox.heading).font(.caption).foregroundStyle(.secondary)
                 GroupBox {
                     VStack(alignment: .leading, spacing: 6) {
-                        HStack {
-                            Text("Total width:")
-                            Spacer()
-                            TextField("", text: $model.bitWidth)
-                                .frame(width: 70)
-                                .multilineTextAlignment(.trailing)
-                                .onSubmit { model.run() }
-                        }
-                        HStack {
-                            Text("Exponent width:")
-                            Spacer()
-                            TextField("", text: $model.expWidth)
-                                .frame(width: 70)
-                                .multilineTextAlignment(.trailing)
-                                .onSubmit { model.run() }
-                        }
+                        widthRow("Total width:",    text: $model.bitWidth, enabled: model.customBox.widthApplies)
+                        widthRow("Exponent width:", text: $model.expWidth, enabled: model.customBox.exponentApplies)
                     }
                     .font(.system(.body, design: .monospaced))
                 }
             }
         }
+    }
+
+    /// One labelled width field for the custom box. A row that does not apply is
+    /// dimmed as well as made inert: SwiftUI greys the TextField on its own, but not
+    /// the Text beside it, so the opacity is carried by the whole row.
+    private func widthRow(_ label: String, text: Binding<String>, enabled: Bool) -> some View {
+        HStack {
+            Text(label)
+            Spacer()
+            TextField("", text: text)
+                .frame(width: 70)
+                .multilineTextAlignment(.trailing)
+                .onSubmit { model.run() }
+        }
+        .disabled(!enabled)
+        .opacity(enabled ? 1 : 0.5)
     }
 }
 

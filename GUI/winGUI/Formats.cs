@@ -130,6 +130,42 @@ namespace CrackNumGUI
     }
 
     /// <summary>Either a crackNum precision flag, or a message explaining why there isn't one.</summary>
+    /// <summary>
+    /// What the shared custom-width box is driving for a given selection. The box
+    /// serves all three "Custom" entries -- IEEE-754 float, signed integer, and
+    /// unsigned word -- but only the float has an exponent, and with a fixed format
+    /// selected nothing in the box does anything at all. Kept out of MainForm so the
+    /// mapping can be asserted headlessly by --selftest.
+    /// </summary>
+    internal sealed class CustomBox
+    {
+        internal string Heading { get; private set; }
+        internal bool WidthApplies { get; private set; }
+        internal bool ExponentApplies { get; private set; }
+
+        private CustomBox(string heading, bool widthApplies, bool exponentApplies)
+        {
+            Heading = heading;
+            WidthApplies = widthApplies;
+            ExponentApplies = exponentApplies;
+        }
+
+        internal static CustomBox For(Format fmt)
+        {
+            if (fmt != null)
+            {
+                switch (fmt.Kind)
+                {
+                    case FormatKind.CustomFloat: return new CustomBox("Custom IEEE-754 float:", true, true);
+                    case FormatKind.CustomInt:   return new CustomBox("Custom signed integer:", true, false);
+                    case FormatKind.CustomWord:  return new CustomBox("Custom unsigned word:",  true, false);
+                }
+            }
+
+            return new CustomBox("Custom format:", false, false);
+        }
+    }
+
     internal sealed class FlagResult
     {
         internal string Flag { get; }

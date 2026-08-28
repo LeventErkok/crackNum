@@ -24,7 +24,7 @@ namespace CrackNumGUI
             "Decoding:\n" +
             "  - Use hex (0x), binary (0b), or Verilog (N'h) notation.\n" +
             "  - You may use _, - or space as separators for readability.\n" +
-            "  - Verilog input longer than the format is decoded as SIMD lanes.";
+            "  - Verilog N'h: N is the total width, split into N/format-size lanes.";
 
         private readonly TreeView _formats = new TreeView();
         private readonly TextBox _value = new TextBox();
@@ -32,6 +32,12 @@ namespace CrackNumGUI
         private readonly ComboBox _rounding = new ComboBox();
         private readonly TextBox _bitWidth = new TextBox();
         private readonly TextBox _expWidth = new TextBox();
+
+        // Held rather than built inline: SyncCustomBox retitles the heading and greys
+        // the rows that the selected format does not use, so it needs all three.
+        private readonly Label _customHeading = new Label();
+        private readonly Label _bitWidthLabel = MakeFieldLabel("Total width:");
+        private readonly Label _expWidthLabel = MakeFieldLabel("Exponent width:");
 
         // Held as a field on purpose: a ToolTip that nothing references gets collected,
         // and the tips silently stop appearing.
@@ -62,6 +68,10 @@ namespace CrackNumGUI
             if (parsed.FormatCode != null)
             {
                 SelectFormat(parsed.FormatCode);
+            }
+            else
+            {
+                SyncCustomBox();
             }
         }
 
@@ -291,13 +301,11 @@ namespace CrackNumGUI
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 Margin = new Padding(0, 8, 0, 0),
             };
-            customWrap.Controls.Add(new Label
-            {
-                Text = "Custom IEEE-754 float:",
-                AutoSize = true,
-                ForeColor = SystemColors.GrayText,
-                Margin = new Padding(0, 0, 0, 2),
-            }, 0, 0);
+            _customHeading.Text = "Custom format:";
+            _customHeading.AutoSize = true;
+            _customHeading.ForeColor = SystemColors.GrayText;
+            _customHeading.Margin = new Padding(0, 0, 0, 2);
+            customWrap.Controls.Add(_customHeading, 0, 0);
 
             var box = new GroupBox { Dock = DockStyle.Fill, AutoSize = true, Text = string.Empty, Margin = new Padding(0) };
             var grid = new TableLayoutPanel
@@ -312,11 +320,11 @@ namespace CrackNumGUI
             grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
             grid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 80f));
 
-            grid.Controls.Add(MakeFieldLabel("Total width:"), 0, 0);
+            grid.Controls.Add(_bitWidthLabel, 0, 0);
             SetUpWidthField(_bitWidth, "64");
             grid.Controls.Add(_bitWidth, 1, 0);
 
-            grid.Controls.Add(MakeFieldLabel("Exponent width:"), 0, 1);
+            grid.Controls.Add(_expWidthLabel, 0, 1);
             SetUpWidthField(_expWidth, "11");
             grid.Controls.Add(_expWidth, 1, 1);
 
@@ -404,7 +412,27 @@ namespace CrackNumGUI
             }
 
             _selection = fmt.Id;
+            SyncCustomBox();
             RunCrack();
+        }
+
+        /// <summary>
+        /// Point the shared width box at whatever is selected. It serves all three
+        /// "Custom" entries -- IEEE-754 float, signed integer, and unsigned word --
+        /// but only the float has an exponent, and with a fixed format selected
+        /// nothing in the box does anything at all. So the heading and which rows
+        /// stay live both follow the selection, rather than naming one of the three
+        /// and hoping.
+        /// </summary>
+        private void SyncCustomBox()
+        {
+            var box = CustomBox.For(Formats.ById(_selection));
+
+            _customHeading.Text    = box.Heading;
+            _bitWidthLabel.Enabled = box.WidthApplies;
+            _bitWidth.Enabled      = box.WidthApplies;
+            _expWidthLabel.Enabled = box.ExponentApplies;
+            _expWidth.Enabled      = box.ExponentApplies;
         }
 
         private void SelectFormat(string id)
@@ -447,18 +475,26 @@ namespace CrackNumGUI
                 return;
             }
 
-            var value = _value.Text.Length == 0 ? "0" : _value.Text;
+            // An empty box is not a value; see ValueInput for why this is not defaulted.
+            var input = ValueInput.For(_value.Text);
 
             string text;
-            var saved = Cursor.Current;
-            Cursor.Current = Cursors.WaitCursor;
-            try
+            if (!input.HasValue)
             {
-                text = Runner.Run(flag.Flag, (string)_rounding.SelectedItem, value);
+                text = ValueInput.Prompt;
             }
-            finally
+            else
             {
-                Cursor.Current = saved;
+                var saved = Cursor.Current;
+                Cursor.Current = Cursors.WaitCursor;
+                try
+                {
+                    text = Runner.Run(flag.Flag, (string)_rounding.SelectedItem, input.Value);
+                }
+                finally
+                {
+                    Cursor.Current = saved;
+                }
             }
 
             string kind;

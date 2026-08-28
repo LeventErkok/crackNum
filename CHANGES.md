@@ -1,7 +1,49 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 4.2, 2026-08-25
+* Latest Hackage released version: 4.3, 2026-08-27
+
+### Version 4.3, 2026-08-27
+
+  * All three GUIs: an empty value box is no longer cracked as if it held 0. It
+    used to be defaulted, so clicking a format with nothing typed -- or starting
+    with `crackNum --gui -fsp` and no value -- produced a complete, ordinary-looking
+    result for a number the user had never entered, down to reporting the
+    conversion as exact. The box now says what is missing instead. A value that is
+    present still reaches crackNum byte-for-byte: `0xdeadbeef` and `3735928559`
+    select different operations, so normalizing here would change the question.
+
+  * All three GUIs: the box holding the custom width fields now says what it
+    actually drives. It was headed "Custom IEEE-754 float", but it is shared by
+    all three "Custom" entries -- the IEEE-754 float, the signed integer, and the
+    unsigned word -- so two of its three users were reading a heading meant for
+    something else. The heading now names whichever one is selected.
+
+  * Relatedly, the rows that do not apply are greyed out rather than left live:
+    only the float has an exponent, so "Exponent width" is inert for the integer
+    and word customs, and with a fixed format selected nothing in the box does
+    anything at all. Both were previously editable, with no hint that typing in
+    them had no effect.
+
+  * The Tcl GUI no longer raises a raw Tcl error when a custom width field holds
+    something that is not a number. The widths went straight into `expr`, which
+    throws on a non-numeric operand, so "abc" -- or an empty field -- aborted
+    inside the widget callback rather than reaching the "Invalid custom FP format"
+    message written for exactly that case. They are now parsed the way the Swift
+    and Windows GUIs already parsed them. This also stops `expr` from reading
+    "0x20" as 32, which neither of the other two accepts.
+
+  * The Windows GUI's `--selftest` now asserts both of the above mappings -- which
+    rows the custom box enables, and that an empty value is never turned into a
+    number while a present one passes through untouched. Neither is reachable from
+    a headless build otherwise, and layout and enablement bugs do not fail builds.
+
+  * Reworded the GUIs' help text on multi-lane decoding. It said "Verilog input
+    longer than the format is decoded as SIMD lanes", which named the wrong
+    criterion twice over: it is the declared width N that decides, not the length
+    of what you type (`64'hF` is one digit and still gives four lanes), and being
+    longer is not sufficient either, since N must be an exact multiple of the
+    format -- `20'h12345` in a 16-bit format is an error, not two lanes.
 
 ### Version 4.2, 2026-08-25
 

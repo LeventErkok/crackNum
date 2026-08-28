@@ -82,6 +82,30 @@ namespace CrackNumGUI
             CheckParse(failures, new[] { "-i16", "-rRTZ", "--", "-42" }, "i16", "-42", "RTZ");
             CheckParse(failures, new[] { "-f8+24", "--", "1.5" }, "fcs", "1.5", null);
 
+            // 3b. The shared custom-width box must describe what it actually drives:
+            //     the heading names the selected format, and the exponent row is live
+            //     only for the float. Layout bugs do not fail builds, so assert the
+            //     mapping here rather than trusting the screenshot to show it.
+            CheckCustomBox(failures, "fcs", "Custom IEEE-754 float:", true, true);
+            CheckCustomBox(failures, "ics", "Custom signed integer:", true, false);
+            CheckCustomBox(failures, "wcs", "Custom unsigned word:", true, false);
+            CheckCustomBox(failures, "fsp", "Custom format:", false, false);
+            CheckCustomBox(failures, "i32", "Custom format:", false, false);
+            CheckCustomBox(failures, null, "Custom format:", false, false);
+
+            // 3c. An empty value box must never be turned into a number. It used to
+            //     default to "0", which cracked a value the user had never typed and
+            //     rendered it exactly like a real result. Anything present must reach
+            //     crackNum byte-for-byte, since 0xdeadbeef and 3735928559 mean different
+            //     operations.
+            CheckValueInput(failures, null, false);
+            CheckValueInput(failures, "", false);
+            CheckValueInput(failures, "   ", false);
+            CheckValueInput(failures, "\t", false);
+            CheckValueInput(failures, "0", true);
+            CheckValueInput(failures, "2.5", true);
+            CheckValueInput(failures, "0xdeadbeef", true);
+
             // 4. The embedded icon must actually be there under the name MainForm
             //    looks it up by. MainForm deliberately falls back to the stock icon
             //    rather than throwing, so without this check a rename or a dropped
@@ -146,6 +170,43 @@ namespace CrackNumGUI
             }
 
             return 1;
+        }
+
+        private static void CheckValueInput(ICollection<string> failures, string text, bool expected)
+        {
+            var label = text == null ? "(null)" : "\"" + text + "\"";
+            var input = ValueInput.For(text);
+
+            if (input.HasValue != expected)
+            {
+                failures.Add("value box " + label + " gave HasValue=" + input.HasValue + ", expected " + expected);
+            }
+
+            if (input.HasValue && input.Value != text)
+            {
+                failures.Add("value box " + label + " was altered to \"" + input.Value + "\" before being passed on");
+            }
+        }
+
+        private static void CheckCustomBox(ICollection<string> failures, string id, string heading, bool width, bool exponent)
+        {
+            var label = id ?? "(no selection)";
+            var box = CustomBox.For(Formats.ById(id));
+
+            if (box.Heading != heading)
+            {
+                failures.Add("custom box for " + label + " is headed \"" + box.Heading + "\", expected \"" + heading + "\"");
+            }
+
+            if (box.WidthApplies != width)
+            {
+                failures.Add("custom box for " + label + " has WidthApplies=" + box.WidthApplies + ", expected " + width);
+            }
+
+            if (box.ExponentApplies != exponent)
+            {
+                failures.Add("custom box for " + label + " has ExponentApplies=" + box.ExponentApplies + ", expected " + exponent);
+            }
         }
 
         private static void CheckParse(ICollection<string> failures, string[] args, string format, string value, string rounding)

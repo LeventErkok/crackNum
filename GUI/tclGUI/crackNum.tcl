@@ -104,7 +104,7 @@ Encoding:
 Decoding:
   - Use hex (0x), binary (0b), or Verilog (N'h) notation.
   - You may use _, - or space as separators for readability.
-  - Verilog input longer than the format is decoded as SIMD lanes.}
+  - Verilog N'h: N is the total width, split into N/format-size lanes.}
 
 # ---------------------------------------------------------------------------
 # Build the precision flag from the selected format
@@ -130,8 +130,23 @@ proc precisionFlag {} {
                     # Only check that the widths describe a well-formed layout; crackNum
                     # itself owns the remaining limits (and reports solver restrictions
                     # readably).
+                    #
+                    # The width entries are free-form text with no -validatecommand, so
+                    # normalize them the way the Swift and Windows GUIs do: anything that
+                    # is not a plain decimal integer becomes 0 and falls into the message
+                    # below. This has to happen before any arithmetic -- expr throws on a
+                    # non-numeric operand ("can't use non-numeric string as operand"), and
+                    # so does the [format %4d] in that message, and an error raised inside
+                    # a widget binding escapes as a Tk error dialog instead.
+                    #
+                    # Tested with a regexp rather than [string is integer], which is true
+                    # for "0x20" and would let expr silently read it as 32. Swift's
+                    # Int("0x20") and C#'s int.TryParse both reject it, and matching them
+                    # is what keeps the three GUIs agreeing.
                     set bw $state(bitWidth)
                     set ew $state(expWidth)
+                    if {![regexp {^-?[0-9]+$} [string trim $bw]]} { set bw 0 }
+                    if {![regexp {^-?[0-9]+$} [string trim $ew]]} { set ew 0 }
                     set sig [expr {$bw - $ew - 1}]
                     if {$ew < 1 || $sig < 0} {
                         return [list invalid \
@@ -174,11 +189,13 @@ proc runCrackNum {} {
     set flag $flagResult
     set rm   "-r$state(rounding)"
 
-    # NB: do NOT use [expr] to default this. expr parses its operands as numbers,
-    # so "0xdeadbeef" would arrive as 3735928559 and crackNum would encode the
-    # decimal instead of decoding the bit-pattern.
+    # An empty box is not a value. This used to default to 0, which cracked a number
+    # the user had never typed and presented the result exactly like a real one. Say
+    # what is missing instead of inventing input. (Note there is deliberately no
+    # [expr] here: expr parses its operands as numbers, so "0xdeadbeef" would arrive
+    # as 3735928559 and crackNum would encode the decimal instead of decoding it.)
     set val $state(value)
-    if {$val eq ""} { set val 0 }
+    if {[string trim $val] eq ""} { return "Enter a value above to crack it." }
 
     # Pass SBV_Z3 so crackNum finds z3 even when PATH is minimal.
     if {[info exists ::env(SBV_Z3)]} { set savedZ3 $::env(SBV_Z3) } else { set savedZ3 "" }
@@ -416,6 +433,7 @@ bind .main.side.fmts.lb <<TreeviewSelect>> {
     set sel [.main.side.fmts.lb selection]
     if {$sel ne "" && [info exists ITEM_FMT($sel)]} {
         set state(selection) $ITEM_FMT($sel)
+        syncCustomBox
         crack
     } else {
         .main.side.fmts.lb selection remove $sel
@@ -450,7 +468,8 @@ bind .main.side.rm.cb <<ComboboxSelected>> {
 # labelframe's own -text: that keeps the framed/shaded container while letting the
 # heading line up flush left with "Rounding mode:" above it, instead of being
 # indented past it by the frame's title inset.
-label .main.side.customLbl -text "Custom IEEE-754 float:" -anchor w
+# Text is a placeholder: syncCustomBox retitles this to name whatever is selected.
+label .main.side.customLbl -text "Custom format:" -anchor w
 pack  .main.side.customLbl -fill x -pady {8 2}
 
 labelframe .main.side.custom -padx 4 -pady 4
@@ -473,6 +492,35 @@ entry .main.side.custom.ew.e -textvariable state(expWidth) -width 6 -justify rig
     -font [list $MONO 11]
 pack  .main.side.custom.ew.e -side right
 bind  .main.side.custom.ew.e <Return> crack
+
+# The box above is shared by all three "Custom" entries -- IEEE-754 float, signed
+# integer, and unsigned word -- but only the float has an exponent, and with a fixed
+# format selected nothing in the box does anything at all. So the heading and which
+# rows stay live both follow the selection, rather than naming one of the three and
+# hoping. Call this on every selection change.
+proc syncCustomBox {} {
+    global state FORMAT_SECTIONS
+
+    set kind ""
+    foreach section $FORMAT_SECTIONS {
+        foreach fmt [lindex $section 1] {
+            if {[lindex $fmt 0] eq $state(selection)} { set kind [lindex $fmt 2] }
+        }
+    }
+
+    switch $kind {
+        customFloat { set heading "Custom IEEE-754 float:" ; set bw normal   ; set ew normal   }
+        customInt   { set heading "Custom signed integer:" ; set bw normal   ; set ew disabled }
+        customWord  { set heading "Custom unsigned word:"  ; set bw normal   ; set ew disabled }
+        default     { set heading "Custom format:"         ; set bw disabled ; set ew disabled }
+    }
+
+    .main.side.customLbl   configure -text  $heading
+    .main.side.custom.bw.l configure -state $bw
+    .main.side.custom.bw.e configure -state $bw
+    .main.side.custom.ew.l configure -state $ew
+    .main.side.custom.ew.e configure -state $ew
+}
 
 # Output pane
 frame .main.out
@@ -603,6 +651,7 @@ proc parseArgs {argv} {
 # ---------------------------------------------------------------------------
 showOutput $WELCOME
 parseArgs $argv
+syncCustomBox
 if {$state(selection) ne ""} { crack }
 focus .top.val
 .top.val icursor end
