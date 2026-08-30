@@ -1,0 +1,29 @@
+# crackNum web GUI -- TLS variant: nginx terminates https, service is loopback-only.
+#
+# Differs from the plain-http unit in exactly two ways:
+#   * --host 127.0.0.1 --port 8080  (nginx is the only thing that talks to it)
+#   * no AmbientCapabilities        (nothing binds a privileged port any more)
+
+[Unit]
+Description=crackNum web GUI
+After=network.target
+
+[Service]
+Type=simple
+User=cracknum
+Group=cracknum
+WorkingDirectory=/opt/cracknum
+Environment=CRACKNUM=/opt/cracknum/crackNum
+Environment=SBV_Z3=/opt/cracknum/z3
+ExecStart=/usr/bin/python3 /opt/cracknum/server.py --host 127.0.0.1 --port 8080
+Restart=on-failure
+
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+RestrictNamespaces=yes
+
+[Install]
+WantedBy=multi-user.target
