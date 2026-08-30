@@ -1,0 +1,240 @@
+/* crackNum web GUI.
+   The output pane is the load-bearing part: crackNum draws a bit ruler whose
+   columns must line up with the layout rows beneath it, so the <pre> gets a
+   pinned monospace stack and is allowed to scroll horizontally rather than
+   wrap. Everything else is ordinary chrome. */
+
+:root {
+  --bg:        #f5f5f7;
+  --panel:     #ffffff;
+  --ink:       #1d1d1f;
+  --dim:       #6e6e73;
+  --line:      #d9d9de;
+  --accent:    #2b62e8;
+  --accent-fg: #ffffff;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+          "DejaVu Sans Mono", monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:     #1c1c1e;
+    --panel:  #2c2c2e;
+    --ink:    #f2f2f7;
+    --dim:    #98989d;
+    --line:   #3a3a3c;
+    --accent: #4d7df3;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--ink);
+  font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* ---------------------------------------------------------------- header */
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+
+h1 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.valuebox {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.valuebox label { font-family: var(--mono); color: var(--dim); }
+
+#value {
+  font-family: var(--mono);
+  font-size: 14px;
+  padding: 7px 10px;
+  width: min(420px, 55vw);
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+}
+
+#value:focus, select:focus, input[type=number]:focus, #output:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+#help {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 15px;
+  cursor: pointer;
+}
+
+/* ------------------------------------------------------------ main areas */
+
+main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 12px;
+  padding: 12px 16px 16px;
+}
+
+#sidebar {
+  width: 250px;
+  flex: none;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.heading {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin: 14px 0 6px;
+}
+
+#sections .heading:first-child { margin-top: 0; }
+
+.fmt {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+  border-bottom: 1px solid var(--line);
+}
+
+.fmt:last-child { border-bottom: 0; }
+.fmt:hover { background: var(--panel); }
+
+.fmt[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-bottom-color: transparent;
+}
+
+.control { margin-top: 18px; }
+
+.control > label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 6px;
+}
+
+select, input[type=number] {
+  font: inherit;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+
+select { width: 100%; }
+
+.widths {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.widths label { font-family: var(--mono); font-size: 13px; }
+.widths input { width: 84px; font-family: var(--mono); text-align: right; }
+
+.widths label.off, .widths input:disabled { color: var(--dim); opacity: 0.55; }
+
+/* -------------------------------------------------------------- results */
+
+#results {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#output {
+  flex: 1;
+  margin: 0;
+  padding: 14px 16px;
+  overflow: auto;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.5;
+  /* The bit ruler must never reflow. */
+  white-space: pre;
+  tab-size: 8;
+}
+
+#output.busy { opacity: 0.55; }
+
+.actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.actions button {
+  font: inherit;
+  padding: 5px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.actions button:hover { border-color: var(--accent); }
+
+#toast { color: var(--dim); font-size: 12px; }
+
+/* ---------------------------------------------------------------- narrow */
+
+@media (max-width: 700px) {
+  main { flex-direction: column; }
+  #sidebar { width: auto; overflow: visible; }
+  header { flex-wrap: wrap; }
+  .valuebox { width: 100%; }
+  #value { width: 100%; }
+}

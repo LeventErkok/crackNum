@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CrackNum</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <h1>CrackNum</h1>
+  <div class="valuebox">
+    <label for="value">Value</label>
+    <input id="value" type="text" spellcheck="false" autocomplete="off" autocapitalize="off"
+           placeholder="Enter a number or bit pattern">
+  </div>
+  <button id="help" type="button" title="What can I type here?" aria-label="Help">?</button>
+</header>
+
+<main>
+  <nav id="sidebar" aria-label="Formats">
+    <div id="sections"></div>
+
+    <div class="control">
+      <label for="rounding">Rounding mode</label>
+      <select id="rounding"></select>
+    </div>
+
+    <div class="control">
+      <div id="custom-heading" class="heading">Custom format:</div>
+      <div class="widths">
+        <label for="width" id="width-label">Total width</label>
+        <input id="width" type="number" min="0" max="4096" value="64" disabled>
+        <label for="exp" id="exp-label">Exponent width</label>
+        <input id="exp" type="number" min="0" max="4096" value="11" disabled>
+      </div>
+    </div>
+  </nav>
+
+  <section id="results">
+    <pre id="output" tabindex="0"></pre>
+    <div class="actions">
+      <button id="copy" type="button">Copy</button>
+      <button id="permalink" type="button">Copy link</button>
+      <span id="toast" role="status" aria-live="polite"></span>
+    </div>
+  </section>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
