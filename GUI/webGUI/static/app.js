@@ -197,18 +197,39 @@ el.exp.addEventListener('change', run);
 
 el.help.addEventListener('click', function () { el.output.textContent = WELCOME; });
 
+// navigator.clipboard exists only in a secure context -- https, or localhost.
+// Served over plain http from a hostname it is undefined, and reading
+// .writeText off it throws before any promise is created, so both buttons
+// would silently do nothing. Fall back to a scratch textarea in that case.
+function copy(text, done) {
+  if (window.isSecureContext && navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(
+      function () { toast(done); },
+      function () { toast('Copy failed.'); }
+    );
+    return;
+  }
+
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.setAttribute('readonly', '');
+  ta.style.position = 'fixed';   // don't scroll the page to it
+  ta.style.top = '-1000px';
+  document.body.appendChild(ta);
+  ta.select();
+  ta.setSelectionRange(0, ta.value.length);   // iOS wants the explicit range
+  var ok = false;
+  try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+  document.body.removeChild(ta);
+  toast(ok ? done : 'Copy failed -- select the text and copy by hand.');
+}
+
 el.copy.addEventListener('click', function () {
-  navigator.clipboard.writeText(el.output.textContent).then(
-    function () { toast('Output copied.'); },
-    function () { toast('Copy failed.'); }
-  );
+  copy(el.output.textContent, 'Output copied.');
 });
 
 el.permalink.addEventListener('click', function () {
-  navigator.clipboard.writeText(permalinkURL()).then(
-    function () { toast('Link copied.'); },
-    function () { toast('Copy failed.'); }
-  );
+  copy(permalinkURL(), 'Link copied.');
 });
 
 // -------------------------------------------------------------------- boot
