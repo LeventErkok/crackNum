@@ -87,8 +87,14 @@ the single file `ssl_certificate` points at.
     than you assume: an internal CA that documents two years can hand back six
     months. Read `notAfter` off the issued certificate rather than trusting the
     paperwork, and set the reminder from that.
-  * **HSTS.** Left commented out in the nginx config on purpose. It is sticky in
-    browsers and awkward to undo; turn it on once TLS is known good, not before.
+  * **HSTS.** Left commented out on purpose, and not merely until TLS is proven.
+    It cannot be revoked within its lifetime, and it removes the browser's
+    "proceed anyway" for a bad certificate -- so with a short-lived, manually
+    renewed cert, a missed renewal stops being a warning page and becomes a site
+    nobody can reach. You cannot serve the `max-age=0` that would clear it,
+    because the thing that serves it is the thing that is broken. For an internal
+    tool with no login, the protection it buys does not justify that. If you do
+    want it, use a short `max-age` -- a day, not a year.
   * **Static files** are read from disk per request, so updating `static/*` needs
     only a copy and a browser hard-reload -- no service restart.
   * **Editing `ExecStart` by hand** defeats any `sed` you may have scripted
