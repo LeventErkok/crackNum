@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace CrackNumGUI
 {
@@ -122,6 +123,77 @@ namespace CrackNumGUI
             {
                 return "Failed to launch crackNum: " + ex.Message;
             }
+        }
+
+        /// <summary>
+        /// The version crackNum reports, e.g. "4.3", or null if it cannot be asked.
+        /// </summary>
+        /// <remarks>
+        /// Read from the binary rather than carried here, so the footer cannot claim a
+        /// version other than the one actually answering. Null rather than a guess when
+        /// crackNum is missing: the output pane is already saying so, and a version
+        /// invented on top of that would be worse than none. Computed once -- the value
+        /// cannot change while the process is running.
+        /// </remarks>
+        internal static string Version => LazyVersion.Value;
+
+        private static readonly Lazy<string> LazyVersion = new Lazy<string>(() =>
+        {
+            var crackNum = Tools.CrackNum;
+            if (crackNum == null)
+            {
+                return null;
+            }
+
+            var psi = new ProcessStartInfo
+            {
+                FileName = crackNum,
+                Arguments = "-v",
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+            };
+
+            try
+            {
+                using (var proc = new Process { StartInfo = psi })
+                {
+                    proc.Start();
+                    var text = proc.StandardOutput.ReadToEnd() + proc.StandardError.ReadToEnd();
+                    proc.WaitForExit();
+                    if (proc.ExitCode != 0)
+                    {
+                        return null;
+                    }
+
+                    return ParseVersion(text);
+                }
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        });
+
+        /// <summary>
+        /// Pull the version out of what <c>crackNum -v</c> printed, or null.
+        /// </summary>
+        /// <remarks>
+        /// Split out from the process plumbing so --selftest can assert it without a
+        /// crackNum.exe to run, which is the same reason ValueInput lives outside
+        /// MainForm. The banner reads "crackNum.exe v4.3, (c) Levent Erkok. ..." on
+        /// Windows, where Main.hs deliberately prints the .exe name.
+        /// </remarks>
+        internal static string ParseVersion(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return null;
+            }
+
+            var m = Regex.Match(text, @"\bv(\d[\w.]*)");
+            return m.Success ? m.Groups[1].Value : null;
         }
 
         /// <summary>

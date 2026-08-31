@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.Globalization;
 using System.Reflection;
@@ -8,6 +9,12 @@ namespace CrackNumGUI
 {
     internal sealed class MainForm : Form
     {
+        /// <summary>
+        /// Where the GUIs send bug reports. Same destination in the Swift, Tcl, Windows
+        /// and web front ends, so a report lands in the same place whichever one is used.
+        /// </summary>
+        private const string IssuesUrl = "https://github.com/LeventErkok/crackNum/issues";
+
         private const string Welcome =
             "Enter a value above, then pick a format on the left to crack it.\n" +
             "\n" +
@@ -106,15 +113,82 @@ namespace CrackNumGUI
             {
                 Dock = DockStyle.Fill,
                 ColumnCount = 1,
-                RowCount = 2,
+                RowCount = 3,
                 Padding = new Padding(8),
             };
             root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             root.RowStyles.Add(new RowStyle(SizeType.Percent, 100f));
+            root.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             Controls.Add(root);
 
             root.Controls.Add(BuildTopBar(), 0, 0);
             root.Controls.Add(BuildContent(), 0, 1);
+            root.Controls.Add(BuildFooter(), 0, 2);
+        }
+
+        /// <summary>
+        /// Version, and a way to report what it got wrong. The version label is left out
+        /// entirely when crackNum could not be asked, rather than showing a placeholder.
+        /// </summary>
+        private Control BuildFooter()
+        {
+            var footer = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.LeftToRight,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                Margin = new Padding(0, 6, 0, 0),
+                WrapContents = false,
+            };
+
+            var version = Runner.Version;
+            if (version != null)
+            {
+                footer.Controls.Add(new Label
+                {
+                    Text = "crackNum v" + version,
+                    AutoSize = true,
+                    ForeColor = SystemColors.GrayText,
+                    Margin = new Padding(0, 3, 12, 0),
+                });
+            }
+
+            var link = new LinkLabel
+            {
+                Text = "Bugs/Feedback/Comments?",
+                AutoSize = true,
+                Margin = new Padding(0, 3, 0, 0),
+            };
+            link.LinkClicked += (s, e) => OpenIssues();
+            footer.Controls.Add(link);
+
+            return footer;
+        }
+
+        /// <summary>
+        /// Open the issue tracker in the user's browser. UseShellExecute is what hands
+        /// the URL to the shell to resolve; without it this would be an attempt to
+        /// execute the string as a program. Failure is reported rather than thrown:
+        /// losing the whole GUI because a browser would not start is a poor trade.
+        /// </summary>
+        private void OpenIssues()
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = IssuesUrl,
+                    UseShellExecute = true,
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this,
+                    "Could not open a browser." + Environment.NewLine + Environment.NewLine
+                        + IssuesUrl + Environment.NewLine + Environment.NewLine + ex.Message,
+                    "crackNum", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
         }
 
         private Control BuildTopBar()

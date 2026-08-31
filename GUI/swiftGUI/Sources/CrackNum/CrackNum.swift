@@ -68,6 +68,36 @@ enum Tools {
     static let crackNum: String? = locate("crackNum")
     static let z3: String? = locate("z3")
 
+    /// The version crackNum reports, e.g. "4.3". Asked of the binary rather than
+    /// carried here, so the footer cannot claim a version other than the one that
+    /// is actually answering. Resolved once, lazily; nil if crackNum is missing
+    /// or says something unexpected, in which case the footer stays quiet.
+    static let version: String? = {
+        guard let crackNum = crackNum else { return nil }
+        let proc = Process()
+        proc.executableURL = URL(fileURLWithPath: crackNum)
+        proc.arguments = ["-v"]
+        var env = ProcessInfo.processInfo.environment
+        env["PATH"] = childPath
+        proc.environment = env
+        let pipe = Pipe()
+        proc.standardOutput = pipe
+        proc.standardError = pipe
+        proc.standardInput = FileHandle.nullDevice
+        do {
+            try proc.run()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            proc.waitUntilExit()
+            guard proc.terminationStatus == 0,
+                  let raw = String(data: data, encoding: .utf8) else { return nil }
+            // "crackNum v4.3, (c) Levent Erkok. Released with a BSD3 license."
+            guard let v = raw.range(of: #"\bv\d[\w.]*"#, options: .regularExpression) else { return nil }
+            return String(raw[v].dropFirst())
+        } catch {
+            return nil
+        }
+    }()
+
     /// PATH to hand to the crackNum child: the dirs of the tools we resolved,
     /// followed by the inherited PATH. Avoids forcing the login-shell query.
     static var childPath: String {
@@ -237,6 +267,10 @@ func runCrackNum(flag: String, rounding: String, value: String) -> String {
 }
 
 // MARK: - UI
+
+/// Where the GUIs send bug reports. Same destination in the Swift, Tcl, Windows
+/// and web front ends, so a report lands in the same place whichever one is used.
+let issuesURL = URL(string: "https://github.com/LeventErkok/crackNum/issues")!
 
 /// Parsed crackNum-style command-line arguments.
 struct ParsedArgs {
@@ -455,9 +489,28 @@ struct ContentView: View {
                 .border(Color(nsColor: .separatorColor))
             }
             .padding(.horizontal)
-            .padding(.bottom)
+
+            footer
+                .padding(.horizontal)
+                .padding(.bottom, 8)
         }
         .frame(minWidth: 820, minHeight: 560)
+    }
+
+    /// Version, and a way to report what it got wrong. The version is omitted
+    /// rather than guessed at if crackNum could not be asked -- in that case the
+    /// output pane is already saying the binary is missing, and a footer
+    /// inventing a number on top of that would be actively misleading.
+    private var footer: some View {
+        HStack(spacing: 12) {
+            if let v = Tools.version {
+                Text("crackNum v\(v)")
+            }
+            Link("Bugs/Feedback/Comments?", destination: issuesURL)
+            Spacer()
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
     }
 
     private var sidebar: some View {

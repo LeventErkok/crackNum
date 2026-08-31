@@ -647,6 +647,62 @@ proc parseArgs {argv} {
 }
 
 # ---------------------------------------------------------------------------
+# Footer: the version, and where to report what it gets wrong
+# ---------------------------------------------------------------------------
+
+set ISSUES_URL "https://github.com/LeventErkok/crackNum/issues"
+
+# Ask the binary its version rather than carrying a copy here, which would drift
+# the first time a release bumped the cabal file and not this file. Empty if
+# crackNum is missing or says something unexpected: the output pane is already
+# reporting a missing binary, and a version invented on top of that would be
+# worse than none.
+proc crackNumVersion {} {
+    global CRACKNUM
+    if {$CRACKNUM eq ""} { return "" }
+    if {[catch {exec $CRACKNUM -v 2>@1} out]} { return "" }
+    # "crackNum v4.3, (c) Levent Erkok. Released with a BSD3 license."
+    # \y, not \b: in Tcl's regexp \b is a backspace, so \b never matches here.
+    if {[regexp {\yv(\d[\w.]*)} $out -> v]} { return $v }
+    return ""
+}
+
+# Tk has no "open this in a browser", so hand off to the platform's opener.
+# Failure is silent by design: a footer link that cannot open is a nuisance,
+# not something worth an error dialog over a crack the user is in the middle of.
+proc openURL {url} {
+    if {$::tcl_platform(platform) eq "windows"} {
+        catch {exec {*}[auto_execok start] "" $url &}
+    } elseif {$::tcl_platform(os) eq "Darwin"} {
+        catch {exec open $url &}
+    } else {
+        catch {exec xdg-open $url &}
+    }
+}
+
+# Packed with -before .main: .main is packed with -expand yes and would otherwise
+# have already claimed the space this bar needs, leaving it squeezed or invisible.
+frame .footer
+pack .footer -side bottom -fill x -padx 8 -pady {0 6} -before .main
+
+set VERSION [crackNumVersion]
+if {$VERSION ne ""} {
+    label .footer.ver -text "crackNum v$VERSION" -anchor w
+    pack  .footer.ver -side left
+}
+
+label .footer.link -text "Bugs/Feedback/Comments?" -anchor w \
+      -fg #2b62e8 -cursor hand2
+pack  .footer.link -side left -padx {12 0}
+
+# Underline only the link, leaving the rest of the footer in the default font.
+set linkFont [font actual [.footer.link cget -font]]
+dict set linkFont -underline 1
+.footer.link configure -font $linkFont
+
+bind .footer.link <Button-1> {openURL $ISSUES_URL}
+
+# ---------------------------------------------------------------------------
 # Start
 # ---------------------------------------------------------------------------
 showOutput $WELCOME

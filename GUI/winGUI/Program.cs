@@ -137,6 +137,27 @@ namespace CrackNumGUI
                 failures.Add("loading the embedded icon threw: " + ex.Message);
             }
 
+            // 4b. Version parsing must survive whatever -v prints, and must decline
+            //     rather than guess when there is no version in the text at all.
+            var versionCases = new[]
+            {
+                new { Text = "crackNum.exe v4.3, (c) Levent Erkok. Released with a BSD3 license.", Want = "4.3" },
+                new { Text = "crackNum v4.3, (c) Levent Erkok. Released with a BSD3 license.",     Want = "4.3" },
+                new { Text = "crackNum v10.12.1, (c) x",                                          Want = "10.12.1" },
+                new { Text = "no version here",                                                   Want = (string)null },
+                new { Text = "",                                                                  Want = (string)null },
+                new { Text = (string)null,                                                        Want = (string)null },
+            };
+            foreach (var c in versionCases)
+            {
+                var got = Runner.ParseVersion(c.Text);
+                if (got != c.Want)
+                {
+                    failures.Add("ParseVersion(" + (c.Text ?? "<null>") + ") gave "
+                                 + (got ?? "<null>") + ", wanted " + (c.Want ?? "<null>"));
+                }
+            }
+
             // 5. The window must build. This is the one that catches layout mistakes,
             //    so force handle creation rather than settling for the constructor.
             try
