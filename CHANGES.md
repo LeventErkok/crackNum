@@ -1,7 +1,20 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 4.3, 2026-08-27
+* Latest Hackage released version: 4.4, 2026-08-31
+
+### Version 4.4, 2026-08-31
+
+  * New web GUI: a browser front-end, alongside the existing macOS, Windows and
+    Linux ones. It runs the same unmodified `crackNum` binary and needs nothing
+    installed beyond Python 3.9. Adds permalinks and dark mode. See
+    `GUI/webGUI/README.md`.
+
+  * All four GUIs now show the crackNum version in a footer, with links to the
+    project page and to the issue tracker.
+
+  * `GUI/webGUI/deploy` has nginx and systemd files for running the web GUI on a
+    server.
 
 ### Version 4.3, 2026-08-27
 

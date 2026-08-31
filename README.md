@@ -169,6 +169,11 @@ $ crackNum --gui -fsp 2.5        -- open it with single-precision selected, and 
 $ crackNum --gui 0xdeadbeef      -- open it pre-filled with a value to decode
 ```
 
+There is also a browser front-end, which runs the same binary and serves the same
+interface over HTTP. It needs nothing beyond Python 3.9, and adds permalinks that
+reproduce a result exactly. See [`GUI/webGUI`](GUI/webGUI/README.md); to run it on
+a server, see [`GUI/webGUI/deploy`](GUI/webGUI/deploy/README.md).
+
 ### Usage info
 ```
 Usage: crackNum value OR binary/hex-pattern
