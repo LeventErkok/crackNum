@@ -272,6 +272,9 @@ func runCrackNum(flag: String, rounding: String, value: String) -> String {
 /// and web front ends, so a report lands in the same place whichever one is used.
 let issuesURL = URL(string: "https://github.com/LeventErkok/crackNum/issues")!
 
+/// The project itself, behind the version in the footer.
+let repoURL = URL(string: "https://github.com/LeventErkok/crackNum")!
+
 /// Parsed crackNum-style command-line arguments.
 struct ParsedArgs {
     var value: String?
@@ -504,7 +507,7 @@ struct ContentView: View {
     private var footer: some View {
         HStack(spacing: 12) {
             if let v = Tools.version {
-                Text("crackNum v\(v)")
+                Link("crackNum v\(v)", destination: repoURL)
             }
             Spacer()
             Link("Bugs/Feedback?", destination: issuesURL)

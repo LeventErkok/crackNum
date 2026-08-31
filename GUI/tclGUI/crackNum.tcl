@@ -650,7 +650,8 @@ proc parseArgs {argv} {
 # Footer: the version, and where to report what it gets wrong
 # ---------------------------------------------------------------------------
 
-set ISSUES_URL "https://github.com/LeventErkok/crackNum/issues"
+set REPO_URL   "https://github.com/LeventErkok/crackNum"
+set ISSUES_URL "$REPO_URL/issues"
 
 # Ask the binary its version rather than carrying a copy here, which would drift
 # the first time a release bumped the cabal file and not this file. Empty if
@@ -727,7 +728,8 @@ pack .footer -side bottom -fill x -padx 8 -pady {0 6} -before .main
 
 set VERSION [crackNumVersion]
 if {$VERSION ne ""} {
-    label .footer.ver -text "crackNum v$VERSION" -anchor w
+    label .footer.ver -text "crackNum v$VERSION" -anchor w \
+          -fg #2b62e8 -cursor hand2
     pack  .footer.ver -side left
 }
 
@@ -735,20 +737,26 @@ label .footer.link -text "Bugs/Feedback?" -anchor e \
       -fg #2b62e8 -cursor hand2
 pack  .footer.link -side right
 
-# Underline only the link, leaving the rest of the footer in the default font.
+# Underline both links, leaving anything else in the footer in the default font.
 set linkFont [font actual [.footer.link cget -font]]
 dict set linkFont -underline 1
 .footer.link configure -font $linkFont
+if {[winfo exists .footer.ver]} { .footer.ver configure -font $linkFont }
 
 # If no browser could be launched, say so and show the URL: a deliberate click
 # that produces nothing at all is indistinguishable from a broken widget, which
 # is exactly how this first shipped.
-bind .footer.link <Button-1> {
-    if {![openURL $ISSUES_URL]} {
+proc followLink {url} {
+    if {![openURL $url]} {
         tk_messageBox -parent . -icon info -title "crackNum" \
-            -message "Could not find a browser to open:\n\n$ISSUES_URL" \
+            -message "Could not find a browser to open:\n\n$url" \
             -detail "Copy the address above, or install xdg-utils."
     }
+}
+
+bind .footer.link <Button-1> {followLink $ISSUES_URL}
+if {[winfo exists .footer.ver]} {
+    bind .footer.ver <Button-1> {followLink $REPO_URL}
 }
 
 # ---------------------------------------------------------------------------

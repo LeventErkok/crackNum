@@ -13,7 +13,8 @@ namespace CrackNumGUI
         /// Where the GUIs send bug reports. Same destination in the Swift, Tcl, Windows
         /// and web front ends, so a report lands in the same place whichever one is used.
         /// </summary>
-        private const string IssuesUrl = "https://github.com/LeventErkok/crackNum/issues";
+        private const string RepoUrl = "https://github.com/LeventErkok/crackNum";
+        private const string IssuesUrl = RepoUrl + "/issues";
 
         private const string Welcome =
             "Enter a value above, then pick a format on the left to crack it.\n" +
@@ -150,14 +151,15 @@ namespace CrackNumGUI
             var version = Runner.Version;
             if (version != null)
             {
-                footer.Controls.Add(new Label
+                var versionLink = new LinkLabel
                 {
                     Text = "crackNum v" + version,
                     AutoSize = true,
-                    ForeColor = SystemColors.GrayText,
                     Anchor = AnchorStyles.Left,
                     Margin = new Padding(0, 3, 0, 0),
-                }, 0, 0);
+                };
+                versionLink.LinkClicked += (s, e) => OpenUrl(RepoUrl);
+                footer.Controls.Add(versionLink, 0, 0);
             }
 
             var link = new LinkLabel
@@ -167,7 +169,7 @@ namespace CrackNumGUI
                 Anchor = AnchorStyles.Right,
                 Margin = new Padding(0, 3, 0, 0),
             };
-            link.LinkClicked += (s, e) => OpenIssues();
+            link.LinkClicked += (s, e) => OpenUrl(IssuesUrl);
             footer.Controls.Add(link, 1, 0);
 
             return footer;
@@ -179,13 +181,13 @@ namespace CrackNumGUI
         /// execute the string as a program. Failure is reported rather than thrown:
         /// losing the whole GUI because a browser would not start is a poor trade.
         /// </summary>
-        private void OpenIssues()
+        private void OpenUrl(string url)
         {
             try
             {
                 Process.Start(new ProcessStartInfo
                 {
-                    FileName = IssuesUrl,
+                    FileName = url,
                     UseShellExecute = true,
                 });
             }
@@ -193,7 +195,7 @@ namespace CrackNumGUI
             {
                 MessageBox.Show(this,
                     "Could not open a browser." + Environment.NewLine + Environment.NewLine
-                        + IssuesUrl + Environment.NewLine + Environment.NewLine + ex.Message,
+                        + url + Environment.NewLine + Environment.NewLine + ex.Message,
                     "crackNum", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
