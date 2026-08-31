@@ -77,9 +77,16 @@ the single file `ssl_certificate` points at.
 
 ## Gotchas
 
-  * **SELinux.** On RHEL/Rocky/Fedora, nginx cannot open a socket to the backend
-    until `setsebool -P httpd_can_network_connect 1`. Until then every request is
-    a 502, and the error log does not explain itself.
+  * **SELinux**, *where it is enforcing*. On RHEL/Rocky/Fedora nginx cannot open
+    a socket to the backend until `setsebool -P httpd_can_network_connect 1`, and
+    until then every request is a 502 whose error log does not explain itself.
+    Check with `getsebool httpd_can_network_connect` -- but note that command
+    *exits non-zero* when SELinux is disabled, so it will abort a `set -e` script
+    on exactly the hosts where the whole problem does not apply.
+  * **Certificate lifetime is whatever the CA gives you**, and it may be far less
+    than you assume: an internal CA that documents two years can hand back six
+    months. Read `notAfter` off the issued certificate rather than trusting the
+    paperwork, and set the reminder from that.
   * **HSTS.** Left commented out in the nginx config on purpose. It is sticky in
     browsers and awkward to undo; turn it on once TLS is known good, not before.
   * **Static files** are read from disk per request, so updating `static/*` needs
