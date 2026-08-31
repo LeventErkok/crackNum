@@ -668,16 +668,56 @@ proc crackNumVersion {} {
 }
 
 # Tk has no "open this in a browser", so hand off to the platform's opener.
-# Failure is silent by design: a footer link that cannot open is a nuisance,
-# not something worth an error dialog over a crack the user is in the middle of.
+# Returns 1 if something was launched, 0 if nothing could be.
+#
+# macOS and Windows each have exactly one answer. Linux has none: xdg-open is
+# the convention but ships with the xdg-utils package, which a minimal install
+# may simply not have -- and its absence is the whole reason this used to do
+# nothing at all when clicked. So try the plausible openers in turn and report
+# honestly when every one is missing, rather than swallowing it.
 proc openURL {url} {
+    set cmds {}
+
     if {$::tcl_platform(platform) eq "windows"} {
-        catch {exec {*}[auto_execok start] "" $url &}
+        lappend cmds [list {*}[auto_execok start] "" $url]
     } elseif {$::tcl_platform(os) eq "Darwin"} {
-        catch {exec open $url &}
+        lappend cmds [list open $url]
     } else {
-        catch {exec xdg-open $url &}
+        # $BROWSER first: if the user has said what they want, honour it.
+        if {[info exists ::env(BROWSER)] && $::env(BROWSER) ne ""} {
+            lappend cmds [list $::env(BROWSER) $url]
+        }
+        # firefox ahead of the indirection layers: naming a browser we can see
+        # on PATH is one step, where xdg-open and gio each add a lookup that can
+        # fail for its own reasons. The desktop-integration openers stay as
+        # fallbacks for machines without firefox.
+        foreach opener {firefox xdg-open gio gnome-open kde-open5 kde-open
+                        x-www-browser sensible-browser chromium
+                        chromium-browser google-chrome} {
+            if {$opener eq "gio"} {
+                # gio wants a subcommand, and is only useful if a handler is
+                # actually registered: with none it exits non-zero *after* we
+                # have backgrounded it, which reads as success here and would
+                # stop us trying the browsers below -- another silent no-op.
+                # Ask first, and simply skip gio when the answer is no.
+                if {![catch {exec gio mime x-scheme-handler/https} reply]
+                    && [string match -nocase "*default*:*" $reply]} {
+                    lappend cmds [list gio open $url]
+                }
+            } else {
+                lappend cmds [list $opener $url]
+            }
+        }
     }
+
+    foreach cmd $cmds {
+        # auto_execok rather than trusting exec to fail: a missing opener and a
+        # browser that launched and then exited look the same to a backgrounded
+        # exec, and only the first should send us on to the next candidate.
+        if {[auto_execok [lindex $cmd 0]] eq ""} { continue }
+        if {![catch {exec {*}$cmd &}]} { return 1 }
+    }
+    return 0
 }
 
 # Packed with -before .main: .main is packed with -expand yes and would otherwise
@@ -700,7 +740,16 @@ set linkFont [font actual [.footer.link cget -font]]
 dict set linkFont -underline 1
 .footer.link configure -font $linkFont
 
-bind .footer.link <Button-1> {openURL $ISSUES_URL}
+# If no browser could be launched, say so and show the URL: a deliberate click
+# that produces nothing at all is indistinguishable from a broken widget, which
+# is exactly how this first shipped.
+bind .footer.link <Button-1> {
+    if {![openURL $ISSUES_URL]} {
+        tk_messageBox -parent . -icon info -title "crackNum" \
+            -message "Could not find a browser to open:\n\n$ISSUES_URL" \
+            -detail "Copy the address above, or install xdg-utils."
+    }
+}
 
 # ---------------------------------------------------------------------------
 # Start
