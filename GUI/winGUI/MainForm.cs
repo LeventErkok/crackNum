@@ -157,6 +157,11 @@ namespace CrackNumGUI
                     AutoSize = true,
                     Anchor = AnchorStyles.Left,
                     Margin = new Padding(0, 3, 0, 0),
+                    // Not SystemDefault: that follows the machine's "Underline
+                    // links" setting, so on a box set to Hover or Never this
+                    // would be plain blue text. The Swift, Tcl and web footers
+                    // all underline unconditionally; match them.
+                    LinkBehavior = LinkBehavior.AlwaysUnderline,
                 };
                 versionLink.LinkClicked += (s, e) => OpenUrl(RepoUrl);
                 footer.Controls.Add(versionLink, 0, 0);
@@ -168,6 +173,7 @@ namespace CrackNumGUI
                 AutoSize = true,
                 Anchor = AnchorStyles.Right,
                 Margin = new Padding(0, 3, 0, 0),
+                LinkBehavior = LinkBehavior.AlwaysUnderline,
             };
             link.LinkClicked += (s, e) => OpenUrl(IssuesUrl);
             footer.Controls.Add(link, 1, 0);

@@ -513,7 +513,12 @@ struct ContentView: View {
             Link("Bugs/Feedback?", destination: issuesURL)
         }
         .font(.caption)
-        .foregroundStyle(.secondary)
+        .underline()
+        // No .foregroundStyle(.secondary) here: it applies to the Links as well
+        // and flattens them to the same grey as ordinary text, which is exactly
+        // what made them unrecognisable as links. Left to render in the accent
+        // colour, matching the blue-and-underlined treatment in the Tcl and web
+        // footers.
     }
 
     private var sidebar: some View {
