@@ -691,9 +691,9 @@ if {$VERSION ne ""} {
     pack  .footer.ver -side left
 }
 
-label .footer.link -text "Bugs/Feedback/Comments?" -anchor w \
+label .footer.link -text "Bugs/Feedback?" -anchor e \
       -fg #2b62e8 -cursor hand2
-pack  .footer.link -side left -padx {12 0}
+pack  .footer.link -side right
 
 # Underline only the link, leaving the rest of the footer in the default font.
 set linkFont [font actual [.footer.link cget -font]]

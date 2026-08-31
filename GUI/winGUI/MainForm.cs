@@ -132,15 +132,20 @@ namespace CrackNumGUI
         /// </summary>
         private Control BuildFooter()
         {
-            var footer = new FlowLayoutPanel
+            // A table rather than a FlowLayoutPanel: flow cannot push one child to the
+            // far edge. The first column takes all the slack, so the link in the second
+            // sits hard right whether or not there is a version label beside it.
+            var footer = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
-                FlowDirection = FlowDirection.LeftToRight,
+                ColumnCount = 2,
+                RowCount = 1,
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink,
                 Margin = new Padding(0, 6, 0, 0),
-                WrapContents = false,
             };
+            footer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+            footer.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
 
             var version = Runner.Version;
             if (version != null)
@@ -150,18 +155,20 @@ namespace CrackNumGUI
                     Text = "crackNum v" + version,
                     AutoSize = true,
                     ForeColor = SystemColors.GrayText,
-                    Margin = new Padding(0, 3, 12, 0),
-                });
+                    Anchor = AnchorStyles.Left,
+                    Margin = new Padding(0, 3, 0, 0),
+                }, 0, 0);
             }
 
             var link = new LinkLabel
             {
-                Text = "Bugs/Feedback/Comments?",
+                Text = "Bugs/Feedback?",
                 AutoSize = true,
+                Anchor = AnchorStyles.Right,
                 Margin = new Padding(0, 3, 0, 0),
             };
             link.LinkClicked += (s, e) => OpenIssues();
-            footer.Controls.Add(link);
+            footer.Controls.Add(link, 1, 0);
 
             return footer;
         }

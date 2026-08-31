@@ -11,7 +11,7 @@ screen came out of `crackNum` and `z3`.
     ./server.py                      # http://127.0.0.1:8080/
     ./server.py --port 8111
 
-To show a *Bugs/Feedback/Comments?* link in the footer, give it an address:
+To show a *Bugs/Feedback?* link in the footer, give it an address:
 
     CRACKNUM_CONTACT=you@example.com ./server.py
 
@@ -51,7 +51,7 @@ what the server will accept.
 
   * **Footer.** The version `crackNum -v` reports -- read from the binary, so it
     cannot drift from what is actually answering -- and, optionally, a
-    *Bugs/Feedback/Comments?* link.
+    *Bugs/Feedback?* link.
   * **Permalinks.** `?f=ftf32&v=123.45&r=RTZ&w=&e=` reproduces a result exactly;
     the URL updates as you work, and *Copy link* puts it on the clipboard.
   * Dark mode via `prefers-color-scheme`; the sidebar collapses on narrow screens.

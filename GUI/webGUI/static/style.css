@@ -245,11 +245,14 @@ select { width: 100%; }
   display: flex;
   gap: 16px;
   align-items: baseline;
-  justify-content: center;
   padding: 10px 16px 16px;
   color: var(--dim);
   font-size: 12px;
 }
+
+/* Version left, link right. The auto margin rather than space-between so the
+   link still sits right when there is no version to push it there. */
+#version { margin-right: auto; }
 
 #footer a {
   color: var(--dim);

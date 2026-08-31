@@ -154,7 +154,7 @@ def precision_flag(fmt, bit_width, exp_width):
     return None, "Unknown format kind: %s" % kind
 
 
-# A contact address for the "Bugs/Feedback/Comments?" link, supplied by the
+# A contact address for the footer's "Bugs/Feedback?" link, supplied by the
 # deployment rather than the source: this repository is public and an address
 # committed to it is an address harvested from it. Unset -- as in any fresh
 # checkout -- simply means no link is shown.

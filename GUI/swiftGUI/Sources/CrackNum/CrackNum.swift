@@ -506,8 +506,8 @@ struct ContentView: View {
             if let v = Tools.version {
                 Text("crackNum v\(v)")
             }
-            Link("Bugs/Feedback/Comments?", destination: issuesURL)
             Spacer()
+            Link("Bugs/Feedback?", destination: issuesURL)
         }
         .font(.caption)
         .foregroundStyle(.secondary)
