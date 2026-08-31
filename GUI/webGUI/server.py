@@ -18,6 +18,7 @@ crackNum and z3 are located on PATH, or via $CRACKNUM and $SBV_Z3.
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -153,6 +154,68 @@ def precision_flag(fmt, bit_width, exp_width):
     return None, "Unknown format kind: %s" % kind
 
 
+# A contact address for the "Bugs/Feedback/Comments?" link, supplied by the
+# deployment rather than the source: this repository is public and an address
+# committed to it is an address harvested from it. Unset -- as in any fresh
+# checkout -- simply means no link is shown.
+#
+#     CRACKNUM_CONTACT=you@example.com ./server.py
+#
+CONTACT_ENV = "CRACKNUM_CONTACT"
+
+# Conservative: what may appear in a mailto: we are about to put in the page.
+# Rejecting rather than escaping keeps a malformed value from becoming a
+# question about how well the front end escapes.
+CONTACT_OK = re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
+
+
+def contact_address(warn=False):
+    """The configured contact address, or None. Never sourced from the repo.
+
+    `warn` only at startup: a bad value should be said once, not once per
+    request, or the complaint becomes part of the noise it is trying to escape."""
+    raw = (os.environ.get(CONTACT_ENV) or "").strip()
+    if not raw:
+        return None
+    if not CONTACT_OK.match(raw):
+        if warn:
+            sys.stderr.write("WARNING: %s=%r is not a plausible email address; "
+                             "the feedback link will be omitted.\n" % (CONTACT_ENV, raw))
+        return None
+    return raw
+
+
+def cracknum_version():
+    """Ask the binary what version it is. Parsing our own -v output is still
+    better than a second copy of the number here, which would drift the first
+    time a release bumped the cabal file and not this file."""
+    try:
+        cracknum = locate("crackNum", "CRACKNUM")
+    except Missing:
+        return None
+    try:
+        proc = subprocess.run(
+            [cracknum, "-v"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            stdin=subprocess.DEVNULL,
+            timeout=TIMEOUT_SECS,
+        )
+    except (subprocess.TimeoutExpired, OSError):
+        return None
+    if proc.returncode != 0:
+        return None
+    # "crackNum v4.3, (c) Levent Erkok. Released with a BSD3 license."
+    m = re.search(r"\bv(\d[\w.]*)", proc.stdout.decode("utf-8", "replace"))
+    return m.group(1) if m else None
+
+
+def meta_payload():
+    """Small footer facts. Computed per request: cheap next to a crack, and it
+    means a binary swapped underneath a running server is reported honestly."""
+    return {"version": cracknum_version(), "contact": contact_address()}
+
+
 def run_cracknum(flag, rounding, value):
     """Run the real binary and return its combined output. No shell, ever: argv is
     a list, and the value goes after '--' as a single element so a leading '-'
@@ -283,6 +346,8 @@ class Handler(BaseHTTPRequestHandler):
         path = self.path.split("?", 1)[0].split("#", 1)[0]
         if path == "/api/formats":
             return self._json(200, formats_payload())
+        if path == "/api/meta":
+            return self._json(200, meta_payload())
         if path == "/healthz":
             return self._send(200, "ok\n", "text/plain; charset=utf-8")
 
@@ -330,6 +395,10 @@ def main():
             sys.stderr.write("Using %-8s %s\n" % (name + ":", locate(name, var)))
         except Missing as e:
             sys.stderr.write("WARNING: %s\n" % str(e).splitlines()[0])
+
+    contact = contact_address(warn=True)
+    sys.stderr.write("Using %-8s %s\n" % ("contact:", contact if contact
+                                          else "(none; set %s to show a feedback link)" % CONTACT_ENV))
 
     srv = ThreadingHTTPServer((opts.host, opts.port), Handler)
     sys.stderr.write("crackNum web GUI on http://%s:%d/\n" % (opts.host, opts.port))

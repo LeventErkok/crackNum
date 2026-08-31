@@ -40,7 +40,9 @@ var el = {
   output:    document.getElementById('output'),
   copy:      document.getElementById('copy'),
   permalink: document.getElementById('permalink'),
-  toast:     document.getElementById('toast')
+  toast:     document.getElementById('toast'),
+  version:   document.getElementById('version'),
+  contact:   document.getElementById('contact')
 };
 
 var formats = {};        // id -> {id, label, kind}
@@ -243,4 +245,25 @@ fetch('api/formats').then(function (r) {
   build(payload, wanted);
 }).catch(function (err) {
   el.output.textContent = 'Could not load the format list.\n\n' + err;
+});
+
+// Footer: the version crackNum itself reports, and a contact link only if the
+// deployment configured one ($CRACKNUM_CONTACT). Both are decoration -- a
+// failure here must not disturb a page that otherwise works, hence no catch
+// that touches the output pane.
+fetch('api/meta').then(function (r) {
+  return r.json();
+}).then(function (meta) {
+  if (meta.version) {
+    el.version.textContent = 'crackNum v' + meta.version;
+  }
+  if (meta.contact) {
+    // textContent and a built href: the address is server-supplied and
+    // validated there, and it still never reaches the page as markup.
+    el.contact.href = 'mailto:' + meta.contact +
+                      '?subject=' + encodeURIComponent('crackNum feedback');
+    el.contact.hidden = false;
+  }
+}).catch(function () {
+  /* no footer, no harm */
 });

@@ -15,6 +15,9 @@ Group=cracknum
 WorkingDirectory=/opt/cracknum
 Environment=CRACKNUM=/opt/cracknum/crackNum
 Environment=SBV_Z3=/opt/cracknum/z3
+# Uncomment with your own address to show the footer's feedback link. Kept here,
+# in the deployment, rather than in the source: the repository is public.
+#Environment=CRACKNUM_CONTACT=you@example.com
 ExecStart=/usr/bin/python3 /opt/cracknum/server.py --host 127.0.0.1 --port 8080
 Restart=on-failure
 

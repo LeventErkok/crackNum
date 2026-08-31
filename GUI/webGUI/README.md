@@ -11,6 +11,15 @@ screen came out of `crackNum` and `z3`.
     ./server.py                      # http://127.0.0.1:8080/
     ./server.py --port 8111
 
+To show a *Bugs/Feedback/Comments?* link in the footer, give it an address:
+
+    CRACKNUM_CONTACT=you@example.com ./server.py
+
+There is deliberately no default and no address anywhere in this repository:
+whoever deploys it supplies their own, and an unset variable simply means no
+link. A value that is not a plausible email address is refused, with a warning,
+rather than placed in the page.
+
 `crackNum` and `z3` are found on `PATH`, or via `$CRACKNUM` and `$SBV_Z3`. Python
 3.9+ stdlib only -- no dependencies to install anywhere it runs.
 
@@ -40,6 +49,9 @@ what the server will accept.
 
 ## Web-only additions
 
+  * **Footer.** The version `crackNum -v` reports -- read from the binary, so it
+    cannot drift from what is actually answering -- and, optionally, a
+    *Bugs/Feedback/Comments?* link.
   * **Permalinks.** `?f=ftf32&v=123.45&r=RTZ&w=&e=` reproduces a result exactly;
     the URL updates as you work, and *Copy link* puts it on the clipboard.
   * Dark mode via `prefers-color-scheme`; the sidebar collapses on narrow screens.
