@@ -1,7 +1,14 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 4.4, 2026-08-31
+* Latest Hackage released version: 4.5, 2026-09-01
+
+### Version 4.5, 2026-09-01
+
+  * All four GUIs: correct the encoding help text. It claimed the input must not
+    start with `0x`, `0b`, or `N'h`, but a hex float such as `0x2.4p3` does start
+    with `0x` and is encoded, exactly as the line above it in the same help says.
+    Only a plain bit-pattern in one of those notations switches to decoding.
 
 ### Version 4.4, 2026-08-31
 

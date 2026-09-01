@@ -27,7 +27,7 @@ namespace CrackNumGUI
             "  - Enter a decimal value (2.5, -4.1e5) or hex float (0x2.4p3).\n" +
             "  - You can pass NaN, Inf, -0, -Inf for special values.\n" +
             "  - For floats, pick a rounding mode.\n" +
-            "  - Input must NOT start with 0x, 0b, or N'h (else we decode instead).\n" +
+            "  - Plain 0x, 0b, N'h patterns decode; hex floats (0x2.4p3) encode.\n" +
             "\n" +
             "Decoding:\n" +
             "  - Use hex (0x), binary (0b), or Verilog (N'h) notation.\n" +
