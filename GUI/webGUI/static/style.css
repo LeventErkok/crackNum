@@ -250,9 +250,11 @@ select { width: 100%; }
   font-size: 12px;
 }
 
-/* Version left, link right. The auto margin rather than space-between so the
-   link still sits right when there is no version to push it there. */
-#version { margin-right: auto; }
+/* Version and downloads left, contact right. The auto margin lives on
+   #downloads rather than #version because #version is filled in from api/meta
+   and is empty if that fetch fails -- #downloads is static, so it can always
+   be counted on to push the contact link to the right edge. */
+#downloads { margin-right: auto; }
 
 #footer a {
   color: var(--dim);
