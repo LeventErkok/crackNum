@@ -1,0 +1,18 @@
+Arguments: -fue5m3 -rRNA -- 1.0625
+Exit code: ExitSuccess
+Satisfiable. Model:
+  ENCODED = 1.125 :: UE5M3
+                  76543 210
+                  -E5-- S3-
+   Binary layout: 01111 001
+      Hex layout: 79
+       Precision: 5 exponent bits, 3 significand bits
+            Sign: Positive (always)
+        Exponent: 0 (Stored: 15, Bias: 15)
+  Classification: FP_NORMAL
+          Binary: 0b1.001
+           Octal: 0o1.1
+         Decimal: 1.125
+             Hex: 0x1.2
+   Rounding mode: RNA: Round nearest ties to away.
+            Note: Original value of 1.0625 was rounded to 1.125.

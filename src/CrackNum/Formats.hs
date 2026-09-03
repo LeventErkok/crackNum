@@ -50,6 +50,7 @@ fpFormats = [ ("hp",      "Half float",             "( 5 +  11)", True )
             , ("fp4",     "FP4 format (E2M1)",      "( 2 +   2)", True )
             , ("fp4e0m3", "FP4 format (E0M3)",      "( 0 +   3)", True )
             , ("e8m0",    "FP8 format (MX scale)",  "( 8 +   0)", True )
+            , ("ue5m3",   "FP8 format (Unsigned)",  "( 5 +   4)", True )
             ]
 
 -- | The formats that can actually be named, i.e., everything but the arbitrary a+b
@@ -78,6 +79,7 @@ getFP "e4m3"    = Floating E4M3
 getFP "fp4"     = Floating FP4
 getFP "fp4e0m3" = Floating FP4E0M3
 getFP "e8m0"    = Floating E8M0
+getFP "ue5m3"   = Floating UE5M3
 getFP ab        = case span isDigit ab of
                   (eb@(_:_), '+':r) -> case span isDigit r of
                                         (sp@(_:_), "") -> mkEBSB (read eb) (read sp)

@@ -123,7 +123,8 @@ decodeLane debug mbLane inputBits kind = case kind of
                      E4M3    -> de4m3 config allBits
                      FP4     -> dFP4  config allBits
                      FP4E0M3 -> decodeFP4E0M3 allBits
-                     E8M0    -> decodeE8M0 debug allBits
+                     E8M0    -> decodeE8M0  debug allBits
+                     UE5M3   -> decodeUE5M3 debug allBits
 
         dFloat :: [SBool] -> ConstraintSet
         dFloat  bs = do x <- sFloat "DECODED"
@@ -188,3 +189,9 @@ decodeFP4E0M3 bs                     = error $ "decodeFP4E0M3: Unexpected bits: 
 decodeE8M0 :: Bool -> [Bool] -> IO ()
 decodeE8M0 debug bs@[_, _, _, _, _, _, _, _] = putStr $ unlines $ e8m0Layout debug "DECODED" (foldl (\sofar b -> 2 * sofar + (if b then 1 else 0)) 0 bs)
 decodeE8M0 _     bs                          = error $ "decodeE8M0: Unexpected bits: " ++ show bs   -- Can't happen; the caller checks the width
+
+-- | Decoding UE5M3: the byte is read straight off, five bits of exponent then three of
+-- significand, with no sign bit in the way.
+decodeUE5M3 :: Bool -> [Bool] -> IO ()
+decodeUE5M3 debug bs@[_, _, _, _, _, _, _, _] = putStr $ unlines $ ue5m3Layout debug "DECODED" (foldl (\sofar b -> 2 * sofar + (if b then 1 else 0)) 0 bs)
+decodeUE5M3 _     bs                          = error $ "decodeUE5M3: Unexpected bits: " ++ show bs   -- Can't happen; the caller checks the width

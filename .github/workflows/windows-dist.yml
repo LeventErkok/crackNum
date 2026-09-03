@@ -148,6 +148,7 @@ jobs:
           crackNum --list-formats
           crackNum -f sp 3.5
           crackNum -fe8m0 0xFE
+          crackNum -fue5m3 0xFE
           crackNum --runTests -- -j2 --no-create --hide-successes
 
       - name: GUI self-test

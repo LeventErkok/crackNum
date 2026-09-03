@@ -1,0 +1,18 @@
+Arguments: -fue5m3 -rRTZ -- 1.9375
+Exit code: ExitSuccess
+Satisfiable. Model:
+  ENCODED = 1.875 :: UE5M3
+                  76543 210
+                  -E5-- S3-
+   Binary layout: 01111 111
+      Hex layout: 7F
+       Precision: 5 exponent bits, 3 significand bits
+            Sign: Positive (always)
+        Exponent: 0 (Stored: 15, Bias: 15)
+  Classification: FP_NORMAL
+          Binary: 0b1.111
+           Octal: 0o1.7
+         Decimal: 1.875
+             Hex: 0x1.e
+   Rounding mode: RTZ: Round towards zero.
+            Note: Original value of 1.9375 was rounded to 1.875.

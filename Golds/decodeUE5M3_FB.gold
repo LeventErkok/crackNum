@@ -1,0 +1,16 @@
+Arguments: -fue5m3 0xFB
+Exit code: ExitSuccess
+Satisfiable. Model:
+  DECODED = 90112.0 :: UE5M3
+                  76543 210
+                  -E5-- S3-
+   Binary layout: 11111 011
+      Hex layout: FB
+       Precision: 5 exponent bits, 3 significand bits
+            Sign: Positive (always)
+        Exponent: 16 (Stored: 31, Bias: 15)
+  Classification: FP_NORMAL
+          Binary: 0b1.011p+16
+           Octal: 0o2.6p+15
+         Decimal: 90112.0
+             Hex: 0x1.6p+16

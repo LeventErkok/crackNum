@@ -63,6 +63,7 @@ namespace CrackNumGUI
                 new Format("fe4m3",    "FP8 (E4M3)", FormatKind.FixedFloat, flag: "fe4m3"),
                 new Format("fe5m2",    "FP8 (E5M2)", FormatKind.FixedFloat, flag: "fe5m2"),
                 new Format("fe8m0",    "FP8 (E8M0)", FormatKind.FixedFloat, flag: "fe8m0"),
+                new Format("fue5m3",   "FP8 (UE5M3)", FormatKind.FixedFloat, flag: "fue5m3"),
                 new Format("fbp",      "Brain",      FormatKind.FixedFloat, flag: "fbp"),
                 new Format("ftf32",    "TF32",       FormatKind.FixedFloat, flag: "ftf32"),
             }),

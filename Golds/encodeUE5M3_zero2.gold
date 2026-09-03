@@ -1,0 +1,7 @@
+Arguments: -fue5m3 --  -0
+Exit code: ExitFailure 1
+
+STDERR:
+ERROR:
+  UE5M3 has no representation for negative values.
+  The representable range is [0, 114688], plus NaN.

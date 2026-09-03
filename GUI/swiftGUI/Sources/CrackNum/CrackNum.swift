@@ -147,6 +147,7 @@ let formatSections: [FormatSection] = [
         Format(id: "fe4m3",    label: "FP8 (E4M3)", kind: .fixedFloat("fe4m3")),
         Format(id: "fe5m2",    label: "FP8 (E5M2)", kind: .fixedFloat("fe5m2")),
         Format(id: "fe8m0",    label: "FP8 (E8M0)", kind: .fixedFloat("fe8m0")),
+        Format(id: "fue5m3",   label: "FP8 (UE5M3)", kind: .fixedFloat("fue5m3")),
         Format(id: "fbp",      label: "Brain",      kind: .fixedFloat("fbp")),
         Format(id: "ftf32",    label: "TF32",       kind: .fixedFloat("ftf32")),
     ]),
@@ -335,6 +336,7 @@ extension Model {
         case "fp4":     p.formatCode = "ffp4"
         case "fp4e0m3": p.formatCode = "ffp4e0m3"
         case "e8m0":    p.formatCode = "fe8m0"
+        case "ue5m3":   p.formatCode = "fue5m3"
         default:
             // Custom "E+S": E exponent bits, S significand bits (incl. implicit).
             let parts = v.split(separator: "+", maxSplits: 1)

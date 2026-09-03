@@ -1,0 +1,16 @@
+Arguments: -fue5m3 0x07
+Exit code: ExitSuccess
+Satisfiable. Model:
+  DECODED = 0.00005341 :: UE5M3
+                  76543 210
+                  -E5-- S3-
+   Binary layout: 00000 111
+      Hex layout: 07
+       Precision: 5 exponent bits, 3 significand bits
+            Sign: Positive (always)
+        Exponent: -14 (Subnormal, with fixed exponent value. Stored: 0, Bias: 15)
+  Classification: FP_SUBNORMAL
+          Binary: 0b1.11p-15
+           Octal: 0o1.6p-15
+         Decimal: 0.00005341
+             Hex: 0x3.8p-16

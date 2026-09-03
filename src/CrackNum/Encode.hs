@@ -152,6 +152,8 @@ encodeLane debug lanes num rm inp
 
         ef E8M0    _ = encodeE8M0 debug rm inp
 
+        ef UE5M3   _ = encodeUE5M3 debug rm inp
+
 -- Encoding E4M3 is tricky, because of deviation from IEEE. So, we do a case analysis, mostly
 encodeE4M3 :: Bool -> RM -> String -> IO ()
 encodeE4M3 debug rm inp = case reads (fixup True inp) of
@@ -530,6 +532,95 @@ encodeE8M0 debug rm inp = case reads (fixup True inp) of
                  | isInfinite v || v > largest || v < smallest
                  = do putStrLn $ "            Note: Original value of " ++ show v ++ " is out of range, saturated to " ++ show t ++ "."
                       putStrLn   "                  The representable range is [2^-127, 2^127]."
+                 | v == t
+                 = exact
+                 | True
+                 = putStrLn $ "            Note: Original value of " ++ show v ++ " was rounded to " ++ show t ++ "."
+
+               exact = putStrLn $ "            Note: Conversion from " ++ show inp ++ " was exact. No rounding happened."
+
+-- | Encoding UE5M3. Every representable value is exact as a Double and the encodings run in
+-- increasing order, so we round by hand against the table rather than going through LibBF.
+-- We have to: the top seven encodings sit exactly where IEEE puts infinity and NaN, so no
+-- amount of IEEE rounding would ever land on them. Ties break on the parity of the encoding
+-- index, which for this format is precisely IEEE's ties-to-even -- stepping one encoding steps
+-- the significand by one, across binade boundaries included -- and is what 'encodeFP4' and
+-- 'encodeE8M0' already do.
+encodeUE5M3 :: Bool -> RM -> String -> IO ()
+encodeUE5M3 debug rm inp = case reads (fixup True inp) of
+                             [(v :: Double, "")] -> analyze v
+                             _                   -> -- maybe it's a hexfloat? As in encodeFP4, the catch must
+                                                    -- scope over the parse only: analyze can legitimately die,
+                                                    -- and die throws an exit-exception of its own.
+                                                    do let hr = readHexRational inp
+                                                       ok <- (rnf hr `seq` pure True)
+                                                               `C.catch` (\(_ :: C.SomeException) -> pure False)
+                                                       if ok then analyze (fromRational hr)
+                                                             else unrecognized inp
+ where largest :: Double
+       largest = last ue5m3Mags   -- 114688, the deviant encoding 0xFE
+
+       -- The one and only NaN: all ones. Being unsigned, UE5M3 has a single such pattern
+       -- where E4M3, which it otherwise follows, has one for each sign.
+       nanBits :: Int
+       nanBits = 0xFF
+
+       analyze :: Double -> IO ()
+       analyze v
+         -- NaN is representable, and uniquely so.
+         | isNaN v
+         = out nanBits
+         -- A negative is not an out-of-range magnitude: with no sign bit there is no direction
+         -- to saturate towards, and clamping would quietly make it positive. A negative zero is
+         -- still negative -- the same call 'encodeE8M0' makes.
+         | v < 0 || isNegativeZero v
+         = die [ "UE5M3 has no representation for negative values."
+               , "The representable range is [0, 114688], plus NaN."
+               ]
+         -- Having no infinity to saturate to, E4M3 turns whatever it cannot represent into NaN
+         -- rather than clamping; UE5M3 inherits that, and infinity is the limiting case of it.
+         | isInfinite v || v > largest
+         = out nanBits
+         | True
+         = out (roundMag v)
+        where out stored = do putStr $ unlines $ ue5m3Layout debug "ENCODED" stored
+                              trailer v stored
+
+       -- Round to the index of one of the representable magnitudes, honoring the rounding mode.
+       -- Every value reaching here is non-negative, so RTZ and RTN necessarily agree, as do RTP
+       -- and rounding away from zero.
+       roundMag :: Double -> Int
+       roundMag m
+         | e : _ <- [i | (i, mv) <- zip [0..] ue5m3Mags, mv == m]   -- Exactly representable
+         = e
+         | True
+         = case rm of
+             RTZ -> lo
+             RTN -> lo
+             RTP -> hi
+             RNE -> nearest (if even lo then lo else hi)
+             RNA -> nearest hi
+        where lo = last [i | (i, mv) <- zip [0..] ue5m3Mags, mv < m]
+              hi = lo + 1
+
+              -- Ties are broken by the given choice; note that comparing against the sum avoids
+              -- any rounding of its own, since all the values involved are exact.
+              nearest tie = case compare (2 * m) (ue5m3Mags !! lo + ue5m3Mags !! hi) of
+                              LT -> lo
+                              GT -> hi
+                              EQ -> tie
+
+       trailer :: Double -> Int -> IO ()
+       trailer v stored = do putStrLn $ "   Rounding mode: " ++ show rm
+                             note
+         where t = ue5m3Value stored
+
+               note
+                 | isNaN v
+                 = exact
+                 | isInfinite v || v > largest
+                 = do putStrLn $ "            Note: The input value " ++ show v ++ " is out of bounds, and hence becomes NaN."
+                      putStrLn   "                  The representable range is [0, 114688]."
                  | v == t
                  = exact
                  | True

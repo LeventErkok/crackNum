@@ -99,6 +99,7 @@ namespace CrackNumGUI
                 case "fp4":     p.FormatCode = "ffp4";     return;
                 case "fp4e0m3": p.FormatCode = "ffp4e0m3"; return;
                 case "e8m0":    p.FormatCode = "fe8m0";    return;
+                case "ue5m3":   p.FormatCode = "fue5m3";   return;
             }
 
             // Custom "E+S": E exponent bits, S significand bits (incl. implicit).

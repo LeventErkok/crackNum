@@ -1,0 +1,18 @@
+Arguments: -fue5m3 -rRTZ -- 0x3p-18
+Exit code: ExitSuccess
+Satisfiable. Model:
+  ENCODED = 0.000007629 :: UE5M3
+                  76543 210
+                  -E5-- S3-
+   Binary layout: 00000 001
+      Hex layout: 01
+       Precision: 5 exponent bits, 3 significand bits
+            Sign: Positive (always)
+        Exponent: -14 (Subnormal, with fixed exponent value. Stored: 0, Bias: 15)
+  Classification: FP_SUBNORMAL
+          Binary: 0b1p-17
+           Octal: 0o2p-18
+         Decimal: 0.000007629
+             Hex: 0x8p-20
+   Rounding mode: RTZ: Round towards zero.
+            Note: Original value of 1.1444091796875e-5 was rounded to 7.62939453125e-6.

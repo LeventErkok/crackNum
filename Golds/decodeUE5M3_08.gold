@@ -1,0 +1,16 @@
+Arguments: -fue5m3 0x08
+Exit code: ExitSuccess
+Satisfiable. Model:
+  DECODED = 0.00006104 :: UE5M3
+                  76543 210
+                  -E5-- S3-
+   Binary layout: 00001 000
+      Hex layout: 08
+       Precision: 5 exponent bits, 3 significand bits
+            Sign: Positive (always)
+        Exponent: -14 (Stored: 1, Bias: 15)
+  Classification: FP_NORMAL
+          Binary: 0b1p-14
+           Octal: 0o2p-15
+         Decimal: 0.00006104
+             Hex: 0x4p-16

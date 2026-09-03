@@ -1,0 +1,18 @@
+Arguments: -fue5m3 -rRTN -- 0x1p-18
+Exit code: ExitSuccess
+Satisfiable. Model:
+  ENCODED = 0.0 :: UE5M3
+                  76543 210
+                  -E5-- S3-
+   Binary layout: 00000 000
+      Hex layout: 00
+       Precision: 5 exponent bits, 3 significand bits
+            Sign: Positive (always)
+        Exponent: -15 (Stored: 0, Bias: 15)
+  Classification: FP_ZERO
+          Binary: 0b0.0
+           Octal: 0o0.0
+         Decimal: 0.0
+             Hex: 0x0
+   Rounding mode: RTN: Round towards negative infinity.
+            Note: Original value of 3.814697265625e-6 was rounded to 0.0.

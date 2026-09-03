@@ -1,0 +1,18 @@
+Arguments: -fue5m3 --  0x1.8p1
+Exit code: ExitSuccess
+Satisfiable. Model:
+  ENCODED = 3.0 :: UE5M3
+                  76543 210
+                  -E5-- S3-
+   Binary layout: 10000 100
+      Hex layout: 84
+       Precision: 5 exponent bits, 3 significand bits
+            Sign: Positive (always)
+        Exponent: 1 (Stored: 16, Bias: 15)
+  Classification: FP_NORMAL
+          Binary: 0b1.1p1
+           Octal: 0o3
+         Decimal: 3.0
+             Hex: 0x3
+   Rounding mode: RNE: Round nearest ties to even.
+            Note: Conversion from "0x1.8p1" was exact. No rounding happened.

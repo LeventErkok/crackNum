@@ -1,7 +1,34 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 4.5, 2026-09-01
+* Latest Hackage released version: 4.6, 2026-09-03
+
+### Version 4.6, 2026-09-03
+
+  * New floating-point format: UE5M3, selected with `-fue5m3`. This is the unsigned
+    FP8 scale format proposed for FP4 microscaling. It is `E4M3` with the sign bit --
+    which a scale, being non-negative, never uses -- repurposed as the exponent's top
+    bit, giving 5 exponent bits and 3 significand bits in the same 8. The extra
+    exponent bit is what the format is for: it drops the smallest non-zero value from
+    `E4M3`'s 2^-9 to the subnormal 2^-17, so a block of small-magnitude elements gets
+    a scale that can actually represent it.
+
+  * Being a variant of `E4M3`, UE5M3 inherits its deviations from IEEE rather than the
+    IEEE reading of the same field widths: there are no infinities, and the all-ones
+    pattern is the one and only NaN. Having no sign bit, that is a single pattern
+    (`0xFF`) where `E4M3` has one per sign. The rest of the top binade therefore stays
+    finite, so the largest representable value is 114688 -- `E4M3`'s 448 carried up the
+    eight binades the extra exponent bit buys -- and not the 61440 an IEEE format of
+    this shape would stop at. Below that it is ordinary: zero, subnormals, and normals
+    all behave as IEEE says, with a bias of 15.
+
+  * Negative inputs are rejected rather than clamped. With no sign bit there is no
+    direction to saturate towards, and clamping would quietly turn the value positive;
+    this is the same call `E8M0` already makes, and it applies to a negative zero too.
+    Values above the range become NaN, following `E4M3`, which likewise has no infinity
+    to saturate to.
+
+  * All four GUIs offer the new format, in the "AI formats" group.
 
 ### Version 4.5, 2026-09-01
 

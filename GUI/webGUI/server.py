@@ -60,6 +60,7 @@ FORMAT_SECTIONS = [
         ("fe4m3",    "FP8 (E4M3)", "fixedFloat", "-fe4m3"),
         ("fe5m2",    "FP8 (E5M2)", "fixedFloat", "-fe5m2"),
         ("fe8m0",    "FP8 (E8M0)", "fixedFloat", "-fe8m0"),
+        ("fue5m3",   "FP8 (UE5M3)","fixedFloat", "-fue5m3"),
         ("fbp",      "Brain",      "fixedFloat", "-fbp"),
         ("ftf32",    "TF32",       "fixedFloat", "-ftf32"),
     ]),

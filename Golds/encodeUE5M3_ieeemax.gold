@@ -1,0 +1,18 @@
+Arguments: -fue5m3 --  61440
+Exit code: ExitSuccess
+Satisfiable. Model:
+  ENCODED = 61440 :: UE5M3
+                  76543 210
+                  -E5-- S3-
+   Binary layout: 11110 111
+      Hex layout: F7
+       Precision: 5 exponent bits, 3 significand bits
+            Sign: Positive (always)
+        Exponent: 15 (Stored: 30, Bias: 15)
+  Classification: FP_NORMAL
+          Binary: 0b1.111p15
+           Octal: 0o1.7p15
+         Decimal: 61440
+             Hex: 0xfp12
+   Rounding mode: RNE: Round nearest ties to even.
+            Note: Conversion from "61440" was exact. No rounding happened.

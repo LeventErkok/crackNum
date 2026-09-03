@@ -176,6 +176,41 @@ tests = testGroup "CrackNum" [
             | rm           <- ["RNE", "RNA", "RTP", "RTN", "RTZ"]
             ,  i :: Double <- [0.75, 1.5, 3, 6]
             ]
+          , testGroup "EncodeUE5M3" [
+               gold "encodeUE5M3_nan"     "-fue5m3    nan"        -- Representable, and uniquely so
+             , gold "encodeUE5M3_+inf"    "-fue5m3    inf"        -- No Inf to saturate to, so it becomes NaN
+             , gold "encodeUE5M3_-inf"    "-fue5m3 -- -inf"       -- Negative: rejected before the range check
+             , gold "encodeUE5M3_neg"     "-fue5m3 -- -5"
+             , gold "encodeUE5M3_zero1"   "-fue5m3 --  0"         -- Unlike E8M0, this format does have a zero
+             , gold "encodeUE5M3_zero2"   "-fue5m3 --  -0"        -- But a negative zero is still negative
+             , gold "encodeUE5M3_one"     "-fue5m3 --  1"
+             , gold "encodeUE5M3_exact"   "-fue5m3 --  2.5"
+             , gold "encodeUE5M3_sub"     "-fue5m3 --  0x1p-17"   -- The smallest non-zero value there is
+             , gold "encodeUE5M3_subrnd"  "-fue5m3 --  1e-10"     -- Under it, so rounds away to zero
+             , gold "encodeUE5M3_ieeemax" "-fue5m3 --  61440"     -- The largest value IEEE would have stopped at
+             , gold "encodeUE5M3_ieeernd" "-fue5m3 --  61441"     -- IEEE would overflow here; UE5M3 does not
+             , gold "encodeUE5M3_dev"     "-fue5m3 --  65536"     -- First of the seven that deviate
+             , gold "encodeUE5M3_max"     "-fue5m3 --  114688"    -- Last of them, and the largest value
+             , gold "encodeUE5M3_oob"     "-fue5m3 --  114689"    -- Over the top: NaN, following E4M3
+             , gold "encodeUE5M3_hex"     "-fue5m3 --  0x1.8p1"
+            ]
+          -- Every value that sits exactly half-way between two representable magnitudes, over
+          -- all rounding modes. These pin down the RNE tie rule where it is easiest to get
+          -- wrong: at the zero/subnormal boundary, across a binade, and -- for the last two --
+          -- across the point where UE5M3 parts company with IEEE and its top seven encodings
+          -- become ordinary numbers rather than infinity and NaN. All values are positive;
+          -- negatives are rejected outright.
+          , testGroup "EncodeUE5M3Ties" [
+               gold ("encodeUE5M3_tie_" ++ rm ++ "_" ++ nm) ("-fue5m3 -r" ++ rm ++ " -- " ++ v)
+            | rm      <- ["RNE", "RNA", "RTP", "RTN", "RTZ"]
+            , (nm, v) <- [ ("sub0",  "0x1p-18")   -- Between zero and the smallest subnormal
+                         , ("sub1",  "0x3p-18")   -- Between the two smallest subnormals
+                         , ("norm",  "1.0625")
+                         , ("binade","1.9375")    -- Straddles a binade boundary
+                         , ("dev0",  "63488")     -- Straddles the last IEEE-shaped value
+                         , ("dev1",  "69632")
+                         ]
+            ]
           , testGroup "Decode" [
               gold "decode0" "-i4       0b0110"
             , gold "decode1" "-w4       0xE"
@@ -243,6 +278,24 @@ tests = testGroup "CrackNum" [
                       , "80"
                       , "FD"
                       , "FE"     -- Largest: 2^127
+                      , "FF"     -- NaN, and the only one
+                      ]
+            ]
+          -- UE5M3 has 256 patterns, so we take a spread the way DecodeE8M0 does, covering
+          -- each structural case: the zero, both ends of the subnormals, the first normal,
+          -- the unit value, the last IEEE-shaped value, the deviants either side, and the
+          -- sole NaN.
+          , testGroup "DecodeUE5M3" [
+               gold ("decodeUE5M3_" ++ bits) ("-fue5m3 0x" ++ bits)
+            | bits <- [ "00"     -- Zero
+                      , "01"     -- Smallest subnormal: 2^-17
+                      , "07"     -- Largest subnormal
+                      , "08"     -- Smallest normal
+                      , "78"     -- 1.0
+                      , "F7"     -- 61440: the largest an IEEE format of this shape would reach
+                      , "F8"     -- 65536: IEEE would call this infinity
+                      , "FB"     -- 90112: IEEE would call this NaN
+                      , "FE"     -- 114688, the largest value
                       , "FF"     -- NaN, and the only one
                       ]
             ]

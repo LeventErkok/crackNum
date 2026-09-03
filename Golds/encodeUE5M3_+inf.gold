@@ -1,0 +1,16 @@
+Arguments: -fue5m3    inf
+Exit code: ExitSuccess
+Satisfiable. Model:
+  ENCODED = NaN :: UE5M3
+                  76543 210
+                  -E5-- S3-
+   Binary layout: 11111 111
+      Hex layout: FF
+       Precision: 5 exponent bits, 3 significand bits
+            Sign: Positive (always)
+        Exponent: 16 (Stored: 31, Bias: 15)
+  Classification: FP_NAN
+           Value: NaN
+   Rounding mode: RNE: Round nearest ties to even.
+            Note: The input value Infinity is out of bounds, and hence becomes NaN.
+                  The representable range is [0, 114688].

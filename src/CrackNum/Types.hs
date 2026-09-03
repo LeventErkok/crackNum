@@ -29,6 +29,7 @@ data FP = SP          -- Single precision
         | FP4         -- NVIDIA FP4 (E2M1) format with no infinities and no NaNs
         | FP4E0M3     -- 4-bit sign-magnitude integer format; no exponent at all
         | E8M0        -- OCP MX scale format; no sign and no significand at all
+        | UE5M3       -- Unsigned FP8 scale format; E4M3 with the sign bit given to the exponent
         deriving (Show, Eq)
 
 -- | How many bits does this float occupy
@@ -41,6 +42,7 @@ fpSize E4M3     = 8
 fpSize FP4      = 4
 fpSize FP4E0M3  = 4
 fpSize E8M0     = 8
+fpSize UE5M3    = 8
 
 -- | Kinds of numbers we understand
 data NKind = SInt   Int -- ^ Signed   integer of n bits

@@ -16,15 +16,18 @@
 module CrackNum.Output(
      retype, printAs, modOut, isClassification, dropNaNUniquenessNote, canonicalNaN,
      ExtraE3M4(..), toD, inBases, fp4e0m3Layout, e8m0Bias, e8m0Value, e8m0Layout
+   , ue5m3Bias, ue5m3Value, ue5m3Mags, ue5m3IsDeviant, ue5m3Layout
    ) where
 
-import Data.Char (intToDigit, toUpper)
-import Data.List (intercalate, isInfixOf)
+import Data.Char (intToDigit, isSpace, toUpper)
+import Data.List (dropWhileEnd, intercalate, isInfixOf)
 
 import Numeric (showIntAtBase)
 
 import Data.SBV
 import qualified Data.SBV as SBV
+import Data.SBV.Float     (fpFromRawRep)
+import Data.SBV.Internals (SBV(..), SVal(..), CV(..), CVal(..))
 
 import CrackNum.Types
 
@@ -73,7 +76,7 @@ isClassification :: String -> Bool
 isClassification = ("Classification:" `isInfixOf`)
 
 -- | SBV notes that a NaN's representation is not unique. That holds for IEEE formats,
--- but not for the ones here that have exactly one NaN pattern (E4M3 and E8M0), so drop
+-- but not for the ones here that have exactly one NaN pattern (E4M3, E8M0 and UE5M3), so drop
 -- the note for those rather than claim an ambiguity the format does not have.
 dropNaNUniquenessNote :: [String] -> [String]
 dropNaNUniquenessNote = filter (not . ("Representation for NaN's is not unique" `isInfixOf`))
@@ -186,3 +189,102 @@ e8m0Layout debug tag stored =
         inBase b x = showIntAtBase b intToDigit x ""
 
         pad n x = replicate (n - length x) '0' ++ x
+
+-- | UE5M3 is the unsigned FP8 scale format proposed for FP4 microscaling. It is E4M3 with the
+-- sign bit -- which a scale, being non-negative, never uses -- repurposed as the exponent's
+-- top bit, giving 5 exponent bits and 3 significand bits in the same 8. Being a variant of
+-- E4M3 it inherits E4M3's deviations from IEEE: there are no infinities, and the all-ones
+-- pattern is the one and only NaN. Having no sign bit, that is a single pattern (0xFF) where
+-- E4M3 has two. The rest of the top binade therefore stays finite, so the largest value is
+-- 114688 rather than the 61440 an IEEE format with these field widths would stop at.
+ue5m3Bias :: Int
+ue5m3Bias = 15
+
+-- | The encodings where UE5M3 parts company with IEEE: 0xF8 to 0xFE would be infinity and
+-- NaN, but are read as ordinary finite numbers, 65536 through 114688. This is exactly E4M3's
+-- deviation -- its 256 through 448 -- carried up the eight binades the extra exponent bit buys.
+ue5m3IsDeviant :: Int -> Bool
+ue5m3IsDeviant b = b >= 0xF8 && b <= 0xFE
+
+-- | The value a UE5M3 encoding denotes. All 255 finite encodings are exactly representable as
+-- a Double -- the smallest is the subnormal 2^-17 and the largest is 114688 -- so 'encodeFloat'
+-- builds every one of them without rounding, which @2 **@ would not be guaranteed to do.
+ue5m3Value :: Int -> Double
+ue5m3Value 255 = 0/0
+ue5m3Value b   = case b `divMod` 8 of
+                   (0, m) -> encodeFloat (fromIntegral m)       (-17)      -- zero, then the subnormals
+                   (e, m) -> encodeFloat (fromIntegral (8 + m)) (e - 18)   -- the normals, implicit bit restored
+
+-- | Every finite UE5M3 magnitude, in increasing order. The index of each is precisely its
+-- encoding, which is what the encoder's rounding search relies on: stepping one encoding
+-- steps one representable value, so ties break on the parity of the index.
+ue5m3Mags :: [Double]
+ue5m3Mags = map ue5m3Value [0 .. 254]
+
+-- | Lay out a UE5M3 value. There is no 8-bit IEEE look-alike with five exponent bits to lean
+-- on -- adding the sign bit IEEE insists on would make it nine -- so the layout is built by
+-- hand, following the shape crackNum prints for the other formats. Everything from the
+-- precision down still comes from a look-alike, since that part describes the value rather
+-- than where its bits sit: 'FP 5 4' says exactly the right thing for the 249 ordinary
+-- encodings, including which of them are subnormal and which is NaN. Only its sign line has
+-- to be overridden, since it has a sign bit and UE5M3 does not.
+--
+-- The seven deviants have no float look-alike at all -- that is what makes them deviant -- so
+-- they take their value lines from the Double they are equal to, exactly as 'e8m0Layout' does
+-- and for the same reason. That prints them exactly, which matters here: their spacing is
+-- 8192, so a look-alike of UE5M3's own precision would render 65536 as "65540". E4M3 spells
+-- its deviants out exactly for this same reason, in 'inBases'.
+ue5m3Layout :: Bool -> String -> Int -> [String]
+ue5m3Layout debug tag stored =
+     [ "Satisfiable. Model:"
+     , "  " ++ tag ++ " = " ++ valStr ++ " :: " ++ show UE5M3
+     , "                  76543 210"
+     , "                  -E5-- S3-"
+     , "   Binary layout: " ++ pad 5 (inBase 2 e) ++ " " ++ pad 3 (inBase 2 m)
+     , "      Hex layout: " ++ map toUpper (pad 2 (inBase 16 stored))
+     ]
+  ++ dropNaNUniquenessNote body
+  where (e, m) = stored `divMod` 8
+
+        -- How the value renders on the model line, and the lines describing it. A Double knows
+        -- nothing of UE5M3's fields, so for a deviant the three lines between the layout and
+        -- the classification are written out here rather than taken from it.
+        (valStr, body)
+          | ue5m3IsDeviant stored
+          = ( show v
+            , [ "       Precision: 5 exponent bits, 3 significand bits"
+              , "            Sign: " ++ alwaysPositive
+              , "        Exponent: 16 (Stored: 31, Bias: " ++ show ue5m3Bias ++ ")"
+              ]
+              ++ dropWhile (not . isClassification) (cracked (literal v :: SDouble))
+            )
+          | True
+          = ( untype (show lookAlike)
+            , map fixSign $ dropWhile (not . ("Precision:" `isInfixOf`)) (cracked lookAlike)
+            )
+          where v         = ue5m3Value stored
+                lookAlike = mkFP 5 4 (fromIntegral e) (fromIntegral m) :: SFloatingPoint 5 4
+
+        cracked :: SBV a -> [String]
+        cracked = lines . SBV.crack debug
+
+        -- NB. There is no sign bit: bit 7 is the exponent's MSB. We keep the line so the block
+        -- has the same shape as every other format's, but say outright that it can never read
+        -- anything else -- the same thing 'e8m0Layout' does, for the same reason.
+        alwaysPositive = "Positive (always)"
+
+        fixSign l | "Sign:" `isInfixOf` l = takeWhile (/= ':') l ++ ": " ++ alwaysPositive
+                  | True                  = l
+
+        -- 'show' on a look-alike appends its own type, which is not the one the user asked for.
+        untype = dropWhileEnd isSpace . takeWhile (/= ':')
+
+        inBase b x = showIntAtBase b intToDigit x ""
+
+        pad n x = replicate (n - length x) '0' ++ x
+
+-- | A concrete float with the given field widths and stored fields, and a zero sign. Used only
+-- as a stand-in for UE5M3, which has no look-alike of its own.
+mkFP :: Int -> Int -> Integer -> Integer -> SBV a
+mkFP eb sb e m = SBV (SVal k (Left (CV k (CFP (fpFromRawRep False (e, eb) (m, sb))))))
+  where k = KFP eb sb

@@ -1,0 +1,18 @@
+Arguments: -fue5m3 -rRTP -- 69632
+Exit code: ExitSuccess
+Satisfiable. Model:
+  ENCODED = 73728.0 :: UE5M3
+                  76543 210
+                  -E5-- S3-
+   Binary layout: 11111 001
+      Hex layout: F9
+       Precision: 5 exponent bits, 3 significand bits
+            Sign: Positive (always)
+        Exponent: 16 (Stored: 31, Bias: 15)
+  Classification: FP_NORMAL
+          Binary: 0b1.001p+16
+           Octal: 0o2.2p+15
+         Decimal: 73728.0
+             Hex: 0x1.2p+16
+   Rounding mode: RTP: Round towards positive infinity.
+            Note: Original value of 69632.0 was rounded to 73728.0.

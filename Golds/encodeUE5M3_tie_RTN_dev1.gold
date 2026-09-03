@@ -1,0 +1,18 @@
+Arguments: -fue5m3 -rRTN -- 69632
+Exit code: ExitSuccess
+Satisfiable. Model:
+  ENCODED = 65536.0 :: UE5M3
+                  76543 210
+                  -E5-- S3-
+   Binary layout: 11111 000
+      Hex layout: F8
+       Precision: 5 exponent bits, 3 significand bits
+            Sign: Positive (always)
+        Exponent: 16 (Stored: 31, Bias: 15)
+  Classification: FP_NORMAL
+          Binary: 0b1p+16
+           Octal: 0o2p+15
+         Decimal: 65536.0
+             Hex: 0x1p+16
+   Rounding mode: RTN: Round towards negative infinity.
+            Note: Original value of 69632.0 was rounded to 65536.0.

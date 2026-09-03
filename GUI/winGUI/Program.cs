@@ -78,6 +78,7 @@ namespace CrackNumGUI
             // 3. Argument parsing round-trips the forms crackNum --gui actually sends.
             CheckParse(failures, new[] { "-fsp", "-rRNE", "--", "2.5" }, "fsp", "2.5", "RNE");
             CheckParse(failures, new[] { "-fe8m0", "-rRNE", "--", "0xFE" }, "fe8m0", "0xFE", "RNE");
+            CheckParse(failures, new[] { "-fue5m3", "-rRNE", "--", "0xFE" }, "fue5m3", "0xFE", "RNE");
             CheckParse(failures, new[] { "-w32", "--", "0xdeadbeef" }, "w32", "0xdeadbeef", null);
             CheckParse(failures, new[] { "-i16", "-rRTZ", "--", "-42" }, "i16", "-42", "RTZ");
             CheckParse(failures, new[] { "-f8+24", "--", "1.5" }, "fcs", "1.5", null);

@@ -43,6 +43,7 @@ Flag        Format                               Exponent   Significand
 -ffp4       FP4 (E2M1)                                  2             2
 -ffp4e0m3   FP4 (E0M3), sign-magnitude                  0             3
 -fe8m0      E8M0 (MX scale), exponent-only              8             0
+-fue5m3     UE5M3 (FP8 scale), unsigned                 5             4
 -fa+b       Arbitrary IEEE-754 float                    a             b
 ```
 
@@ -114,6 +115,29 @@ Satisfiable. Model:
              Hex: 0x8
    Rounding mode: RNE: Round nearest ties to even.
             Note: Original value of 10.0 was rounded to 8.0.
+```
+
+### Example: Decode a UE5M3 FP8 scale
+`UE5M3` is `E4M3` with the sign bit -- which a scale never uses -- repurposed as the
+exponent's top bit. Like `E4M3` it has no infinities and exactly one `NaN`, so the top of
+the exponent range stays finite: this pattern is 65536, not the infinity an IEEE format of
+the same shape would read:
+```
+$ crackNum -fue5m3 0xF8
+Satisfiable. Model:
+  DECODED = 65536.0 :: UE5M3
+                  76543 210
+                  -E5-- S3-
+   Binary layout: 11111 000
+      Hex layout: F8
+       Precision: 5 exponent bits, 3 significand bits
+            Sign: Positive (always)
+        Exponent: 16 (Stored: 31, Bias: 15)
+  Classification: FP_NORMAL
+          Binary: 0b1p+16
+           Octal: 0o2p+15
+         Decimal: 65536.0
+             Hex: 0x1p+16
 ```
 
 ### Example: Decode two half-precision lanes
@@ -202,6 +226,7 @@ Supported floating-point formats (for use with -f):
       fp4: FP4 format (E2M1)      ( 2 +   2)
   fp4e0m3: FP4 format (E0M3)      ( 0 +   3)
      e8m0: FP8 format (MX scale)  ( 8 +   0)
+    ue5m3: FP8 format (Unsigned)  ( 5 +   4)
 
 Examples:
  Encoding:
@@ -218,6 +243,7 @@ Examples:
    crackNum -ffp4     2.5                     -- encode as an FP4 (E2M1) float
    crackNum -ffp4e0m3 3.5                     -- encode as an FP4 (E0M3) sign-magnitude integer
    crackNum -fe8m0    2.5                     -- encode as an E8M0 MX scale (power of two)
+   crackNum -fue5m3   2.5                     -- encode as a UE5M3 FP8 scale (unsigned)
    crackNum -fsp      0x3.2p5                 -- encode as single-precision from hex-float
 
  Decoding:
@@ -231,6 +257,7 @@ Examples:
    crackNum -ffp4     0b0111                  -- decode as an FP4 (E2M1) float
    crackNum -ffp4e0m3 0b1101                  -- decode as an FP4 (E0M3) sign-magnitude integer
    crackNum -fe8m0    0x7F                    -- decode as an E8M0 MX scale (power of two)
+   crackNum -fue5m3   0x78                    -- decode as a UE5M3 FP8 scale (unsigned)
    crackNum -l4 -fhp  64\'hbdffaaffdc71fc60   -- decode as half-precision float over 4 lanes using verilog notation
 
  GUI:
@@ -252,6 +279,10 @@ Examples:
          so every value is a power of two, from 2^-127 to 2^127. It has no zero
          and no Inf, and 0xFF is its only NaN. Negative inputs are rejected;
          values outside the range saturate to the nearest end-point.
+       - UE5M3 is E4M3 with the sign bit repurposed as the exponent's top bit: 5
+         exponent bits and 3 significand bits, and no sign. Like E4M3 it has no
+         Inf, and 0xFF is its only NaN, so the range runs [0, 114688]. Negative
+         inputs are rejected, and values above the range become NaN.
    - For decoding:
        - Use hexadecimal (0x) binary (0b), or N'h (verilog) notation as input.
          Input must have one of these prefixes.
