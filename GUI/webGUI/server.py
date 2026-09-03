@@ -50,9 +50,14 @@ ROUNDING_LABELS = {
     "RTZ": "RTZ (Toward 0)",
 }
 
-# The sidebar. Mirrors formatSections in GUI/swiftGUI/Sources/CrackNum/CrackNum.swift:
-# same ids, same labels, same grouping and order. Served to the browser at
-# /api/formats so the table lives in exactly one place.
+# The sidebar. Every GUI front-end carries its own copy of this table, and they are
+# expected to agree: same ids, same labels, same grouping and order. Adding or renaming
+# a format means updating each copy along with the argument parser beside it, so grep
+# for an id that already exists -- "fe4m3", say -- to find them rather than working from
+# a list here, which would go stale the next time a front-end is added.
+#
+# Within the web GUI, though, this is the only copy: the browser fetches it from
+# /api/formats rather than repeating it in the JavaScript.
 FORMAT_SECTIONS = [
     ("AI formats", [
         ("ffp4",     "FP4 (E2M1)", "fixedFloat", "-ffp4"),
