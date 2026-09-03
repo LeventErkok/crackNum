@@ -10,6 +10,9 @@ Golds/*.*_temp
 .ghcid-output
 .ghcid-trigger
 
+# Claude Code's local session state
+.claude/
+
 # Swift GUI build artifacts
 GUI/swiftGUI/.build/
 GUI/swiftGUI/CrackNum.app/
