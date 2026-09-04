@@ -22,6 +22,7 @@ import re
 import shutil
 import subprocess
 import sys
+import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -31,6 +32,18 @@ STATIC = Path(__file__).resolve().parent / "static"
 # this bound means z3 has gone off the rails, and the user gets a clean error
 # instead of a hung request.
 TIMEOUT_SECS = 10
+
+# Put hard ceilings on both accepted HTTP work and the expensive child-process
+# work. A ThreadingHTTPServer otherwise creates a thread for every connection,
+# and every /api/crack request can create both crackNum and z3. These defaults
+# keep a public deployment responsive under a burst without serializing normal
+# interactive use.
+MAX_HTTP_THREADS = 32
+MAX_CRACK_PROCESSES = 4
+CRACK_QUEUE_SECS = 2.0
+REQUEST_TIMEOUT_SECS = TIMEOUT_SECS + 5
+
+CRACK_SLOTS = threading.BoundedSemaphore(MAX_CRACK_PROCESSES)
 
 # The longest value we will hand to crackNum. Generous next to a 64-lane
 # Verilog pattern, small enough that nobody can post a novel.
@@ -226,6 +239,18 @@ def run_cracknum(flag, rounding, value):
     """Run the real binary and return its combined output. No shell, ever: argv is
     a list, and the value goes after '--' as a single element so a leading '-'
     cannot be read as a flag."""
+    if not CRACK_SLOTS.acquire(timeout=CRACK_QUEUE_SECS):
+        return ("The server is busy handling other conversions. "
+                "Please try again in a moment.")
+
+    try:
+        return _run_cracknum(flag, rounding, value)
+    finally:
+        CRACK_SLOTS.release()
+
+
+def _run_cracknum(flag, rounding, value):
+    """Implementation of run_cracknum while its process slot is held."""
     try:
         cracknum = locate("crackNum", "CRACKNUM")
         z3 = locate("z3", "SBV_Z3")
@@ -389,6 +414,48 @@ class Handler(BaseHTTPRequestHandler):
         return self._json(200, crack(req))
 
 
+class BoundedThreadingHTTPServer(ThreadingHTTPServer):
+    """Thread-per-request server with a fixed upper bound and socket timeout."""
+
+    daemon_threads = True
+
+    def __init__(self, server_address, handler_class):
+        self._request_slots = threading.BoundedSemaphore(MAX_HTTP_THREADS)
+        super().__init__(server_address, handler_class)
+
+    def get_request(self):
+        request, address = super().get_request()
+        request.settimeout(REQUEST_TIMEOUT_SECS)
+        return request, address
+
+    def process_request(self, request, client_address):
+        if self._request_slots.acquire(blocking=False):
+            try:
+                return super().process_request(request, client_address)
+            except Exception:
+                # Thread creation itself can fail under system pressure.
+                self._request_slots.release()
+                raise
+
+        # No worker is available to parse a request, so answer directly with a
+        # minimal response and close the connection instead of creating thread 33.
+        body = b"Server busy\n"
+        response = (b"HTTP/1.1 503 Service Unavailable\r\n"
+                    b"Content-Type: text/plain; charset=utf-8\r\n"
+                    b"Content-Length: " + str(len(body)).encode("ascii") + b"\r\n"
+                    b"Connection: close\r\n\r\n" + body)
+        try:
+            request.sendall(response)
+        finally:
+            self.shutdown_request(request)
+
+    def process_request_thread(self, request, client_address):
+        try:
+            super().process_request_thread(request, client_address)
+        finally:
+            self._request_slots.release()
+
+
 def main():
     ap = argparse.ArgumentParser(description="crackNum web GUI")
     ap.add_argument("--port", type=int, default=8080)
@@ -406,7 +473,7 @@ def main():
     sys.stderr.write("Using %-8s %s\n" % ("contact:", contact if contact
                                           else "(none; set %s to show a feedback link)" % CONTACT_ENV))
 
-    srv = ThreadingHTTPServer((opts.host, opts.port), Handler)
+    srv = BoundedThreadingHTTPServer((opts.host, opts.port), Handler)
     sys.stderr.write("crackNum web GUI on http://%s:%d/\n" % (opts.host, opts.port))
     try:
         srv.serve_forever()

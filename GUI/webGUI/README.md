@@ -28,6 +28,7 @@ rather than placed in the page.
 | File | Role |
 |---|---|
 | `server.py` | The argv adapter. The web analogue of the Swift GUI's `runCrackNum` and the Windows GUI's `Runner.cs`. |
+| `test_server.py` | Dependency-free regression tests for the server's concurrency limits. |
 | `static/index.html` | Layout: value box, format sidebar, output pane. |
 | `static/app.js` | Builds the request, renders the reply. Parses nothing. |
 | `static/style.css` | Chrome, plus the monospace `<pre>` the bit ruler depends on. |
@@ -64,6 +65,10 @@ what the server will accept.
   * Format ids are looked up in a fixed table; rounding modes in a fixed list;
     widths must be integers in range; values are capped at 512 characters.
   * Every crack runs with a 10-second timeout.
+  * At most four `crackNum`/`z3` conversions run at once. A request waits up to
+    two seconds for a slot, then receives a readable "server is busy" response.
+  * HTTP request handling is capped at 32 threads, and accepted sockets have a
+    15-second timeout, so idle or bursty clients cannot create work without bound.
   * Static files are resolved inside `static/` and anything escaping it is refused.
   * `--host` defaults to loopback. Binding `0.0.0.0` exposes it to the network.
 
@@ -74,12 +79,20 @@ proxy with rate limiting.
 
 ## Verification
 
-`server.py` has no opinions to test, so the useful check is differential: run the
-same argv through the CLI and through `/api/crack` and compare. A 31-case sweep
-(every format, all five rounding modes, hex/binary/Verilog/decimal/hex-float
-input, NaN/Inf/-0, saturation and rejection cases) is byte-identical to the CLI.
+Run the dependency-free server regression tests from this directory with:
+
+    python3 test_server.py
+
+`make test` at the repository root runs them too, after the Haskell suite. They
+verify that a request gets a busy response when all conversion slots are occupied,
+that a slot is released after a conversion, and that a connection arriving once
+every handler thread is taken is answered with a 503 by the accept loop instead
+of getting a thread of its own. The argv adapter was also checked differentially by running the
+same argv through the CLI and `/api/crack`: a 31-case sweep (every format, all
+five rounding modes, hex/binary/Verilog/decimal/hex-float input, NaN/Inf/-0,
+saturation and rejection cases) was byte-identical to the CLI.
 
 The pixels are a separate question. Layout bugs do not fail builds -- the Windows
 GUI shipped a toolbar rendering one button and a heading clipped to "AI formal"
-past a green CI run, a compiler, and 371 golden tests. A headless browser driving
-this UI and screenshotting it would close that gap; until then, look at it.
+past a green CI run, a compiler, and hundreds of golden tests. A headless browser
+driving this UI and screenshotting it would close that gap; until then, look at it.

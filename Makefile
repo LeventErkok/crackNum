@@ -6,6 +6,7 @@ SHELL     := /usr/bin/env bash
 TSTSRCS   = $(shell find . -name '*.hs' -or -name '*.lhs' | grep -v Setup.hs | grep -v Paths_crackNum.hs)
 DEPSRCS   = $(shell find . -name '*.hs' -or -name '*.lhs' -or -name '*.cabal' | grep -v Paths_crackNum.hs)
 CABAL     = cabal
+PYTHON    = python3
 TIME      = /usr/bin/time
 
 # Binary distribution: version comes from the cabal file so it cannot drift.
@@ -124,7 +125,9 @@ hlint: install
 	@hlint src -i "Use otherwise" --cpp-simple
 
 test:
-	@crackNum --runTests -- -j $(NO_OF_CORES) ${TESTTARGET} ${TESTACCEPT} ${TESTHIDE}
+	@$(CABAL) test crackNum-tests --test-show-details=direct \
+	   --test-options="-j $(NO_OF_CORES) ${TESTTARGET} ${TESTACCEPT} ${TESTHIDE}"
+	@PYTHONDONTWRITEBYTECODE=1 $(PYTHON) GUI/webGUI/test_server.py
 
 checkLinks:
 	@brok --no-cache --only-failures COPYRIGHT LICENSE crackNum.cabal $(wildcard *.md)
