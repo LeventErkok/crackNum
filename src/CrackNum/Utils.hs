@@ -86,7 +86,7 @@ fixup False inp = case map toLower inp of
                     linp | linp == "nan"                     -> "NaN"
                     _                                        -> inp
 
-unrecognized :: String -> IO ()
+unrecognized :: String -> IO a
 unrecognized inp = die [ "Input does not represent floating point number we recognize."
                        , "Saw: " ++ inp
                        , ""

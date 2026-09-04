@@ -19,15 +19,19 @@ module CrackNum.Encode(
    ) where
 
 import Control.DeepSeq (rnf)
-import Data.List       (isPrefixOf, isSuffixOf, intercalate)
+import Control.Monad   (guard)
+import Data.Char       (isDigit, isHexDigit, isSpace, toLower)
+import Data.List       (dropWhileEnd, isPrefixOf, isSuffixOf, intercalate)
 
 import qualified Control.Exception as C
 
+import GHC.Float      (double2Float)
 import GHC.Utils.Misc (readHexRational)
 import GHC.Real       (Ratio((:%)))
 
 import LibBF
 import Numeric
+import Text.Read (readMaybe)
 
 import Data.SBV           hiding (crack, satCmd)
 import Data.SBV.Float     hiding (FP)
@@ -37,6 +41,136 @@ import Data.SBV.Internals hiding (free, satCmd)
 import CrackNum.Types
 import CrackNum.Utils
 import CrackNum.Output
+
+-- | Parse an ordinary decimal as an exact rational. Using Read Double here
+-- would round before the destination format gets to apply its own rounding
+-- mode; that is observable for inputs just to either side of a midpoint.
+readDecimalRational :: String -> Maybe Rational
+readDecimalRational raw = do
+   let trimmed = dropWhileEnd isSpace (dropWhile isSpace raw)
+       (sgn, unsigned) = case trimmed of
+                           '-' : rest -> (-1, rest)
+                           '+' : rest -> ( 1, rest)
+                           _          -> ( 1, trimmed)
+       (mantissa, exponentPart) = break (`elem` "eE") unsigned
+
+   decimalExponent <- case exponentPart of
+                        ""       -> pure 0
+                        _ : rest -> signedInteger rest
+
+   let (whole, dotAndFraction) = break (== '.') mantissa
+   fraction <- case dotAndFraction of
+                 ""       -> pure ""
+                 '.' : xs -> guard ('.' `notElem` xs) >> pure xs
+                 _        -> Nothing
+
+   guard (not (null whole && null fraction))
+   guard (all isDigit whole && all isDigit fraction)
+
+   let digits      = (if null whole then "0" else whole) ++ fraction
+       significant = dropWhile (== '0') digits
+       decimalShift = decimalExponent - toInteger (length fraction)
+       decimalOrder = toInteger (length significant) + decimalShift
+
+       -- These exact rationals are used only by formats whose entire finite
+       -- range lies between roughly 1e-39 and 1e6. Clamp exponents far beyond
+       -- that envelope before computing 10^n: the sentinel has identical
+       -- rounding/range behavior and prevents input such as 1e999999999 from
+       -- attempting an impossibly large allocation.
+       envelope = 400
+
+   magnitude <- if null significant
+                   then pure 0
+                   else if decimalOrder > envelope
+                           then pure (10 ^ envelope)
+                           else if decimalOrder < negate envelope
+                                   then pure (1 % (10 ^ envelope))
+                                   else do coefficient <- readMaybe digits
+                                           let decimalPlaces = negate decimalShift
+                                           pure $ if decimalPlaces >= 0
+                                                     then coefficient % (10 ^ decimalPlaces)
+                                                     else (coefficient * 10 ^ negate decimalPlaces) % 1
+   pure $ fromInteger sgn * magnitude
+ where signedInteger ('+' : xs) = readMaybe xs
+       signedInteger xs         = readMaybe xs
+
+-- | Parse a finite decimal or hexadecimal floating literal exactly, retaining
+-- the spelling of negative zero separately because Rational has only one zero.
+readExactRational :: String -> IO (Rational, Bool)
+readExactRational inp = case readDecimalRational inp of
+   Just r  -> pure (r, r == 0 && negativeSyntax inp)
+   Nothing -> case readHexIntegerRational inp of
+                Just r  -> pure (r, r == 0 && negativeSyntax inp)
+                Nothing -> do let r = readHexRational (normalizeHexPrefix inp)
+                              ok <- (rnf r `seq` pure True)
+                                      `C.catch` (\(_ :: C.SomeException) -> pure False)
+                              if ok then pure (r, r == 0 && negativeSyntax inp)
+                                    else unrecognized inp
+ where negativeSyntax = isPrefixOf "-" . dropWhile isSpace
+
+-- Haskell's Read instances accept integral hexadecimal syntax as a floating
+-- value. Preserve that behavior without first rounding through Float/Double.
+readHexIntegerRational :: String -> Maybe Rational
+readHexIntegerRational raw = do
+   let trimmed = dropWhileEnd isSpace (dropWhile isSpace raw)
+       (sgn, unsigned) = case trimmed of
+                           '-' : rest -> (-1, rest)
+                           '+' : rest -> ( 1, rest)
+                           _          -> ( 1, trimmed)
+   digits <- case unsigned of
+               '0' : x : rest | x `elem` "xX" -> pure rest
+               _                                -> Nothing
+   guard (not (null digits) && all isHexDigit digits)
+   value <- case readHex digits of
+              [(n, "")] -> pure n
+              _         -> Nothing
+   pure $ fromInteger (sgn * value)
+
+-- GHC's hex-float reader accepts the conventional lowercase 0x prefix only.
+-- Haskell's ordinary numeric reader accepted 0X too, so retain that spelling
+-- when an SP/DP input falls through to exact hexadecimal parsing.
+normalizeHexPrefix :: String -> String
+normalizeHexPrefix raw = case unsigned of
+   '0' : 'X' : rest -> leading ++ sign ++ "0x" ++ rest
+   _                -> raw
+ where (leading, signed) = span isSpace raw
+       (sign, unsigned)  = case signed of
+                             s : rest | s `elem` "+-" -> ([s], rest)
+                             _                        -> ("", signed)
+
+data NumberInput = InputNaN
+                 | InputPosInf
+                 | InputNegInf
+                 | InputFinite Rational Bool -- ^ exact value, and whether zero was spelled negative
+
+readNumberInput :: String -> IO NumberInput
+readNumberInput inp = case normalized of
+   "nan"       -> pure InputNaN
+   "inf"       -> pure InputPosInf
+   "infinity"  -> pure InputPosInf
+   "-inf"      -> pure InputNegInf
+   "-infinity" -> pure InputNegInf
+   _           -> uncurry InputFinite <$> readExactRational inp
+ where normalized = map toLower $ dropWhileEnd isSpace $ dropWhile isSpace inp
+
+-- | Constrain a symbolic IEEE value to the correctly rounded cast of an exact
+-- rational. Keeping the real value symbolic lets z3 apply the requested IEEE
+-- rounding mode without an intermediate host Float or Double conversion.
+rationalConstraint :: Int -> Int -> RM -> Rational -> Predicate
+rationalConstraint i j rm (a :% b) = do
+   let k = KFP i j
+   sx <- svNewVar k "ENCODED"
+   sr <- sReal_
+   let top, bot :: SReal
+       top = sFromIntegral (literal a)
+       bot = sFromIntegral (literal b)
+       val = top / bot
+       rounded st = do msv <- sbvToSV st (toSBVRM rm)
+                       xsv <- sbvToSV st sr
+                       newExpr st k (SBVApp (IEEEFP (FP_Cast KReal k msv)) [xsv])
+   constrain $ sr .== val
+   constrain (SBV (sx `svEqual` SVal k (Right (cache rounded))) :: SBool)
+   pure sTrue
 
 -- | Encoding
 encodeLane :: Bool -> Int -> NKind -> RM -> String -> IO ()
@@ -87,10 +221,18 @@ encodeLane debug lanes num rm inp
                         Just s  -> putStrLn $ "            Note: Conversion from " ++ show inp ++ " was not faithful. Status: " ++ s ++ "."
 
         ef :: FP -> Bool -> IO ()
-        ef SP _ = case reads (fixup True inp) of
-                    [(v :: Float, "")] -> do print =<< run v (p v)
-                                             note $ snd $ convert 8 24
-                    _                  -> ef (FP 8 24) False
+        -- Parse decimal input with LibBF at the destination precision. Going through
+        -- Haskell's Read Float/Double would round to nearest-even before we ever saw
+        -- the user's rounding mode. Since every Float is exactly representable as a
+        -- Double, bfToDouble followed by double2Float faithfully materializes the
+        -- already-rounded single-precision value.
+        ef SP _ = do let (bf, mbS) = convert 8 24
+                     if bfIsNaN bf && fixup False inp /= "NaN"
+                        then ef (FP 8 24) False  -- hexadecimal float: exact SMT cast
+                        else do let (d, _) = bfToDouble NearEven bf
+                                    v      = double2Float d
+                                print =<< run v (p v)
+                                note mbS
          where p :: Float -> Predicate
                p f = do x <- sFloat "ENCODED"
                         pure $ x .=== literal f
@@ -98,10 +240,14 @@ encodeLane debug lanes num rm inp
                run f | isNaN f = satCmdNaN 8 24
                      | True    = satCmd
 
-        ef DP _ = case reads (fixup True inp) of
-                    [(v :: Double, "")] -> do print =<< run v (p v)
-                                              note $ snd $ convert 11 53
-                    _                   -> ef (FP 11 53) False
+        -- As for SP, let LibBF apply the selected mode before converting the exact
+        -- destination value to the host Double used by SBV's native presentation.
+        ef DP _ = do let (bf, mbS) = convert 11 53
+                     if bfIsNaN bf && fixup False inp /= "NaN"
+                        then ef (FP 11 53) False  -- hexadecimal float: exact SMT cast
+                        else do let (v, _) = bfToDouble NearEven bf
+                                print =<< run v (p v)
+                                note mbS
          where p :: Double -> Predicate
                p d = do x <- sDouble "ENCODED"
                         pure $ x .=== literal d
@@ -112,9 +258,8 @@ encodeLane debug lanes num rm inp
         ef (FP i j) wasE5M2 = do let (v, mbS) = convert i j
                                  if bfIsNaN v && fixup False inp /= "NaN"
                                     then -- maybe it's a hexfloat?
-                                         do let hr = readHexRational inp
-                                            () <- (rnf hr `seq` return ()) `C.catch` (\(_ :: C.SomeException) -> unrecognized inp)
-                                            res <- satCmd (pRat hr)
+                                         do (hr, _) <- readExactRational inp
+                                            res <- satCmd (rationalConstraint i j rm hr)
                                             if wasE5M2 then printAs E5M2 res
                                                        else print res
                                     else do let run | bfIsNaN v = satCmdNaN i j
@@ -127,20 +272,6 @@ encodeLane debug lanes num rm inp
                         p bf = do let k = KFP i j
                                   sx <- svNewVar k "ENCODED"
                                   pure $ SBV $ sx `svStrongEqual` SVal k (Left (CV k (CFP (fpFromBigFloat i j bf))))
-
-                        pRat :: Rational -> Predicate
-                        pRat (a :% b) = do let k = KFP i j
-                                           sx <- svNewVar k "ENCODED"
-                                           sr <- sReal_
-                                           let top, bot :: SReal
-                                               top = sFromIntegral (literal a)
-                                               bot = sFromIntegral (literal b)
-                                               val = top / bot
-                                               r st = do msv <- sbvToSV st (toSBVRM rm)
-                                                         xsv <- sbvToSV st sr
-                                                         newExpr st k (SBVApp (IEEEFP (FP_Cast KReal k msv)) [xsv])
-                                           pure $   sr .== val
-                                                .&& SBV (sx `svEqual` SVal k (Right (cache r)))
 
         ef E5M2    _ = ef (FP 5 3) True -- 3 is intentional; the format ignores the sign storage, but SBV doesn't, following SMTLib
 
@@ -156,15 +287,20 @@ encodeLane debug lanes num rm inp
 
 -- Encoding E4M3 is tricky, because of deviation from IEEE. So, we do a case analysis, mostly
 encodeE4M3 :: Bool -> RM -> String -> IO ()
-encodeE4M3 debug rm inp = case reads (fixup True inp) of
-                            [(v :: Double, "")] -> analyze v
-                            _                   -> -- maybe it's a hexfloat?
-                                                   do let hr = readHexRational inp
-                                                      (rnf hr `seq` analyze (fromRational hr))
-                                                        `C.catch` (\(_ :: C.SomeException) -> unrecognized inp)
+encodeE4M3 debug rm inp = do
+   parsed <- readNumberInput inp
+   case parsed of
+     InputNaN          -> getNaN >>= putStrLn . fixNaN . fixEncoded
+     InputPosInf       -> infinite
+     InputNegInf       -> infinite
+     InputFinite v neg -> range v neg
  where config = z3{ crackNum = True
                   , verbose  = debug
+                  , isNonModelVar = (/= "ENCODED")
                   }
+
+       infinite = do getNaN >>= putStrLn . fixNaN . fixEncoded
+                     putStrLn "            Note: The input value was infinite, which is not representable in E4M3."
 
        fixEncoded :: SatResult -> String
        fixEncoded = retype E4M3
@@ -176,17 +312,6 @@ encodeE4M3 debug rm inp = case reads (fixup True inp) of
        getNaN = satWith config{crackNumSurfaceVals = [("ENCODED", 0x7F)]} $
                               do x :: SFloatingPoint 4 4 <- sFloatingPoint "ENCODED"
                                  constrain $ fpIsNaN x
-
-       analyze :: Double -> IO ()
-       analyze v
-         -- NaN has two representations, with surface value S.1111.111; we use 0x7F for simplicity
-         | isNaN v
-         = getNaN >>= putStrLn . fixNaN . fixEncoded
-         | isInfinite v
-         = do getNaN >>= putStrLn . fixNaN . fixEncoded
-              putStrLn "            Note: The input value was infinite, which is not representable in E4M3."
-         | True
-         = range v
 
        -- This list is sorted on the first value.
        -- Final bool is True if this value is considered "even" for rounding purposes
@@ -203,40 +328,50 @@ encodeE4M3 debug rm inp = case reads (fixup True inp) of
                      , (E448, "1111110", True)
                      ]
 
-       -- Pick the value we land on
-       pick v = case [p | (d, p) <- dists, d == minVal] of
-                  [x]    -> x
-                  [x, y] -> choose v x y
-                  -- The following two can't happen, but just in case:
-                  []     -> error $ "encodeE4M3: Empty list of candidates for " ++ show v  -- Can't happen
-                  cands  -> error $ "encodeE4M3: More than two candidates for " ++ show v ++ ": " ++ show cands
-         where dists  = [(abs (v - toD ev), p) | p@(ev, _, _) <- extraVals]
-               minVal = minimum $ map fst dists
+       -- Pick the value we land on. Directed modes choose an adjacent endpoint
+       -- for every inexact input; nearest modes compare distances and use their
+       -- tie rule only when those distances are equal.
+       pick v = case [p | p@(ev, _, _) <- extraVals, value ev == v] of
+                  [exact] -> exact
+                  []      -> case break (\(ev, _, _) -> value ev > v) extraVals of
+                               (lowers, upper : _) -> case reverse lowers of
+                                                       lower : _ -> choose lower upper
+                                                       []        -> noAdjacent
+                               _                   -> noAdjacent
+                  cands   -> error $ "encodeE4M3: Multiple exact candidates for " ++ show v ++ ": " ++ show cands
+         where value ev = toRational (toD ev)
 
-       -- choose is called if we're smack in between the two values given. Then, we pick
-       -- depending on the rounding mode. Note that p1 < p2 is guaranteed here.
-       choose :: Double -> (ExtraE3M4, String, Bool) -> (ExtraE3M4, String, Bool) -> (ExtraE3M4, String, Bool)
-       choose v p1@(_, _, eo1) p2@(_, _, eo2) =
-           let isNegative = v < 0 || isNegativeZero v
-           in case rm of
-               RNE  -> case (eo1, eo2) of
-                         (True,  False) -> p1
-                         (False, True)  -> p2
-                         _              -> error $ "encodeE4M3: RNE can't pick between values: " ++ show (v, p1, p2)
-               RNA  -> if isNegative then p1 else p2
-               RTP  -> p2
-               RTN  -> p1
-               RTZ  -> if isNegative then p2 else p1
+               noAdjacent = error $ "encodeE4M3: No adjacent candidates for " ++ show v
 
-       range v
+               choose p1 p2 = case rm of
+                 RTP -> p2
+                 RTN -> p1
+                 RTZ -> if v < 0 then p2 else p1
+                 RNE -> nearest (evenTie p1 p2) p1 p2
+                 RNA -> nearest (if v < 0 then p1 else p2) p1 p2
+
+               nearest tie p1@(ev1, _, _) p2@(ev2, _, _)
+                 = case compare (v - value ev1) (value ev2 - v) of
+                     LT -> p1
+                     EQ -> tie
+                     GT -> p2
+
+               evenTie p1@(_, _, True)  _                  = p1
+               evenTie _                  p2@(_, _, True)  = p2
+               evenTie p1                 p2                = error $ "encodeE4M3: RNE can't pick between values: " ++ show (v, p1, p2)
+
+       range v isNegZero
          | v < -448 || v > 448   -- Out-of-bounds becomes NaN
          = do getNaN >>= putStrLn . fixNaN . fixEncoded
-              putStrLn $ "            Note: The input value " ++ show v ++ " is out of bounds, and hence becomes NaN"
+              putStrLn $ "            Note: The input value " ++ show (fromRational v :: Double) ++ " is out of bounds, and hence becomes NaN"
               putStrLn   "                  The representable range is [-448, 448]"
 
          | v >= -240 && v <= 240   -- Fits into regular 4+4 format, so just decode
-         = do res <- satWith config $ do x :: SFloatingPoint 4 4 <- sFloatingPoint "ENCODED"
-                                         constrain $ x .== fromSDouble sRNE (literal v)
+         = do res <- satWith config $ if isNegZero
+                                    then do x :: SFloatingPoint 4 4 <- sFloatingPoint "ENCODED"
+                                            constrain $ x .== fromSDouble (toSBVRM rm) (literal (-0.0 :: Double))
+                                            pure sTrue
+                                    else rationalConstraint 4 4 rm v
               putStrLn $ fixEncoded res
 
          -- Otherwise, we're in the range [-448, -240)  OR (240, 448]
@@ -275,35 +410,36 @@ encodeE4M3 debug rm inp = case reads (fixup True inp) of
               putStrLn $ "         Decimal: " ++ bDec
               putStrLn $ "             Hex: " ++ bHex
               putStrLn $ "   Rounding mode: " ++ show rm
-              putStrLn $ "            Note: Original value of " ++ show v ++ ", represented as E4M3 special value"
+              putStrLn $ "            Note: Original value of " ++ show (fromRational v :: Double) ++ ", represented as E4M3 special value"
 
 -- Likewise encoding FP4 is tricky since it deviates from IEEE. But luckily there aren't too many
 -- values to worry about here: There are precisely 8 magnitudes, so we simply round by hand.
 encodeFP4 :: Bool -> RM -> String -> IO ()
-encodeFP4 debug rm inp = case reads (fixup True inp) of
-                           [(v :: Double, "")] -> analyze v
-                           _                   -> -- maybe it's a hexfloat? Note that we must scope the
-                                                  -- catch over the parse only: analyze can legitimately
-                                                  -- die, and die throws an exit-exception of its own.
-                                                  do let hr = readHexRational inp
-                                                     ok <- (rnf hr `seq` pure True)
-                                                             `C.catch` (\(_ :: C.SomeException) -> pure False)
-                                                     if ok then analyze (fromRational hr)
-                                                           else unrecognized inp
+encodeFP4 debug rm inp = do
+   parsed <- readNumberInput inp
+   case parsed of
+     InputNaN          -> die ["FP4 has no representation for NaN."]
+     InputPosInf       -> infinite
+     InputNegInf       -> infinite
+     InputFinite v neg -> analyze v neg
  where config = z3{ crackNum = True
                   , verbose  = debug
                   }
 
+       infinite = die [ "FP4 has no representation for infinity."
+                      , "The representable range is [-6, 6]."
+                      ]
+
        -- The magnitudes FP4 can represent, in increasing order. Note that the index of each
        -- magnitude is precisely the value of the low 3 bits of its encoding. The last two
        -- (4 and 6) are where FP4 deviates from IEEE, which would call them infinity and NaN.
-       mags :: [Double]
+       mags :: [Rational]
        mags = [0, 0.5, 1, 1.5, 2, 3, 4, 6]
 
        -- Round the magnitude to the index of one of the representable magnitudes, honoring
        -- the rounding mode. Note that rounding a negative value towards +oo is the same thing
        -- as rounding its magnitude towards 0; hence the need for the sign here.
-       roundMag :: Bool -> Double -> Int
+       roundMag :: Bool -> Rational -> Int
        roundMag isNeg m
          | m >= 6                                     -- Larger than we can represent; saturate
          = 7
@@ -326,23 +462,17 @@ encodeFP4 debug rm inp = case reads (fixup True inp) of
                               GT -> hi
                               EQ -> tie
 
-       analyze :: Double -> IO ()
-       analyze v
-         | isNaN v
-         = die [ "FP4 has no representation for NaN." ]
-         | isInfinite v
-         = die [ "FP4 has no representation for infinity."
-               , "The representable range is [-6, 6]."
-               ]
-         | True
-         = do let isNeg = v < 0 || isNegativeZero v
-                  idx   = roundMag isNeg (abs v)
-                  t     = (if isNeg then negate else id) (mags !! idx)
+       analyze :: Rational -> Bool -> IO ()
+       analyze v isNegZero = do
+          let isNeg = v < 0 || isNegZero
+              idx   = roundMag isNeg (abs v)
+              mag   = mags !! idx
+              t     = (if isNeg then negate else id) (fromRational mag :: Double)
 
-              if idx >= 6 then deviant isNeg idx
-                          else regular t
+          if idx >= 6 then deviant isNeg idx
+                      else regular t
 
-              trailer v t
+          trailer v mag t
 
        -- Everything with magnitude at most 3 is a bona-fide IEEE FP 2 2 value, so let SBV
        -- print it; we merely fix the type name it displays. Note that the rounding mode is
@@ -366,53 +496,47 @@ encodeFP4 debug rm inp = case reads (fixup True inp) of
                                           then fpIsNaN x   -- 6: the NaN slot, whose sign is not observable
                                           else fpIsInfinite x .&& (if isNeg then fpIsNegative x else fpIsPositive x)
 
-              modOut debug isNeg (mags !! idx) FP4 res
+              modOut debug isNeg (fromRational (mags !! idx)) FP4 res
 
        -- Since FP4 has no infinities, out-of-range values saturate to the largest magnitude.
-       trailer :: Double -> Double -> IO ()
-       trailer v t = do putStrLn $ "   Rounding mode: " ++ show rm
-                        note
+       trailer :: Rational -> Rational -> Double -> IO ()
+       trailer v mag t = do putStrLn $ "   Rounding mode: " ++ show rm
+                            note
          where note
                 | abs v > 6
-                = do putStrLn $ "            Note: Original value of " ++ show v ++ " is out of range, saturated to " ++ show t ++ "."
+                = do putStrLn $ "            Note: Original value of " ++ show (fromRational v :: Double) ++ " is out of range, saturated to " ++ show t ++ "."
                      putStrLn   "                  The representable range is [-6, 6]."
-                | v == t
+                | abs v == mag
                 = putStrLn $ "            Note: Conversion from " ++ show inp ++ " was exact. No rounding happened."
                 | True
-                = putStrLn $ "            Note: Original value of " ++ show v ++ " was rounded to " ++ show t ++ "."
+                = putStrLn $ "            Note: Original value of " ++ show (fromRational v :: Double) ++ " was rounded to " ++ show t ++ "."
 
 -- | Encoding FP4E0M3. The representable values are just the integers -7 to 7, so we round
 -- the magnitude by hand, saturating anything that doesn't fit.
 encodeFP4E0M3 :: RM -> String -> IO ()
-encodeFP4E0M3 rm inp = case reads (fixup True inp) of
-                         [(v :: Double, "")] -> analyze v
-                         _                   -> -- maybe it's a hexfloat? As in encodeFP4, the catch must
-                                                -- scope over the parse only: analyze can legitimately die,
-                                                -- and die throws an exit-exception of its own.
-                                                do let hr = readHexRational inp
-                                                   ok <- (rnf hr `seq` pure True)
-                                                           `C.catch` (\(_ :: C.SomeException) -> pure False)
-                                                   if ok then analyze (fromRational hr)
-                                                         else unrecognized inp
- where analyze :: Double -> IO ()
-       analyze v
-         | isNaN v
-         = die [ "FP4E0M3 has no representation for NaN." ]
-         | isInfinite v
-         = die [ "FP4E0M3 has no representation for infinity."
-               , "The representable range is [-7, 7]."
-               ]
-         | True
-         = do let isNeg = v < 0 || isNegativeZero v
-                  mag   = roundMag isNeg (abs v)
+encodeFP4E0M3 rm inp = do
+   parsed <- readNumberInput inp
+   case parsed of
+     InputNaN          -> die ["FP4E0M3 has no representation for NaN."]
+     InputPosInf       -> infinite
+     InputNegInf       -> infinite
+     InputFinite v neg -> analyze v neg
+ where infinite = die [ "FP4E0M3 has no representation for infinity."
+                      , "The representable range is [-7, 7]."
+                      ]
 
-              putStr $ unlines $ fp4e0m3Layout "ENCODED" isNeg mag
-              trailer v isNeg mag
+       analyze :: Rational -> Bool -> IO ()
+       analyze v isNegZero = do
+          let isNeg = v < 0 || isNegZero
+              mag   = roundMag isNeg (abs v)
+
+          putStr $ unlines $ fp4e0m3Layout "ENCODED" isNeg mag
+          trailer v isNeg mag
 
        -- Round the magnitude to one of 0 .. 7, honoring the rounding mode. Note that rounding
        -- a negative value towards +oo is the same thing as rounding its magnitude towards 0;
        -- hence the need for the sign here.
-       roundMag :: Bool -> Double -> Int
+       roundMag :: Bool -> Rational -> Int
        roundMag isNeg m
          | m >= 7                 -- Larger than we can represent; saturate
          = 7
@@ -436,19 +560,19 @@ encodeFP4E0M3 rm inp = case reads (fixup True inp) of
                               EQ -> tie
 
        -- Since FP4E0M3 has no infinities, out-of-range values saturate to the largest magnitude.
-       trailer :: Double -> Bool -> Int -> IO ()
+       trailer :: Rational -> Bool -> Int -> IO ()
        trailer v isNeg mag = do putStrLn $ "   Rounding mode: " ++ show rm
                                 note
          where t = (if isNeg then "-" else "") ++ show mag
 
                note
                  | abs v > 7
-                 = do putStrLn $ "            Note: Original value of " ++ show v ++ " is out of range, saturated to " ++ t ++ "."
+                 = do putStrLn $ "            Note: Original value of " ++ show (fromRational v :: Double) ++ " is out of range, saturated to " ++ t ++ "."
                       putStrLn   "                  The representable range is [-7, 7]."
                  | abs v == fromIntegral mag
                  = putStrLn $ "            Note: Conversion from " ++ show inp ++ " was exact. No rounding happened."
                  | True
-                 = putStrLn $ "            Note: Original value of " ++ show v ++ " was rounded to " ++ t ++ "."
+                 = putStrLn $ "            Note: Original value of " ++ show (fromRational v :: Double) ++ " was rounded to " ++ t ++ "."
 
 -- | Encoding E8M0. The representable values are the powers of two from 2^-127 to 2^127,
 -- plus NaN, so we round the exponent by hand. Rounding is always between two adjacent
@@ -456,88 +580,89 @@ encodeFP4E0M3 rm inp = case reads (fixup True inp) of
 -- one) and break RNE ties toward the even /stored/ exponent. Both follow 'encodeFP4',
 -- which ties on the parity of the encoding index rather than of the value's exponent.
 encodeE8M0 :: Bool -> RM -> String -> IO ()
-encodeE8M0 debug rm inp = case reads (fixup True inp) of
-                            [(v :: Double, "")] -> analyze v
-                            _                   -> -- maybe it's a hexfloat? As in encodeFP4, the catch must
-                                                   -- scope over the parse only: analyze can legitimately die,
-                                                   -- and die throws an exit-exception of its own.
-                                                   do let hr = readHexRational inp
-                                                      ok <- (rnf hr `seq` pure True)
-                                                              `C.catch` (\(_ :: C.SomeException) -> pure False)
-                                                      if ok then analyze (fromRational hr)
-                                                            else unrecognized inp
- where smallest, largest :: Double
-       smallest = e8m0Value 0
-       largest  = e8m0Value 254
+encodeE8M0 debug rm inp = do
+   parsed <- readNumberInput inp
+   case parsed of
+     InputNaN          -> outSpecial (0/0) 255
+     InputPosInf       -> outSpecial (1/0) 254
+     InputNegInf       -> negative
+     InputFinite v neg -> analyze v neg
+ where mags :: [Rational]
+       mags = map (toRational . e8m0Value) [0 .. 254]
 
-       analyze :: Double -> IO ()
-       analyze v
-         -- NaN is representable, and uniquely so.
-         | isNaN v
-         = out 255
+       smallest, largest :: Rational
+       smallest = toRational (e8m0Value 0)
+       largest  = toRational (e8m0Value 254)
+
+       negative = die [ "E8M0 has no representation for negative values."
+                      , "The representable range is [2^-127, 2^127], plus NaN."
+                      ]
+
+       outSpecial v stored = do putStr $ unlines $ e8m0Layout debug "ENCODED" stored
+                                trailerSpecial v stored
+
+       analyze :: Rational -> Bool -> IO ()
+       analyze v isNegZero
          -- A negative is not an out-of-range magnitude: with no sign bit there is no
          -- direction to saturate towards, and clamping would quietly make it positive.
-         | v < 0 || isNegativeZero v
-         = die [ "E8M0 has no representation for negative values."
-               , "The representable range is [2^-127, 2^127], plus NaN."
-               ]
-         -- Infinity is the limiting overflow, so it saturates along with anything else
-         -- that is too large.
-         | isInfinite v || v > largest
+         | v < 0 || isNegZero
+         = negative
+         -- Infinity is handled above; a finite value that is too large saturates.
+         | v > largest
          = out 254
          -- The bottom of the range is a hard cliff: there is no zero and no subnormal
          -- below 2^-127, so zero and everything under it saturates up to it.
          | v < smallest
          = out 0
          | True
-         = out (e8m0Bias + roundExp v)
+         = out (roundMag v)
         where out stored = do putStr $ unlines $ e8m0Layout debug "ENCODED" stored
-                              trailer v stored
+                              trailerFinite v stored
 
-       -- The exponent we land on, for a v already known to be in range. 'exponent'
-       -- returns the e with v = m * 2^e and 0.5 <= m < 1, so lo is the exponent whose
-       -- power of two sits at or just below v.
-       roundExp :: Double -> Int
-       roundExp v
-         | v == twoTo lo    -- Exactly representable
-         = lo
+       roundMag :: Rational -> Int
+       roundMag v
+         | e : _ <- [i | (i, mv) <- zip [0..] mags, mv == v]
+         = e
          | True
          = case rm of
-             RTZ -> lo      -- Every value is positive, so RTZ and RTN necessarily agree
+             RTZ -> lo
              RTN -> lo
              RTP -> hi
-             RNE -> nearest (if even (lo + e8m0Bias) then lo else hi)
+             RNE -> nearest (if even lo then lo else hi)
              RNA -> nearest hi
-        where lo = exponent v - 1
+        where lo = last [i | (i, mv) <- zip [0..] mags, mv < v]
               hi = lo + 1
 
-              twoTo :: Int -> Double
-              twoTo = encodeFloat 1
-
               -- Ties are broken by the given choice; note that comparing against the sum
-              -- avoids any rounding of its own, since 2*v and 3*2^lo are both exact here.
-              nearest tie = case compare (2 * v) (twoTo lo + twoTo hi) of
+              -- avoids any rounding of its own, since all operands are exact rationals.
+              nearest tie = case compare (2 * v) (mags !! lo + mags !! hi) of
                               LT -> lo
                               GT -> hi
                               EQ -> tie
 
-       trailer :: Double -> Int -> IO ()
-       trailer v stored = do putStrLn $ "   Rounding mode: " ++ show rm
-                             note
+       trailerFinite :: Rational -> Int -> IO ()
+       trailerFinite v stored = do putStrLn $ "   Rounding mode: " ++ show rm
+                                   note
          where t = e8m0Value stored
 
                note
-                 | isNaN v
-                 = exact
-                 | isInfinite v || v > largest || v < smallest
-                 = do putStrLn $ "            Note: Original value of " ++ show v ++ " is out of range, saturated to " ++ show t ++ "."
+                 | v > largest || v < smallest
+                 = do putStrLn $ "            Note: Original value of " ++ show (fromRational v :: Double) ++ " is out of range, saturated to " ++ show t ++ "."
                       putStrLn   "                  The representable range is [2^-127, 2^127]."
-                 | v == t
+                 | v == toRational t
                  = exact
                  | True
-                 = putStrLn $ "            Note: Original value of " ++ show v ++ " was rounded to " ++ show t ++ "."
+                 = putStrLn $ "            Note: Original value of " ++ show (fromRational v :: Double) ++ " was rounded to " ++ show t ++ "."
 
                exact = putStrLn $ "            Note: Conversion from " ++ show inp ++ " was exact. No rounding happened."
+
+       trailerSpecial :: Double -> Int -> IO ()
+       trailerSpecial v stored = do putStrLn $ "   Rounding mode: " ++ show rm
+                                    if isNaN v
+                                       then exact
+                                       else do putStrLn $ "            Note: Original value of " ++ show v ++ " is out of range, saturated to " ++ show (e8m0Value stored) ++ "."
+                                               putStrLn   "                  The representable range is [2^-127, 2^127]."
+        where exact = putStrLn $ "            Note: Conversion from " ++ show inp ++ " was exact. No rounding happened."
 
 -- | Encoding UE5M3. Every representable value is exact as a Double and the encodings run in
 -- increasing order, so we round by hand against the table rather than going through LibBF.
@@ -547,51 +672,53 @@ encodeE8M0 debug rm inp = case reads (fixup True inp) of
 -- the significand by one, across binade boundaries included -- and is what 'encodeFP4' and
 -- 'encodeE8M0' already do.
 encodeUE5M3 :: Bool -> RM -> String -> IO ()
-encodeUE5M3 debug rm inp = case reads (fixup True inp) of
-                             [(v :: Double, "")] -> analyze v
-                             _                   -> -- maybe it's a hexfloat? As in encodeFP4, the catch must
-                                                    -- scope over the parse only: analyze can legitimately die,
-                                                    -- and die throws an exit-exception of its own.
-                                                    do let hr = readHexRational inp
-                                                       ok <- (rnf hr `seq` pure True)
-                                                               `C.catch` (\(_ :: C.SomeException) -> pure False)
-                                                       if ok then analyze (fromRational hr)
-                                                             else unrecognized inp
- where largest :: Double
-       largest = last ue5m3Mags   -- 114688, the deviant encoding 0xFE
+encodeUE5M3 debug rm inp = do
+   parsed <- readNumberInput inp
+   case parsed of
+     InputNaN          -> outSpecial (0/0) nanBits
+     InputPosInf       -> outSpecial (1/0) nanBits
+     InputNegInf       -> negative
+     InputFinite v neg -> analyze v neg
+ where mags :: [Rational]
+       mags = map toRational ue5m3Mags
+
+       largest :: Rational
+       largest = last mags   -- 114688, the deviant encoding 0xFE
 
        -- The one and only NaN: all ones. Being unsigned, UE5M3 has a single such pattern
        -- where E4M3, which it otherwise follows, has one for each sign.
        nanBits :: Int
        nanBits = 0xFF
 
-       analyze :: Double -> IO ()
-       analyze v
-         -- NaN is representable, and uniquely so.
-         | isNaN v
-         = out nanBits
+       negative = die [ "UE5M3 has no representation for negative values."
+                      , "The representable range is [0, 114688], plus NaN."
+                      ]
+
+       outSpecial v stored = do putStr $ unlines $ ue5m3Layout debug "ENCODED" stored
+                                trailerSpecial v
+
+       analyze :: Rational -> Bool -> IO ()
+       analyze v isNegZero
          -- A negative is not an out-of-range magnitude: with no sign bit there is no direction
          -- to saturate towards, and clamping would quietly make it positive. A negative zero is
          -- still negative -- the same call 'encodeE8M0' makes.
-         | v < 0 || isNegativeZero v
-         = die [ "UE5M3 has no representation for negative values."
-               , "The representable range is [0, 114688], plus NaN."
-               ]
+         | v < 0 || isNegZero
+         = negative
          -- Having no infinity to saturate to, E4M3 turns whatever it cannot represent into NaN
-         -- rather than clamping; UE5M3 inherits that, and infinity is the limiting case of it.
-         | isInfinite v || v > largest
+         -- rather than clamping; explicit infinity is handled above.
+         | v > largest
          = out nanBits
          | True
          = out (roundMag v)
         where out stored = do putStr $ unlines $ ue5m3Layout debug "ENCODED" stored
-                              trailer v stored
+                              trailerFinite v stored
 
        -- Round to the index of one of the representable magnitudes, honoring the rounding mode.
        -- Every value reaching here is non-negative, so RTZ and RTN necessarily agree, as do RTP
        -- and rounding away from zero.
-       roundMag :: Double -> Int
+       roundMag :: Rational -> Int
        roundMag m
-         | e : _ <- [i | (i, mv) <- zip [0..] ue5m3Mags, mv == m]   -- Exactly representable
+         | e : _ <- [i | (i, mv) <- zip [0..] mags, mv == m]   -- Exactly representable
          = e
          | True
          = case rm of
@@ -600,30 +727,36 @@ encodeUE5M3 debug rm inp = case reads (fixup True inp) of
              RTP -> hi
              RNE -> nearest (if even lo then lo else hi)
              RNA -> nearest hi
-        where lo = last [i | (i, mv) <- zip [0..] ue5m3Mags, mv < m]
+        where lo = last [i | (i, mv) <- zip [0..] mags, mv < m]
               hi = lo + 1
 
               -- Ties are broken by the given choice; note that comparing against the sum avoids
               -- any rounding of its own, since all the values involved are exact.
-              nearest tie = case compare (2 * m) (ue5m3Mags !! lo + ue5m3Mags !! hi) of
+              nearest tie = case compare (2 * m) (mags !! lo + mags !! hi) of
                               LT -> lo
                               GT -> hi
                               EQ -> tie
 
-       trailer :: Double -> Int -> IO ()
-       trailer v stored = do putStrLn $ "   Rounding mode: " ++ show rm
-                             note
+       trailerFinite :: Rational -> Int -> IO ()
+       trailerFinite v stored = do putStrLn $ "   Rounding mode: " ++ show rm
+                                   note
          where t = ue5m3Value stored
 
                note
-                 | isNaN v
-                 = exact
-                 | isInfinite v || v > largest
-                 = do putStrLn $ "            Note: The input value " ++ show v ++ " is out of bounds, and hence becomes NaN."
+                 | v > largest
+                 = do putStrLn $ "            Note: The input value " ++ show (fromRational v :: Double) ++ " is out of bounds, and hence becomes NaN."
                       putStrLn   "                  The representable range is [0, 114688]."
-                 | v == t
+                 | v == toRational t
                  = exact
                  | True
-                 = putStrLn $ "            Note: Original value of " ++ show v ++ " was rounded to " ++ show t ++ "."
+                 = putStrLn $ "            Note: Original value of " ++ show (fromRational v :: Double) ++ " was rounded to " ++ show t ++ "."
 
                exact = putStrLn $ "            Note: Conversion from " ++ show inp ++ " was exact. No rounding happened."
+
+       trailerSpecial :: Double -> IO ()
+       trailerSpecial v = do putStrLn $ "   Rounding mode: " ++ show rm
+                             if isNaN v
+                                then exact
+                                else do putStrLn $ "            Note: The input value " ++ show v ++ " is out of bounds, and hence becomes NaN."
+                                        putStrLn   "                  The representable range is [0, 114688]."
+        where exact = putStrLn $ "            Note: Conversion from " ++ show inp ++ " was exact. No rounding happened."

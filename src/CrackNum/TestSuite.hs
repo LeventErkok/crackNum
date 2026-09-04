@@ -13,22 +13,25 @@
 
 {-# OPTIONS_GHC -Wall -Werror #-}
 
-module CrackNum.TestSuite(runTests) where
+module CrackNum.TestSuite(runTests, runTestsWith) where
 
 import Control.Exception as C
 
 import Test.Tasty
 import Test.Tasty.Golden (goldenVsFileDiff)
+import Test.Tasty.HUnit (assertBool, assertEqual, testCase)
 import System.FilePath
 
 import System.Directory (removeFile)
+import System.Environment (getExecutablePath)
+import System.Exit (ExitCode(ExitSuccess))
 import System.IO (IOMode(WriteMode), hPutStr, hSetNewlineMode, noNewlineTranslation, withFile)
 import System.Process (readProcessWithExitCode)
 
-import Data.List (intercalate)
+import Data.List (intercalate, isInfixOf)
 
-gold :: TestName -> String -> TestTree
-gold n as = goldenVsFileDiff n diff gf gfTmp (rm gfTmp >> run)
+golden :: FilePath -> TestName -> String -> TestTree
+golden executable n as = goldenVsFileDiff n diff gf gfTmp (rm gfTmp >> run)
   where gf    = "Golds" </> n <.> "gold"
         gfTmp = gf ++ "_temp"
 
@@ -41,7 +44,7 @@ gold n as = goldenVsFileDiff n diff gf gfTmp (rm gfTmp >> run)
         -- Windows, and --accept there would rewrite every gold in the process.
         write f s = withFile f WriteMode $ \h -> hSetNewlineMode h noNewlineTranslation >> hPutStr h s
 
-        run = do (ec, so, se) <- readProcessWithExitCode "crackNum" args ""
+        run = do (ec, so, se) <- readProcessWithExitCode executable args ""
                  write gfTmp $ intercalate "\n" $ [ "Arguments: " ++ as
                                                   , "Exit code: " ++ show ec
                                                   , so
@@ -52,10 +55,25 @@ gold n as = goldenVsFileDiff n diff gf gfTmp (rm gfTmp >> run)
 
 -- | run the test suite
 runTests :: IO ()
-runTests = defaultMain tests
+runTests = getExecutablePath >>= runTestsWith
 
-tests :: TestTree
-tests = testGroup "CrackNum" [
+-- | Run against an explicitly selected executable. The Cabal test component
+-- receives the just-built crackNum as a build tool and passes that path here;
+-- the executable's --runTests mode uses getExecutablePath above. Neither path
+-- can silently pick up a stale installation from PATH.
+runTestsWith :: FilePath -> IO ()
+runTestsWith executable = defaultMain (tests executable)
+
+encodingHas :: FilePath -> TestName -> [String] -> String -> TestTree
+encodingHas executable name args expected = testCase name $ do
+   (ec, so, se) <- readProcessWithExitCode executable args ""
+   assertEqual ("stderr:\n" ++ se) ExitSuccess ec
+   assertBool ("Expected output to contain " ++ show expected ++ ", got:\n" ++ so)
+              (expected `isInfixOf` so)
+
+tests :: FilePath -> TestTree
+tests executable = let gold = golden executable
+                   in testGroup "CrackNum" [
             testGroup "Encode" [
                gold "encode0"  "-i4 -- -2"
              , gold "encode1"  "-w4 2"
@@ -210,6 +228,38 @@ tests = testGroup "CrackNum" [
                          , ("dev0",  "63488")     -- Straddles the last IEEE-shaped value
                          , ("dev1",  "69632")
                          ]
+            ]
+          , testGroup "RoundingRegressions" [
+               encodingHas executable "SP RNE rounds upward"
+                           ["-fsp", "-rRNE", "1.00000006"] "Hex layout: 3F80 0001"
+             , encodingHas executable "SP RTZ rounds downward"
+                           ["-fsp", "-rRTZ", "1.00000006"] "Hex layout: 3F80 0000"
+             , encodingHas executable "DP RNE rounds upward"
+                           ["-fdp", "-rRNE", "1.0000000000000002"] "Hex layout: 3FF0 0000 0000 0001"
+             , encodingHas executable "DP RTZ rounds downward"
+                           ["-fdp", "-rRTZ", "1.0000000000000002"] "Hex layout: 3FF0 0000 0000 0000"
+             , encodingHas executable "E4M3 RTZ rounds positive downward"
+                           ["-fe4m3", "-rRTZ", "1.1"] "Hex layout: 38"
+             , encodingHas executable "E4M3 RTN rounds negative downward"
+                           ["-fe4m3", "-rRTN", "--", "-1.1"] "Hex layout: B9"
+             , encodingHas executable "E4M3 RTP uses upper extra value"
+                           ["-fe4m3", "-rRTP", "241"] "Hex layout: 78"
+             , encodingHas executable "E4M3 RTZ uses lower extra value"
+                           ["-fe4m3", "-rRTZ", "255"] "Hex layout: 77"
+             , encodingHas executable "E4M3 preserves digits above a midpoint"
+                           ["-fe4m3", "-rRNE", "1.06250000000000000001"] "Hex layout: 39"
+             , encodingHas executable "E4M3 preserves digits below a midpoint"
+                           ["-fe4m3", "-rRNE", "1.06249999999999999999"] "Hex layout: 38"
+             , encodingHas executable "FP4 preserves digits above a midpoint"
+                           ["-ffp4", "-rRNE", "1.25000000000000000001"] "Hex layout: 3"
+             , encodingHas executable "FP4E0M3 preserves digits above a midpoint"
+                           ["-ffp4e0m3", "-rRNE", "2.50000000000000000001"] "Hex layout: 3"
+             , encodingHas executable "E8M0 preserves digits below a midpoint"
+                           ["-fe8m0", "-rRNE", "1.49999999999999999999"] "Hex layout: 7F"
+             , encodingHas executable "UE5M3 preserves digits above a midpoint"
+                           ["-fue5m3", "-rRNE", "1.06250000000000000001"] "Hex layout: 79"
+             , encodingHas executable "SP accepts uppercase hexadecimal prefix"
+                           ["-fsp", "0X10"] "Hex layout: 4180 0000"
             ]
           , testGroup "Decode" [
               gold "decode0" "-i4       0b0110"
