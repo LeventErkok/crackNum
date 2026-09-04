@@ -1,7 +1,20 @@
 * Hackage: <http://hackage.haskell.org/package/crackNum>
 * GitHub:  <http://github.com/LeventErkok/crackNum/>
 
-* Latest Hackage released version: 4.6, 2026-09-03
+* Latest Hackage released version: 4.7, 2026-09-04
+
+### Version 4.7, 2026-09-04
+
+  * Encoding now applies the selected rounding mode directly to the input value.
+    Single- and double-precision decimal inputs previously went through Haskell's
+    default round-to-nearest conversion first, E4M3 used round-to-nearest in its
+    ordinary range, and exact decimal or hexadecimal inputs to the small AI formats
+    could be rounded twice. These cases can now produce different, correctly rounded
+    bit patterns for `RNA`, `RTP`, `RTN`, and `RTZ`, and near exact midpoints.
+
+  * Corrected directed rounding for E4M3 values between 240 and 448 (and their
+    negative counterparts). The implementation previously chose the nearest value
+    first and consulted the rounding mode only on exact ties.
 
 ### Version 4.6, 2026-09-03
 
